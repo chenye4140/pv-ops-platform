@@ -604,6 +604,7 @@
       <button class="nav-tab" data-tab="alertrules">告警规则</button>
       <a class="nav-tab" href="inspection.html" style="text-decoration:none;">巡检管理</a>
       <a class="nav-tab" href="audit.html" style="text-decoration:none;">🛡️ 审计日志</a>
+      <button class="nav-tab" data-tab="system">🖥️ 系统状态</button>
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
@@ -1085,6 +1086,42 @@
             <button type="submit" class="btn btn-green">创建规则</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- ====== System Status ====== -->
+    <div class="tab-content" id="tab-system">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🖥️</span> 系统状态</div>
+          <div style="display:flex;gap:0.5rem;">
+            <button onclick="createBackup()" style="padding:0.3rem 0.8rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">创建备份</button>
+            <button onclick="loadSystemStatus()" style="padding:0.3rem 0.8rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:0.8rem;">刷新</button>
+          </div>
+        </div>
+        <div id="systemStatusContent" style="padding:0.5rem 0;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+            <div class="kpi-card" style="text-align:center;">
+              <div class="kpi-value" id="dbSize">--</div>
+              <div class="kpi-label">数据库大小</div>
+            </div>
+            <div class="kpi-card" style="text-align:center;">
+              <div class="kpi-value" id="tableCount">--</div>
+              <div class="kpi-label">数据表数量</div>
+            </div>
+            <div class="kpi-card" style="text-align:center;">
+              <div class="kpi-value" id="totalRecords">--</div>
+              <div class="kpi-label">总记录数</div>
+            </div>
+            <div class="kpi-card" style="text-align:center;">
+              <div class="kpi-value" id="backupCount">--</div>
+              <div class="kpi-label">备份数量</div>
+            </div>
+          </div>
+          <div id="backupList" style="margin-top:1rem;display:none;">
+            <!-- Backup list populated by JS -->
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -2388,6 +2425,7 @@
       updateAlertBadge();
       initDiagnosis();
       loadWorkOrders();
+      loadSystemStatus();
 
       // Auto-refresh every 30 seconds
       refreshTimer = setInterval(() => {
@@ -3041,6 +3079,39 @@
       a.click();
       document.body.removeChild(a);
       showToast('导出下载已开始', 'success');
+    }
+
+    /* ============ System Status & Backup ============ */
+    async function loadSystemStatus() {
+      try {
+        const res = await fetch(`${API}/backup/stats`);
+        const json = await res.json();
+        if (json.success) {
+          const d = json.data;
+          document.getElementById('dbSize').textContent = d.fileSizeHuman;
+          document.getElementById('tableCount').textContent = d.totalTables;
+          const totalRecs = d.tables.reduce((s, t) => s + t.rowCount, 0);
+          document.getElementById('totalRecords').textContent = totalRecs.toLocaleString();
+          document.getElementById('backupCount').textContent = d.backupCount;
+        }
+      } catch(e) {
+        console.warn('System status load failed:', e);
+      }
+    }
+
+    async function createBackup() {
+      try {
+        const res = await fetch(`${API}/backup/create`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          alert(`备份创建成功: ${json.data.filename} (${json.data.sizeHuman})`);
+          loadSystemStatus();
+        } else {
+          alert('备份失败: ' + json.error);
+        }
+      } catch(e) {
+        alert('备份请求失败: ' + e.message);
+      }
     }
 
   </script>
