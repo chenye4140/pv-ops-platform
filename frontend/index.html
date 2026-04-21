@@ -478,6 +478,8 @@
       <button class="nav-tab" data-tab="diagnosis">图像诊断</button>
       <button class="nav-tab" data-tab="report">智能日报</button>
       <button class="nav-tab" data-tab="workorder">工单管理</button>
+      <button class="nav-tab" data-tab="alertrules">告警规则</button>
+      <a class="nav-tab" href="inspection.html" style="text-decoration:none;">巡检管理</a>
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
@@ -497,6 +499,12 @@
   <main class="main">
     <!-- ===== Tab 1: 电站总览 ===== -->
     <div class="tab-content active" id="tab-overview">
+      <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:1rem;">
+        <button class="btn btn-sm" onclick="exportData('station')">📊 导出电站概览</button>
+        <button class="btn btn-sm" onclick="exportData('power')">⚡ 导出发电数据</button>
+        <button class="btn btn-sm" onclick="exportData('alerts')">🔔 导出告警</button>
+        <button class="btn btn-sm" onclick="exportData('workorders')">📋 导出工单</button>
+      </div>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon">⚡</div>
@@ -798,6 +806,88 @@
         <div id="workorderDetailContent"></div>
       </div>
     </div>
+
+    <!-- ===== Tab 7: 告警规则 ===== -->
+    <div class="tab-content" id="tab-alertrules">
+      <div class="stats-grid" style="margin-bottom:1.5rem;" id="alertRuleStats"></div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">⚙️</span> 告警规则配置</div>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn btn-sm" onclick="seedAlertRules()">🌱 初始化默认规则</button>
+            <button class="btn btn-sm btn-green" onclick="runAlertEvaluation()">⚡ 执行规则评估</button>
+            <button class="btn btn-sm" onclick="showCreateRule()">➕ 创建规则</button>
+          </div>
+        </div>
+        <div id="alertRulesTable"></div>
+      </div>
+      <!-- Create Rule Modal -->
+      <div class="section" id="createRuleSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">➕</span> 新建告警规则</div>
+          <button class="btn btn-sm btn-outline" onclick="document.getElementById('createRuleSection').style.display='none'">关闭</button>
+        </div>
+        <form id="createRuleForm" onsubmit="return createAlertRule(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">规则名称 *</label>
+            <input type="text" id="ruleName" required style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">规则类型 *</label>
+            <select id="ruleType" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="string_low_power">组串功率偏低</option>
+              <option value="string_zero_output">组串零输出</option>
+              <option value="temperature_high">温度过高</option>
+              <option value="irradiance_low">辐照度过低</option>
+              <option value="power_drop_sudden">功率突降</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">监控指标 *</label>
+            <select id="ruleMetric" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="power_ratio">功率比</option>
+              <option value="temperature">温度</option>
+              <option value="irradiance">辐照度</option>
+              <option value="zero_output_strings">零输出组串数</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">阈值 *</label>
+            <input type="number" id="ruleThreshold" step="0.01" required style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">操作符</label>
+            <select id="ruleOperator" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="<">小于 (&lt;)</option>
+              <option value=">">大于 (&gt;)</option>
+              <option value="<=">小于等于 (&lt;=)</option>
+              <option value=">=">大于等于 (&gt;=)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">严重程度</label>
+            <select id="ruleSeverity" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="info">提示</option>
+              <option value="warning" selected>警告</option>
+              <option value="critical">严重</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">冷却时间（分钟）</label>
+            <input type="number" id="ruleCooldown" value="30" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1.5rem;">
+              <input type="checkbox" id="ruleAutoWO"> 自动创建工单
+            </label>
+          </div>
+          <div style="grid-column:1/-1;display:flex;gap:0.5rem;justify-content:flex-end;">
+            <button type="button" class="btn" onclick="document.getElementById('createRuleSection').style.display='none'">取消</button>
+            <button type="submit" class="btn btn-green">创建规则</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -838,6 +928,7 @@
       document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
       // Load tab-specific data
       if (tab === 'workorder') loadWorkOrders();
+      if (tab === 'alertrules') loadAlertRules();
       // Resize charts after tab switch
       setTimeout(() => {
         Object.values(charts).forEach(c => c && c.resize());
@@ -1906,6 +1997,159 @@
 
     function closeWorkOrderDetail() {
       document.getElementById('workorderDetailSection').style.display = 'none';
+    }
+
+    /* ============ Alert Rules ============ */
+    async function loadAlertRules() {
+      try {
+        const [rulesRes, statsRes] = await Promise.all([
+          fetch(`${API}/alert-rules?station_id=${stationId}`),
+          fetch(`${API}/alert-rules/stats`),
+        ]);
+        const rulesJson = await rulesRes.json();
+        const statsJson = await statsRes.json();
+
+        // Stats
+        if (statsJson.success) {
+          document.getElementById('alertRuleStats').innerHTML = `
+            <div class="stat-card"><div class="stat-value" style="color:var(--accent)">${statsJson.data.total}</div><div class="stat-label">规则总数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--green)">${statsJson.data.enabled}</div><div class="stat-label">已启用</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${statsJson.data.disabled}</div><div class="stat-label">已禁用</div></div>
+          `;
+        }
+
+        // Table
+        const container = document.getElementById('alertRulesTable');
+        if (!rulesJson.success || !rulesJson.data.length) {
+          container.innerHTML = '<div class="empty-msg" style="text-align:center;padding:2rem;color:var(--text-muted);">暂无告警规则，点击"初始化默认规则"或"创建规则"</div>';
+          return;
+        }
+        const typeNames = { string_low_power:'组串功率偏低', string_zero_output:'组串零输出', temperature_high:'温度过高', irradiance_low:'辐照度过低', power_drop_sudden:'功率突降', string_mismatch:'组串差异', inverter_offline:'逆变器离线', voltage_abnormal:'电压异常' };
+        const sevBadge = { info:'<span class="badge" style="background:var(--blue);color:#fff;">提示</span>', warning:'<span class="badge" style="background:var(--orange);color:#fff;">警告</span>', critical:'<span class="badge" style="background:var(--red);color:#fff;">严重</span>' };
+        let html = '<table><thead><tr><th>ID</th><th>规则名称</th><th>类型</th><th>指标</th><th>条件</th><th>严重度</th><th>冷却</th><th>自动工单</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+        rulesJson.data.forEach(rule => {
+          const condition = `${rule.operator} ${rule.threshold}`;
+          html += `<tr>
+            <td>${rule.id}</td>
+            <td><strong>${rule.name}</strong></td>
+            <td>${typeNames[rule.type] || rule.type}</td>
+            <td style="font-family:var(--font-mono);font-size:0.82rem;">${rule.metric}</td>
+            <td><code style="color:var(--yellow);">${condition}</code></td>
+            <td>${sevBadge[rule.severity]}</td>
+            <td>${rule.cooldown_minutes}min</td>
+            <td>${rule.auto_create_workorder ? '✅' : '❌'}</td>
+            <td><span class="badge" style="background:${rule.enabled ? 'var(--green)' : 'var(--text-muted)'};color:${rule.enabled ? '#fff' : 'var(--bg-primary)'};">${rule.enabled ? '启用' : '禁用'}</span></td>
+            <td class="actions-cell">
+              <button class="btn btn-sm ${rule.enabled ? 'btn-orange' : 'btn-green'}" onclick="toggleRule(${rule.id}, ${!rule.enabled})">${rule.enabled ? '禁用' : '启用'}</button>
+              <button class="btn btn-sm btn-red" onclick="deleteRule(${rule.id})">删除</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        document.getElementById('alertRulesTable').innerHTML = '<div class="error-msg">规则加载失败</div>';
+      }
+    }
+
+    function showCreateRule() { document.getElementById('createRuleSection').style.display = 'block'; }
+
+    async function createAlertRule(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch(`${API}/alert-rules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('ruleName').value,
+            type: document.getElementById('ruleType').value,
+            metric: document.getElementById('ruleMetric').value,
+            threshold: parseFloat(document.getElementById('ruleThreshold').value),
+            operator: document.getElementById('ruleOperator').value,
+            severity: document.getElementById('ruleSeverity').value,
+            station_id: parseInt(stationId),
+            cooldown_minutes: parseInt(document.getElementById('ruleCooldown').value) || 30,
+            auto_create_workorder: document.getElementById('ruleAutoWO').checked,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('createRuleSection').style.display = 'none';
+          document.getElementById('createRuleForm').reset();
+          showToast('规则创建成功', 'success');
+          await loadAlertRules();
+        } else {
+          showToast('创建失败: ' + json.error, 'error');
+        }
+      } catch (e) { showToast('请求失败', 'error'); }
+      return false;
+    }
+
+    async function seedAlertRules() {
+      try {
+        const res = await fetch(`${API}/alert-rules/seed/${stationId}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`已初始化 ${json.count} 条默认规则`, 'success');
+          await loadAlertRules();
+        }
+      } catch (e) { showToast('初始化失败', 'error'); }
+    }
+
+    async function runAlertEvaluation() {
+      try {
+        showToast('正在执行规则评估...', 'info');
+        const res = await fetch(`${API}/alert-rules/evaluate-all/${stationId}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          if (json.data.triggered > 0) {
+            showToast(`评估完成：触发 ${json.data.triggered} 条规则，创建 ${json.data.createdAlerts.length} 条告警`, 'warning');
+          } else {
+            showToast('评估完成：所有规则正常', 'success');
+          }
+          await loadAlertRules();
+        }
+      } catch (e) { showToast('评估失败', 'error'); }
+    }
+
+    async function toggleRule(id, enable) {
+      try {
+        await fetch(`${API}/alert-rules/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: enable }),
+        });
+        await loadAlertRules();
+      } catch (e) { showToast('操作失败', 'error'); }
+    }
+
+    async function deleteRule(id) {
+      if (!confirm('确定删除此规则？')) return;
+      try {
+        await fetch(`${API}/alert-rules/${id}`, { method: 'DELETE' });
+        await loadAlertRules();
+      } catch (e) { showToast('删除失败', 'error'); }
+    }
+
+    /* ============ Data Export ============ */
+    function exportData(type) {
+      const urls = {
+        station: `${API}/export/station/${stationId}`,
+        power: `${API}/export/power-data?station_id=${stationId}`,
+        alerts: `${API}/export/alerts?station_id=${stationId}`,
+        workorders: `${API}/export/workorders`,
+      };
+      const url = urls[type];
+      if (!url) return;
+      // Create a hidden link and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('导出下载已开始', 'success');
     }
 
   </script>

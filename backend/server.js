@@ -26,6 +26,10 @@ const analysisRoutes = require('./src/routes/analysisRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const stringRoutes = require('./src/routes/stringRoutes');
 const workorderRoutes = require('./src/routes/workorderRoutes');
+const alertRuleRoutes = require('./src/routes/alertRuleRoutes');
+const exportRoutes = require('./src/routes/exportRoutes');
+const inspectionRoutes = require('./src/routes/inspectionRoutes');
+const forecastRoutes = require('./src/routes/forecastRoutes');
 
 app.use('/api/stations', stationRoutes);
 app.use('/api/power-data', powerRoutes);
@@ -35,6 +39,10 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/strings', stringRoutes);
 app.use('/api/workorders', workorderRoutes);
+app.use('/api/alert-rules', alertRuleRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/inspections', inspectionRoutes);
+app.use('/api/forecast', forecastRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

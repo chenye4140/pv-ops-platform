@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>巡检管理 - 光伏运维AI智能分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; line-height: 1.6; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .navbar { background: linear-gradient(180deg, var(--bg-secondary), rgba(17,27,47,0.95)); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; height: 60px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.3); }
+    .navbar-brand { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; }
+    .navbar-brand .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--blue)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .navbar-tabs { display: flex; gap: 4px; margin-left: 2.5rem; }
+    .nav-tab { background: none; border: none; color: var(--text-secondary); padding: 0.5rem 1.1rem; border-radius: 6px; font-size: 0.88rem; cursor: pointer; transition: all 0.25s; font-family: var(--font-sans); }
+    .nav-tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+    .nav-tab.active { color: var(--accent); background: var(--accent-dim); font-weight: 600; }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .section-title { font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; font-family: var(--font-mono); }
+    .stat-label { font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+    .btn { padding: 0.5rem 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--accent-dim); color: var(--accent); font-size: 0.85rem; cursor: pointer; transition: all 0.25s; font-family: var(--font-sans); }
+    .btn:hover { background: var(--accent); color: var(--bg-primary); }
+    .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.78rem; }
+    .btn-green { background: var(--green-dim); color: var(--green); border-color: rgba(0,255,136,0.3); }
+    .btn-green:hover { background: var(--green); color: var(--bg-primary); }
+    .btn-red { background: var(--red-dim); color: var(--red); border-color: rgba(255,61,113,0.3); }
+    .btn-red:hover { background: var(--red); color: #fff; }
+    .btn-orange { background: var(--orange-dim); color: var(--orange); border-color: rgba(255,152,0,0.3); }
+    .btn-orange:hover { background: var(--orange); color: var(--bg-primary); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.7rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+    th { color: var(--text-secondary); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); }
+    tr:hover td { background: var(--bg-card-hover); }
+
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .badge-routine { background: var(--accent-dim); color: var(--accent); }
+    .badge-special { background: rgba(179,136,255,0.15); color: var(--purple); }
+    .badge-emergency { background: var(--red-dim); color: var(--red); }
+    .badge-active { background: var(--green-dim); color: var(--green); }
+    .badge-paused { background: var(--orange-dim); color: var(--orange); }
+    .badge-completed { background: rgba(148,163,184,0.15); color: var(--text-secondary); }
+    .badge-pending { background: var(--orange-dim); color: var(--orange); }
+    .badge-in_progress { background: var(--accent-dim); color: var(--accent); }
+    .badge-skipped { background: rgba(148,163,184,0.15); color: var(--text-muted); }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 1rem; color: var(--accent); }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 0.5rem 0.8rem; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.88rem; font-family: var(--font-sans);
+    }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .tab-bar { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .tab-btn { padding: 0.7rem 1.5rem; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.9rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .actions-cell { display: flex; gap: 0.3rem; }
+
+    #forecastChart { width: 100%; height: 300px; }
+
+    @media (max-width: 768px) {
+      .container { padding: 1rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .navbar { padding: 0 1rem; }
+      .navbar-tabs { margin-left: 1rem; }
+      table { font-size: 0.8rem; }
+      th, td { padding: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="logo-icon">☀️</span>
+      <span>光伏运维AI平台</span>
+    </div>
+    <div class="navbar-tabs">
+      <a class="nav-tab" href="index.html">Dashboard</a>
+      <a class="nav-tab" href="analysis.html">图像分析</a>
+      <a class="nav-tab" href="daily-report.html">运维日报</a>
+      <a class="nav-tab active" href="inspection.html">巡检管理</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalInspections" style="color:var(--accent)">0</div>
+        <div class="stat-label">巡检计划总数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statActiveInspections" style="color:var(--green)">0</div>
+        <div class="stat-label">进行中计划</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statTotalTasks" style="color:var(--yellow)">0</div>
+        <div class="stat-label">巡检任务总数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statPendingTasks" style="color:var(--orange)">0</div>
+        <div class="stat-label">待执行任务</div>
+      </div>
+    </div>
+
+    <!-- Forecast Chart -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span>📊</span> 发电预测</div>
+        <div>
+          <button class="btn btn-sm" onclick="generateForecast()">生成预测</button>
+        </div>
+      </div>
+      <div id="forecastChart"></div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="inspections">巡检计划</button>
+      <button class="tab-btn" data-tab="tasks">巡检任务</button>
+    </div>
+
+    <!-- Inspections Tab -->
+    <div class="tab-content active" id="tab-inspections">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span>📋</span> 巡检计划列表</div>
+          <button class="btn" onclick="showCreateInspection()">➕ 创建巡检计划</button>
+        </div>
+        <div id="inspectionsTable"></div>
+      </div>
+    </div>
+
+    <!-- Tasks Tab -->
+    <div class="tab-content" id="tab-tasks">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span>📝</span> 巡检任务列表</div>
+          <button class="btn btn-sm btn-green" onclick="processDueInspections()">⚡ 处理到期巡检</button>
+        </div>
+        <div id="tasksTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Inspection Modal -->
+  <div class="modal-overlay" id="createInspectionModal">
+    <div class="modal">
+      <h3>➕ 创建巡检计划</h3>
+      <form id="createInspectionForm" onsubmit="return createInspection(event)">
+        <div class="form-group">
+          <label>计划名称 *</label>
+          <input type="text" id="inspTitle" required placeholder="例：每日常规巡检">
+        </div>
+        <div class="form-group">
+          <label>巡检类型</label>
+          <select id="inspType">
+            <option value="routine">常规巡检</option>
+            <option value="special">专项巡检</option>
+            <option value="emergency">紧急巡检</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>频率</label>
+          <select id="inspFrequency">
+            <option value="daily">每日</option>
+            <option value="weekly">每周</option>
+            <option value="monthly">每月</option>
+            <option value="once">一次性</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>负责人</label>
+          <input type="text" id="inspAssignee" placeholder="例：张工">
+        </div>
+        <div class="form-group">
+          <label>描述</label>
+          <textarea id="inspDescription" placeholder="巡检说明..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn" onclick="closeModal('createInspectionModal')">取消</button>
+          <button type="submit" class="btn btn-green">创建</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Task Detail Modal -->
+  <div class="modal-overlay" id="taskDetailModal">
+    <div class="modal">
+      <h3>📝 任务详情</h3>
+      <div id="taskDetailContent"></div>
+      <div class="form-group" style="margin-top:1rem;">
+        <label>更新状态</label>
+        <select id="taskStatusSelect">
+          <option value="pending">待执行</option>
+          <option value="in_progress">进行中</option>
+          <option value="completed">已完成</option>
+          <option value="skipped">已跳过</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>发现/备注</label>
+        <textarea id="taskFindings" placeholder="记录巡检发现..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal('taskDetailModal')">取消</button>
+        <button class="btn btn-green" onclick="updateTaskStatus()">更新</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+    const STATION_ID = 1;
+    let currentTaskId = null;
+    let forecastChart = null;
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API}/inspections/stats?station_id=${STATION_ID}`);
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('statTotalInspections').textContent = json.data.totalInspections;
+          document.getElementById('statActiveInspections').textContent = json.data.activeInspections;
+          document.getElementById('statTotalTasks').textContent = json.data.totalTasks;
+          const pending = json.data.tasksByStatus.find(s => s.status === 'pending');
+          document.getElementById('statPendingTasks').textContent = pending ? pending.count : 0;
+        }
+      } catch (e) { console.error('Failed to load stats:', e); }
+    }
+
+    async function loadInspections() {
+      try {
+        const res = await fetch(`${API}/inspections?station_id=${STATION_ID}`);
+        const json = await res.json();
+        const container = document.getElementById('inspectionsTable');
+        if (!json.success || !json.data.length) {
+          container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无巡检计划</p></div>';
+          return;
+        }
+        const typeMap = { routine: '常规', special: '专项', emergency: '紧急' };
+        const statusMap = { active: '进行中', paused: '已暂停', completed: '已完成' };
+        let html = '<table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>频率</th><th>负责人</th><th>状态</th><th>下次到期</th><th>操作</th></tr></thead><tbody>';
+        json.data.forEach(insp => {
+          html += `<tr>
+            <td>${insp.id}</td>
+            <td><strong>${insp.title}</strong></td>
+            <td><span class="badge badge-${insp.type}">${typeMap[insp.type] || insp.type}</span></td>
+            <td>${insp.frequency || '一次性'}</td>
+            <td>${insp.assignee || '-'}</td>
+            <td><span class="badge badge-${insp.status}">${statusMap[insp.status] || insp.status}</span></td>
+            <td style="font-family:var(--font-mono);font-size:0.8rem;">${insp.next_due_date ? new Date(insp.next_due_date).toLocaleString('zh-CN') : '-'}</td>
+            <td class="actions-cell">
+              <button class="btn btn-sm" onclick="viewInspectionTasks(${insp.id})">查看任务</button>
+              <button class="btn btn-sm btn-red" onclick="deleteInspection(${insp.id})">删除</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        document.getElementById('inspectionsTable').innerHTML = '<div class="error-msg">加载失败</div>';
+      }
+    }
+
+    async function loadTasks() {
+      try {
+        const res = await fetch(`${API}/inspection-tasks?station_id=${STATION_ID}`);
+        const json = await res.json();
+        const container = document.getElementById('tasksTable');
+        if (!json.success || !json.data.length) {
+          container.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>暂无巡检任务</p></div>';
+          return;
+        }
+        const statusMap = { pending: '待执行', in_progress: '进行中', completed: '已完成', skipped: '已跳过' };
+        let html = '<table><thead><tr><th>ID</th><th>巡检计划</th><th>任务</th><th>负责人</th><th>状态</th><th>到期时间</th><th>操作</th></tr></thead><tbody>';
+        json.data.forEach(task => {
+          html += `<tr>
+            <td>${task.id}</td>
+            <td>${task.inspection_title}</td>
+            <td><strong>${task.title}</strong></td>
+            <td>${task.assignee || '-'}</td>
+            <td><span class="badge badge-${task.status}">${statusMap[task.status] || task.status}</span></td>
+            <td style="font-family:var(--font-mono);font-size:0.8rem;">${task.due_date ? new Date(task.due_date).toLocaleString('zh-CN') : '-'}</td>
+            <td class="actions-cell">
+              <button class="btn btn-sm" onclick="showTaskDetail(${task.id})">详情</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        document.getElementById('tasksTable').innerHTML = '<div class="error-msg">加载失败</div>';
+      }
+    }
+
+    function showCreateInspection() {
+      document.getElementById('createInspectionModal').classList.add('show');
+    }
+
+    async function createInspection(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch(`${API}/inspections`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: document.getElementById('inspTitle').value,
+            type: document.getElementById('inspType').value,
+            station_id: STATION_ID,
+            frequency: document.getElementById('inspFrequency').value,
+            assignee: document.getElementById('inspAssignee').value || null,
+            description: document.getElementById('inspDescription').value || null,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          closeModal('createInspectionModal');
+          document.getElementById('createInspectionForm').reset();
+          await Promise.all([loadStats(), loadInspections(), loadTasks()]);
+        } else {
+          alert('创建失败: ' + json.error);
+        }
+      } catch (e) { alert('创建失败: ' + e.message); }
+      return false;
+    }
+
+    async function deleteInspection(id) {
+      if (!confirm('确定删除此巡检计划？所有关联任务也将被删除。')) return;
+      try {
+        await fetch(`${API}/inspections/${id}`, { method: 'DELETE' });
+        await Promise.all([loadStats(), loadInspections(), loadTasks()]);
+      } catch (e) { alert('删除失败'); }
+    }
+
+    async function viewInspectionTasks(inspId) {
+      // Switch to tasks tab and filter
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('[data-tab="tasks"]').classList.add('active');
+      document.getElementById('tab-tasks').classList.add('active');
+
+      try {
+        const res = await fetch(`${API}/inspections/${inspId}/tasks`);
+        const json = await res.json();
+        const container = document.getElementById('tasksTable');
+        if (!json.success || !json.data.length) {
+          container.innerHTML = '<div class="empty-state"><p>该计划暂无任务</p></div>';
+          return;
+        }
+        const statusMap = { pending: '待执行', in_progress: '进行中', completed: '已完成', skipped: '已跳过' };
+        let html = `<p style="margin-bottom:0.5rem;color:var(--text-secondary);">巡检计划 #${inspId} 的任务：</p>`;
+        html += '<table><thead><tr><th>ID</th><th>任务</th><th>负责人</th><th>状态</th><th>到期</th><th>操作</th></tr></thead><tbody>';
+        json.data.forEach(task => {
+          html += `<tr>
+            <td>${task.id}</td>
+            <td><strong>${task.title}</strong></td>
+            <td>${task.assignee || '-'}</td>
+            <td><span class="badge badge-${task.status}">${statusMap[task.status]}</span></td>
+            <td style="font-family:var(--font-mono);font-size:0.8rem;">${task.due_date ? new Date(task.due_date).toLocaleString('zh-CN') : '-'}</td>
+            <td class="actions-cell">
+              <button class="btn btn-sm" onclick="showTaskDetail(${task.id})">详情</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) { alert('加载任务失败'); }
+    }
+
+    async function showTaskDetail(taskId) {
+      currentTaskId = taskId;
+      try {
+        const res = await fetch(`${API}/inspections/tasks/${taskId}`);
+        const json = await res.json();
+        if (!json.success) return;
+        const task = json.data;
+        const statusMap = { pending: '待执行', in_progress: '进行中', completed: '已完成', skipped: '已跳过' };
+        document.getElementById('taskDetailContent').innerHTML = `
+          <p><strong>任务：</strong>${task.title}</p>
+          <p><strong>巡检计划：</strong>${task.inspection_title}</p>
+          <p><strong>负责人：</strong>${task.assignee || '未分配'}</p>
+          <p><strong>当前状态：</strong><span class="badge badge-${task.status}">${statusMap[task.status]}</span></p>
+          <p><strong>到期时间：</strong>${task.due_date ? new Date(task.due_date).toLocaleString('zh-CN') : '-'}</p>
+          ${task.findings ? `<p><strong>发现：</strong>${task.findings}</p>` : ''}
+        `;
+        document.getElementById('taskStatusSelect').value = task.status;
+        document.getElementById('taskFindings').value = '';
+        document.getElementById('taskDetailModal').classList.add('show');
+      } catch (e) { alert('加载任务详情失败'); }
+    }
+
+    async function updateTaskStatus() {
+      const status = document.getElementById('taskStatusSelect').value;
+      const findings = document.getElementById('taskFindings').value;
+      try {
+        const res = await fetch(`${API}/inspections/tasks/${currentTaskId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, findings }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          closeModal('taskDetailModal');
+          await Promise.all([loadStats(), loadTasks()]);
+        } else {
+          alert('更新失败: ' + json.error);
+        }
+      } catch (e) { alert('更新失败'); }
+    }
+
+    async function processDueInspections() {
+      try {
+        const res = await fetch(`${API}/inspections/process-due`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          alert(`处理了 ${json.data.length} 个到期巡检，已生成新任务`);
+          await Promise.all([loadStats(), loadInspections(), loadTasks()]);
+        }
+      } catch (e) { alert('处理失败'); }
+    }
+
+    async function generateForecast() {
+      try {
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const res = await fetch(`${API}/forecast/generate/${STATION_ID}?date=${tomorrow}`, { method: 'POST' });
+        const json = await res.json();
+        if (!json.success) { alert('生成预测失败: ' + json.error); return; }
+        renderForecastChart(json.data);
+      } catch (e) { alert('生成预测失败: ' + e.message); }
+    }
+
+    async function loadForecast() {
+      try {
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const res = await fetch(`${API}/forecast/${STATION_ID}?date=${tomorrow}`);
+        const json = await res.json();
+        if (json.success) renderForecastChart(json.data);
+      } catch (e) { /* no forecast yet */ }
+    }
+
+    function renderForecastChart(data) {
+      const chartDom = document.getElementById('forecastChart');
+      if (forecastChart) forecastChart.dispose();
+      forecastChart = echarts.init(chartDom, null, { renderer: 'canvas' });
+
+      const hours = data.hourly_predictions.map(p => `${p.forecast_hour}:00`);
+      const power = data.hourly_predictions.map(p => p.predicted_power_kw);
+
+      const option = {
+        tooltip: { trigger: 'axis', formatter: '{b}<br/>预测功率: {c} kW' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: hours, axisLine: { lineStyle: { color: '#1e3050' } }, axisLabel: { color: '#94a3b8' } },
+        yAxis: { type: 'value', name: '功率 (kW)', axisLine: { lineStyle: { color: '#1e3050' } }, axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e305033' } } },
+        series: [{
+          name: '预测功率', type: 'line', smooth: true, data: power,
+          lineStyle: { color: '#00e5ff', width: 2 },
+          areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.3)' }, { offset: 1, color: 'rgba(0,229,255,0.02)' }] } },
+          itemStyle: { color: '#00e5ff' },
+        }],
+      };
+      forecastChart.setOption(option);
+
+      // Update section title with total
+      const titleEl = document.querySelector('.section-header .section-title');
+      titleEl.innerHTML = `<span>📊</span> 发电预测 — 明日预计总发电 <strong style="color:var(--green)">${data.total_predicted_energy_kwh} kWh</strong>`;
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('show'); });
+    });
+
+    // Initial load
+    Promise.all([loadStats(), loadInspections(), loadTasks(), loadForecast()]);
+  </script>
+</body>
+</html>
