@@ -269,6 +269,25 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_spare_parts_status ON spare_parts(status);
     CREATE INDEX IF NOT EXISTS idx_spare_parts_transactions_part_id ON spare_parts_transactions(part_id);
     CREATE INDEX IF NOT EXISTS idx_spare_parts_transactions_type ON spare_parts_transactions(transaction_type);
+
+    -- Defect Analysis History table (AI image analysis results)
+    CREATE TABLE IF NOT EXISTS defect_analyses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      station_id INTEGER,
+      image_label TEXT,
+      image_path TEXT,                    -- stored image path or URL
+      defects TEXT,                       -- JSON array of detected defects
+      overall_health TEXT,                -- 'good', 'degraded', 'critical'
+      recommendation TEXT,
+      model_used TEXT,                    -- 'qwen-vl-max' or 'mock'
+      analyzed_by TEXT,                   -- user who triggered analysis
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (station_id) REFERENCES stations(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_defect_analyses_station_id ON defect_analyses(station_id);
+    CREATE INDEX IF NOT EXISTS idx_defect_analyses_health ON defect_analyses(overall_health);
+    CREATE INDEX IF NOT EXISTS idx_defect_analyses_created_at ON defect_analyses(created_at);
   `);
 }
 

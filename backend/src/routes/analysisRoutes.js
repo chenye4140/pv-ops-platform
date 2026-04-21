@@ -77,6 +77,23 @@ router.post('/defect-image', async (req, res) => {
 
     const result = await analyzeDefectImage(image, label || '未知图片');
 
+    // Persist analysis result to defect_analyses table
+    const userId = req.user ? req.user.id : null;
+    const stationId = req.body.station_id || null;
+
+    db.prepare(`
+      INSERT INTO defect_analyses (station_id, image_label, defects, overall_health, recommendation, model_used, analyzed_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      stationId,
+      label || null,
+      JSON.stringify(result.defects),
+      result.overall_health,
+      result.recommendation,
+      result.model_used,
+      userId
+    );
+
     // Map the AI service result to the expected frontend format
     const response = {
       success: true,
@@ -97,6 +114,44 @@ router.post('/defect-image', async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error('[Analysis] Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/analysis/history — Retrieve analysis history
+router.get('/history', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const stationId = req.query.station_id;
+    const health = req.query.health;
+
+    let sql = `
+      SELECT da.*, s.name as station_name
+      FROM defect_analyses da
+      LEFT JOIN stations s ON da.station_id = s.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (stationId) {
+      sql += ' AND da.station_id = ?';
+      params.push(stationId);
+    }
+    if (health) {
+      sql += ' AND da.overall_health = ?';
+      params.push(health);
+    }
+
+    sql += ' ORDER BY da.created_at DESC LIMIT ?';
+    params.push(limit);
+
+    const analyses = db.prepare(sql).all(...params).map(a => ({
+      ...a,
+      defects: JSON.parse(a.defects || '[]'),
+    }));
+
+    res.json({ success: true, data: analyses });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
