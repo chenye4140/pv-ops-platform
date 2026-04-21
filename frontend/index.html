@@ -361,6 +361,24 @@
       color: var(--red);
       border: 1px solid rgba(255,61,113,0.3);
     }
+    .btn-green {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3);
+    }
+    .btn-green:hover { background: rgba(0,255,136,0.25); }
+    .btn-red {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255,61,113,0.3);
+    }
+    .btn-red:hover { background: rgba(255,61,113,0.25); }
+    .btn-orange {
+      background: var(--orange-dim);
+      color: var(--orange);
+      border: 1px solid rgba(255,152,0,0.3);
+    }
+    .btn-orange:hover { background: rgba(255,152,0,0.25); }
 
     /* ============ Upload Area ============ */
     .upload-area {
@@ -448,6 +466,9 @@
     .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 
+    /* ============ Alert Nav Badge ============ */
+    #alertBadgeCount.has-count { display: flex !important; }
+
     /* ============ Responsive ============ */
     @media (max-width: 1200px) { .two-col { grid-template-columns: 1fr; } }
     @media (max-width: 900px) {
@@ -483,8 +504,14 @@
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
-        <option value="1">电站 #1</option>
+        <option value="all">全部电站</option>
       </select>
+      <div id="alertNavBadge" class="alert-nav-badge" style="position:relative;cursor:pointer;font-size:1.1rem;padding:0.2rem 0.4rem;" title="活跃告警" onclick="switchTab('alerts')">🔔<span id="alertBadgeCount" style="position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:0.65rem;border-radius:50%;min-width:16px;height:16px;display:none;align-items:center;justify-content:center;font-weight:600;">0</span></div>
+      <div id="wsStatus" class="ws-status" style="font-size:0.85rem;cursor:default;user-select:none;" title="WebSocket连接状态">🔴</div>
+      <div id="userInfo" style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.6rem;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;cursor:default;">
+        <span id="userDisplayName" style="font-size:0.8rem;color:var(--text-secondary);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">--</span>
+        <button class="btn btn-sm btn-outline" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="handleLogout()" title="退出登录">退出</button>
+      </div>
       <div class="clock">
         <span class="clock-date" id="clockDate"></span>
         <span id="clockTime"></span>
@@ -890,12 +917,35 @@
     </div>
   </main>
 
+  <script src="assets/ws-client.js"></script>
   <script>
+    /* ============ Authentication Check ============ */
+    (function() {
+      var token = localStorage.getItem('authToken');
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+      // Verify token validity
+      fetch('http://localhost:3000/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      }).then(function(res) {
+        if (!res.ok) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          window.location.href = 'login.html';
+        }
+      }).catch(function() {
+        // If server unreachable, allow access (will fail on API calls anyway)
+      });
+    })();
+
     /* ============ Configuration ============ */
     const API = 'http://localhost:3000/api';
-    let stationId = '1';
+    let stationId = localStorage.getItem('selectedStation') || 'all';
     let charts = {};
     let refreshTimer = null;
+    let currentUser = null;
 
     /* ============ Cached Alert Data ============ */
     let cachedAlerts = [];
@@ -915,6 +965,40 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
+
+    /* ============ User Info ============ */
+    function displayUserInfo() {
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        try {
+          currentUser = JSON.parse(userStr);
+          document.getElementById('userDisplayName').textContent = currentUser.displayName || currentUser.username;
+        } catch(e) {
+          document.getElementById('userDisplayName').textContent = '用户';
+        }
+      }
+    }
+
+    function handleLogout() {
+      if (!confirm('确定要退出登录吗？')) return;
+      const token = localStorage.getItem('authToken');
+      // Disconnect WebSocket
+      if (typeof pvWS !== 'undefined') {
+        pvWS.disconnect();
+      }
+      // Call logout API (best effort)
+      if (token) {
+        fetch(API + '/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        }).catch(() => {});
+      }
+      // Clear local storage and redirect
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('selectedStation');
+      window.location.href = 'login.html';
+    }
 
     /* ============ Tab Switching ============ */
     document.getElementById('tabBar').addEventListener('click', e => {
@@ -949,18 +1033,38 @@
 
     /* ============ API Helper ============ */
     async function apiFetch(url) {
-      const res = await fetch(url);
+      const token = localStorage.getItem('authToken');
+      const headers = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(url, { headers: headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     }
 
     /* ============ Station Selector ============ */
+    function getEffectiveStationId() {
+      if (stationId === 'all') {
+        const select = document.getElementById('stationSelect');
+        const firstOption = select.querySelector('option:not([value="all"])');
+        return firstOption ? firstOption.value : '1';
+      }
+      return stationId;
+    }
+
     async function loadStations() {
       try {
         const json = await apiFetch(`${API}/stations`);
         if (json.success && json.data && json.data.length > 0) {
           const select = document.getElementById('stationSelect');
-          select.innerHTML = json.data.map(s => `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`).join('');
+          // Keep the "全部电站" option already in HTML
+          const existingAll = select.querySelector('option[value="all"]');
+          const options = existingAll ? [existingAll.outerHTML] : ['<option value="all">全部电站</option>'];
+          options.push(...json.data.map(s => `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`));
+          select.innerHTML = options.join('');
+          // Restore previously selected station
+          if (stationId && stationId !== 'all') {
+            select.value = stationId;
+          }
         }
       } catch (e) {
         console.warn('Stations load failed:', e);
@@ -969,7 +1073,14 @@
 
     document.getElementById('stationSelect').addEventListener('change', e => {
       stationId = e.target.value;
+      localStorage.setItem('selectedStation', stationId);
       loadOverview();
+      loadInverterDropdown();
+      loadAlerts();
+      loadWorkOrders();
+      loadAlertRules();
+      // Re-subscribe WebSocket with new station room
+      resubscribeWebSocket();
     });
 
     /* ============ Tab 1: Overview ============ */
@@ -981,8 +1092,9 @@
     }
 
     async function loadOverviewKPIs() {
+      const sid = getEffectiveStationId();
       try {
-        const json = await apiFetch(`${API}/stations/${stationId}/overview`);
+        const json = await apiFetch(`${API}/stations/${sid}/overview`);
         if (json.success) {
           const d = json.data;
           const energy = d.todayEnergyKwh ?? d.today_energy_kwh ?? 0;
@@ -1011,8 +1123,9 @@
 
     async function loadInverterGrid() {
       const container = document.getElementById('inverterGrid');
+      const sid = getEffectiveStationId();
       try {
-        const json = await apiFetch(`${API}/stations/${stationId}/inverters`);
+        const json = await apiFetch(`${API}/stations/${sid}/inverters`);
         if (json.success && json.data && json.data.length > 0) {
           const inverters = json.data;
           document.getElementById('invCount').textContent = `共 ${inverters.length} 台`;
@@ -1042,7 +1155,10 @@
     async function loadAlertsOverview() {
       const container = document.getElementById('alertListOverview');
       try {
-        const res = await fetch(`${API}/stations/${stationId}/alerts`);
+        const url = stationId === 'all'
+          ? `${API}/alerts?status=active`
+          : `${API}/stations/${stationId}/alerts`;
+        const res = await fetch(url);
         const json = await res.json();
         const alerts = json.success ? (json.data || []).slice(0, 5) : [];
         document.getElementById('alertBadge').textContent = `共 ${alerts.filter(a => a.status === 'active').length} 条活跃`;
@@ -1073,12 +1189,13 @@
     async function loadPowerChart() {
       const dom = document.getElementById('powerChart');
       if (!charts.power) charts.power = echarts.init(dom, 'dark');
+      const sid = getEffectiveStationId();
 
       charts.power.setOption({ title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
 
       try {
         // Try to fetch real data from first inverter's first string
-        const invJson = await apiFetch(`${API}/stations/${stationId}/inverters`);
+        const invJson = await apiFetch(`${API}/stations/${sid}/inverters`);
         if (!invJson.success || !invJson.data || invJson.data.length === 0) {
           charts.power.setOption({ title: { text: '暂无数据', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
           return;
@@ -1199,8 +1316,9 @@
     /* ============ Tab 2: Inverter Monitor ============ */
     async function loadInverterDropdown() {
       const select = document.getElementById('inverterSelect');
+      const sid = getEffectiveStationId();
       try {
-        const json = await apiFetch(`${API}/stations/${stationId}/inverters`);
+        const json = await apiFetch(`${API}/stations/${sid}/inverters`);
         if (json.success && json.data && json.data.length > 0) {
           select.innerHTML = '<option value="">-- 请选择 --</option>' + json.data.map(inv => `<option value="${inv.id}">${inv.name || 'INV-' + inv.id} (${inv.string_count || 0}组串)</option>`).join('');
         }
@@ -1632,10 +1750,12 @@
 
     /* ============ Initialize ============ */
     document.addEventListener('DOMContentLoaded', () => {
+      displayUserInfo();
       loadStations();
       loadOverview();
       loadInverterDropdown();
       loadAlerts();
+      updateAlertBadge();
       initDiagnosis();
       loadWorkOrders();
 
@@ -1650,11 +1770,151 @@
           loadAlertsOverview();
         } else if (tab === 'alerts') {
           loadAlerts();
+          updateAlertBadge();
         } else if (tab === 'workorder') {
           loadWorkOrders();
         }
       }, 30000);
+
+      // ============ WebSocket Integration ============
+      initWebSocket();
     });
+
+    /* ============ WebSocket ============ */
+    function initWebSocket() {
+      const statusEl = document.getElementById('wsStatus');
+      if (!statusEl || typeof pvWS === 'undefined') return;
+
+      // Status indicator updates
+      pvWS.onStatus(function(status) {
+        switch(status) {
+          case 'connected':
+            statusEl.textContent = '🟢';
+            statusEl.title = 'WebSocket: 已连接';
+            break;
+          case 'connecting':
+            statusEl.textContent = '🟡';
+            statusEl.title = 'WebSocket: 连接中...';
+            break;
+          case 'disconnected':
+            statusEl.textContent = '🔴';
+            statusEl.title = 'WebSocket: 未连接';
+            break;
+          case 'error':
+            statusEl.textContent = '🔴';
+            statusEl.title = 'WebSocket: 连接错误';
+            break;
+        }
+      });
+
+      // Try to connect with auth token if available
+      function connectWithToken() {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          pvWS.connect(token);
+        } else {
+          // Connect without auth (will get limited access)
+          pvWS.connect();
+        }
+      }
+
+      connectWithToken();
+
+      subscribeToTopics();
+    }
+
+    function subscribeToTopics() {
+      const room = stationId === 'all' ? null : `station_${stationId}`;
+
+      // Subscribe to alerts - show toast on new alerts
+      pvWS.subscribe('alerts', function(data, event) {
+        if (event === 'created' && data) {
+          const sev = data.severity || 'warning';
+          const sevIcon = sev === 'critical' ? '🔴' : sev === 'warning' ? '🟡' : '🔵';
+          const sevText = sev === 'critical' ? '严重' : sev === 'warning' ? '警告' : '提示';
+          showToast(`${sevIcon} 新告警 [${sevText}]: ${data.message}`, 'error');
+          // Refresh alerts overview if on overview tab
+          loadAlertsOverview();
+          // Refresh alerts table if on alerts tab
+          loadAlerts();
+          // Update navbar badge
+          updateAlertBadge();
+        }
+      }, room);
+
+      // Subscribe to workorders - update workorder count
+      pvWS.subscribe('workorders', function(data, event) {
+        if (event === 'created' && data) {
+          showToast(`📋 新工单: ${data.title || '工单#' + data.id}`, 'info');
+          // Refresh workorder list if on workorder tab
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && activeTab.dataset.tab === 'workorder') {
+            loadWorkOrders();
+          }
+          // Update workorder stats badge
+          updateWorkOrderBadge();
+        } else if (event === 'updated' && data) {
+          showToast(`📋 工单状态更新: ${data.title || '工单#' + data.id}`, 'info');
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && activeTab.dataset.tab === 'workorder') {
+            loadWorkOrders();
+          }
+        }
+      }, room);
+
+      // Subscribe to power-data - refresh dashboard charts
+      pvWS.subscribe('power-data', function(data, event) {
+        if (event === 'new' && data) {
+          // Only refresh if viewing the overview tab
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && activeTab.dataset.tab === 'overview') {
+            loadOverviewKPIs();
+            loadPowerChart();
+          }
+        }
+      }, room);
+    }
+
+    function resubscribeWebSocket() {
+      if (typeof pvWS === 'undefined' || !pvWS.ws) return;
+      // Clear existing subscriptions
+      pvWS.unsubscribe('alerts');
+      pvWS.unsubscribe('workorders');
+      pvWS.unsubscribe('power-data');
+      // Re-subscribe with new room
+      subscribeToTopics();
+    }
+
+    /* ============ Alert Badge ============ */
+    async function updateAlertBadge() {
+      try {
+        const url = stationId === 'all'
+          ? `${API}/alerts`
+          : `${API}/stations/${stationId}/alerts`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.success) {
+          const alerts = json.data || [];
+          const activeCount = alerts.filter(a => a.status === 'active').length;
+          const badgeEl = document.getElementById('alertBadgeCount');
+          if (activeCount > 0) {
+            badgeEl.textContent = activeCount > 99 ? '99+' : activeCount;
+            badgeEl.classList.add('has-count');
+          } else {
+            badgeEl.classList.remove('has-count');
+          }
+        }
+      } catch (e) {
+        // Silently fail
+      }
+    }
+
+    function updateWorkOrderBadge() {
+      // Refresh work order stats if on workorder tab
+      if (cachedWorkOrders.length > 0) {
+        loadWorkOrderStats();
+      }
+    }
 
     /* ============ Tab 6: Work Order Management ============ */
     let cachedWorkOrders = [];

@@ -4,9 +4,14 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const { initDatabase } = require('./src/models/database');
+const authService = require('./src/services/authService');
+const wsService = require('./src/services/websocketService');
 
-// Initialize database
+// Initialize database and seed default admin
 initDatabase();
+authService.seedDefaultAdmin().catch((err) => {
+  console.error('Error seeding default admin:', err.message);
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +22,15 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// Auth routes (login/register don't require auth, user management does)
+const authRoutes = require('./src/routes/authRoutes');
+app.use('/api/auth', authRoutes);
+
+// Audit routes (require admin auth - handled in routes)
+const auditRoutes = require('./src/routes/auditRoutes');
+app.use('/api/audit', auditRoutes);
+
+// Existing routes
 const stationRoutes = require('./src/routes/stationRoutes');
 const powerRoutes = require('./src/routes/powerRoutes');
 const alertRoutes = require('./src/routes/alertRoutes');
@@ -49,6 +62,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// WebSocket stats endpoint (requires auth - handled in routes)
+app.get('/api/ws/stats', (req, res) => {
+  res.json({ success: true, data: wsService.getStats() });
+});
+
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend')));
 
@@ -61,8 +79,14 @@ app.get('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+// Start Express server
+const server = app.listen(PORT, () => {
   console.log(`PV Ops Platform backend running on http://localhost:${PORT}`);
+});
+
+// Start WebSocket server (non-blocking)
+wsService.startWSServer().catch((err) => {
+  console.error('WebSocket server failed to start:', err.message);
 });
 
 module.exports = app;

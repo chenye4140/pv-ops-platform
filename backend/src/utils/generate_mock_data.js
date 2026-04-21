@@ -1,4 +1,5 @@
 const { db, initDatabase } = require('../models/database');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
@@ -157,6 +158,15 @@ function generateMockData() {
 
   // Reset autoincrement
   db.exec("DELETE FROM sqlite_sequence WHERE name IN ('stations', 'inverters', 'strings', 'power_data', 'weather_data', 'alerts')");
+
+  // Also clear audit logs and users when regenerating
+  try {
+    db.exec('DELETE FROM audit_logs');
+  } catch {}
+  try {
+    db.exec('DELETE FROM users');
+    db.exec("DELETE FROM sqlite_sequence WHERE name = 'users'");
+  } catch {}
 
   // ============================================================
   // Create station
@@ -387,6 +397,22 @@ function generateMockData() {
     stmtInsertAlert.run(a.stationId, a.type, a.severity, a.message, a.status, a.created_at);
   }
   console.log(`   Alerts generated: ${alerts.length}`);
+
+  // ============================================================
+  // Create default admin user
+  // ============================================================
+  console.log('👤 Creating default admin user...');
+  const adminCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE role = ?').get('admin');
+  if (adminCount.count === 0) {
+    const adminPasswordHash = bcrypt.hashSync('admin123', 12);
+    db.prepare(`
+      INSERT INTO users (username, password_hash, display_name, role)
+      VALUES (?, ?, ?, ?)
+    `).run('admin', adminPasswordHash, 'System Administrator', 'admin');
+    console.log('   ✅ Default admin user created (username: admin, password: admin123)');
+  } else {
+    console.log('   Admin user already exists, skipping.');
+  }
 
   // ============================================================
   // Summary

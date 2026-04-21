@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const workorderService = require('../services/workorderService');
+const wsService = require('../services/websocketService');
 
 // GET /api/workorders?status=&priority=&type=&assignee=&station_id=
 router.get('/', (req, res) => {
@@ -47,6 +48,8 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const wo = workorderService.create(req.body);
+    // Broadcast to "workorders" topic with optional room
+    wsService.broadcast('created', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
     res.status(201).json({ success: true, data: wo });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -66,8 +69,12 @@ router.put('/:id', (req, res) => {
       if (Object.keys(otherData).length > 0) {
         wo = workorderService.update(req.params.id, otherData);
       }
+      // Broadcast status change
+      wsService.broadcast('updated', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
     } else {
       wo = workorderService.update(req.params.id, req.body);
+      // Broadcast update
+      wsService.broadcast('updated', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
     }
 
     res.json({ success: true, data: wo });
@@ -83,6 +90,7 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const result = workorderService.delete(req.params.id);
+    wsService.broadcast('deleted', result, 'workorders');
     res.json({ success: true, data: result });
   } catch (error) {
     if (error.message.includes('not found')) {

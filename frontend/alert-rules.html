@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>告警规则管理 - 光伏运维AI智能分析平台</title>
+  <style>
+    /* ============ CSS Variables & Reset ============ */
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --accent-glow: rgba(0, 229, 255, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    /* ============ Navbar ============ */
+    .navbar {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+    }
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+    .navbar-brand .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .navbar-back {
+      margin-left: 2rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.88rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      transition: all 0.25s;
+    }
+    .navbar-back:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
+    .clock {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    /* ============ Main ============ */
+    .main { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+    /* ============ Stats Grid ============ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+    .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-card .stat-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.4rem;
+    }
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+    }
+
+    /* ============ Section ============ */
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .section-title .icon { color: var(--accent); font-size: 1.1rem; }
+
+    /* ============ Table ============ */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td {
+      padding: 0.7rem 0.85rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .data-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.5px;
+      background: var(--bg-secondary);
+    }
+    .data-table tr:hover td { background: var(--bg-card-hover); }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    /* ============ Badges ============ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .badge-enabled { background: var(--green-dim); color: var(--green); }
+    .badge-enabled .badge-dot { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .badge-disabled { background: var(--text-muted); color: var(--bg-primary); }
+    .badge-critical { background: var(--red-dim); color: var(--red); }
+    .badge-warning { background: var(--orange-dim); color: var(--orange); }
+    .badge-info { background: rgba(68,138,255,0.15); color: var(--blue); }
+
+    /* ============ Forms ============ */
+    select, input[type="text"], input[type="number"] {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+      font-family: var(--font-sans);
+    }
+    select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+    .filter-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-row label { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ Buttons ============ */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #0091ea);
+      color: #000;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+    .btn-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+    .btn-green:hover { background: rgba(0,255,136,0.25); }
+    .btn-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,61,113,0.3); }
+    .btn-red:hover { background: rgba(255,61,113,0.25); }
+    .btn-orange { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,152,0,0.3); }
+    .btn-orange:hover { background: rgba(255,152,0,0.25); }
+
+    /* ============ Loading / Empty ============ */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); gap: 0.75rem; }
+    .spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.88rem; }
+    .error-msg { text-align: center; padding: 2rem; color: var(--red); font-size: 0.88rem; }
+
+    /* ============ Toast ============ */
+    .toast-container { position: fixed; top: 80px; right: 1.5rem; z-index: 200; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      animation: slideIn 0.3s ease;
+      max-width: 350px;
+      box-shadow: var(--shadow);
+    }
+    .toast-success { background: var(--green-dim); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+    .toast-error { background: var(--red-dim); border: 1px solid rgba(255,61,113,0.3); color: var(--red); }
+    .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ============ Create Form ============ */
+    .create-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .form-group input, .form-group select { width: 100%; }
+
+    /* ============ Station Selector ============ */
+    .station-select {
+      background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border);
+      padding: 0.35rem 0.6rem; border-radius: 6px; font-size: 0.82rem; outline: none;
+    }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .create-form-grid { grid-template-columns: 1fr; }
+      .navbar { padding: 0 1rem; }
+      .main { padding: 1rem; }
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .navbar-brand span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ============ Navbar ============ -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-icon">☀</div>
+      <span>光伏运维AI智能分析平台</span>
+    </div>
+    <a class="navbar-back" href="index.html">← 返回仪表盘</a>
+    <div class="navbar-right">
+      <select id="stationSelect" class="station-select">
+        <option value="all">全部电站</option>
+      </select>
+      <div class="clock">
+        <span id="clockTime"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============ Toast Container ============ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <!-- Stats -->
+    <div class="stats-grid" id="alertRuleStats"></div>
+
+    <!-- Alert Rules List -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="icon">⚙️</span> 告警规则管理</div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-sm" onclick="seedAlertRules()">🌱 初始化默认规则</button>
+          <button class="btn btn-sm" onclick="showCreateRule()">➕ 创建规则</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-row">
+        <label>电站：</label>
+        <select id="filterStation">
+          <option value="all">全部</option>
+        </select>
+        <label>类型：</label>
+        <select id="filterType">
+          <option value="all">全部</option>
+          <option value="string_low_power">组串功率偏低</option>
+          <option value="string_zero_output">组串零输出</option>
+          <option value="inverter_offline">逆变器离线</option>
+          <option value="temperature_high">温度过高</option>
+          <option value="irradiance_low">辐照度过低</option>
+          <option value="power_drop_sudden">功率突降</option>
+          <option value="string_mismatch">组串差异</option>
+          <option value="voltage_abnormal">电压异常</option>
+        </select>
+        <label>严重级别：</label>
+        <select id="filterSeverity">
+          <option value="all">全部</option>
+          <option value="critical">严重</option>
+          <option value="warning">警告</option>
+          <option value="info">提示</option>
+        </select>
+        <label>状态：</label>
+        <select id="filterEnabled">
+          <option value="all">全部</option>
+          <option value="1">已启用</option>
+          <option value="0">已禁用</option>
+        </select>
+        <button class="btn btn-sm btn-outline" onclick="applyFilters()">筛选</button>
+        <button class="btn btn-sm btn-outline" onclick="resetFilters()">重置</button>
+      </div>
+
+      <div id="alertRulesTable">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
+    </div>
+
+    <!-- Create Rule Form -->
+    <div class="section" id="createRuleSection" style="display:none;">
+      <div class="section-header">
+        <div class="section-title"><span class="icon">➕</span> 新建告警规则</div>
+        <button class="btn btn-sm btn-outline" onclick="hideCreateRule()">关闭</button>
+      </div>
+      <form id="createRuleForm" onsubmit="return createAlertRule(event)" class="create-form-grid">
+        <div class="form-group">
+          <label>规则名称 *</label>
+          <input type="text" id="ruleName" required placeholder="请输入规则名称">
+        </div>
+        <div class="form-group">
+          <label>规则类型 *</label>
+          <select id="ruleType">
+            <option value="string_low_power">组串功率偏低</option>
+            <option value="string_zero_output">组串零输出</option>
+            <option value="inverter_offline">逆变器离线</option>
+            <option value="temperature_high">温度过高</option>
+            <option value="irradiance_low">辐照度过低</option>
+            <option value="power_drop_sudden">功率突降</option>
+            <option value="string_mismatch">组串差异</option>
+            <option value="voltage_abnormal">电压异常</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>监控指标 *</label>
+          <select id="ruleMetric">
+            <option value="power_ratio">功率比</option>
+            <option value="temperature">温度</option>
+            <option value="irradiance">辐照度</option>
+            <option value="zero_output_strings">零输出组串数</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>阈值 *</label>
+          <input type="number" id="ruleThreshold" step="0.01" required placeholder="请输入阈值">
+        </div>
+        <div class="form-group">
+          <label>操作符</label>
+          <select id="ruleOperator">
+            <option value="<">小于 (<)</option>
+            <option value=">">大于 (>)</option>
+            <option value="<=">小于等于 (<=)</option>
+            <option value=">=">大于等于 (>=)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>严重程度</label>
+          <select id="ruleSeverity">
+            <option value="info">提示</option>
+            <option value="warning" selected>警告</option>
+            <option value="critical">严重</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>冷却时间（分钟）</label>
+          <input type="number" id="ruleCooldown" value="30" min="1">
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1.5rem;">
+            <input type="checkbox" id="ruleAutoWO"> 自动创建工单
+          </label>
+        </div>
+        <div style="grid-column:1/-1;display:flex;gap:0.5rem;justify-content:flex-end;">
+          <button type="button" class="btn btn-outline" onclick="hideCreateRule()">取消</button>
+          <button type="submit" class="btn btn-green">创建规则</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    /* ============ Configuration ============ */
+    const API = 'http://localhost:3000/api';
+    let allRules = [];
+    let stations = [];
+
+    /* ============ Clock ============ */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clockTime').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ============ Toast ============ */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    /* ============ Load Stations ============ */
+    async function loadStations() {
+      try {
+        const res = await fetch(`${API}/stations`);
+        const json = await res.json();
+        if (json.success) {
+          stations = json.data || [];
+          const stationSelect = document.getElementById('stationSelect');
+          const filterStation = document.getElementById('filterStation');
+          stations.forEach(s => {
+            stationSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            filterStation.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load stations:', e);
+      }
+    }
+
+    /* ============ Load Alert Rules ============ */
+    async function loadAlertRules() {
+      const container = document.getElementById('alertRulesTable');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+
+      try {
+        const stationId = document.getElementById('stationSelect').value;
+        const url = stationId === 'all' ? `${API}/alert-rules` : `${API}/alert-rules?station_id=${stationId}`;
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.success) {
+          allRules = json.data || [];
+          loadStats();
+          renderRules();
+        } else {
+          container.innerHTML = '<div class="error-msg">规则加载失败</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">请求失败: ' + e.message + '</div>';
+      }
+    }
+
+    /* ============ Load Stats ============ */
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API}/alert-rules/stats`);
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('alertRuleStats').innerHTML = `
+            <div class="stat-card"><div class="stat-label">规则总数</div><div class="stat-value" style="color:var(--accent)">${json.data.total}</div></div>
+            <div class="stat-card"><div class="stat-label">已启用</div><div class="stat-value" style="color:var(--green)">${json.data.enabled}</div></div>
+            <div class="stat-card"><div class="stat-label">已禁用</div><div class="stat-value" style="color:var(--orange)">${json.data.disabled}</div></div>
+            <div class="stat-card"><div class="stat-label">严重级别分布</div><div class="stat-value" style="font-size:1rem;color:var(--text-secondary);">${(json.data.bySeverity || []).map(s => `<span class="badge badge-${s.severity}">${s.severity}: ${s.count}</span>`).join(' ')}</div></div>
+          `;
+        }
+      } catch (e) {}
+    }
+
+    /* ============ Render Rules ============ */
+    function applyFilters() { renderRules(); }
+    function resetFilters() {
+      document.getElementById('filterType').value = 'all';
+      document.getElementById('filterSeverity').value = 'all';
+      document.getElementById('filterEnabled').value = 'all';
+      renderRules();
+    }
+
+    function renderRules() {
+      const typeFilter = document.getElementById('filterType').value;
+      const severityFilter = document.getElementById('filterSeverity').value;
+      const enabledFilter = document.getElementById('filterEnabled').value;
+
+      let filtered = [...allRules];
+      if (typeFilter !== 'all') filtered = filtered.filter(r => r.type === typeFilter);
+      if (severityFilter !== 'all') filtered = filtered.filter(r => r.severity === severityFilter);
+      if (enabledFilter !== 'all') filtered = filtered.filter(r => String(r.enabled) === enabledFilter);
+
+      const container = document.getElementById('alertRulesTable');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-msg">暂无告警规则</div>';
+        return;
+      }
+
+      const typeNames = {
+        string_low_power: '组串功率偏低', string_zero_output: '组串零输出',
+        inverter_offline: '逆变器离线', temperature_high: '温度过高',
+        irradiance_low: '辐照度过低', power_drop_sudden: '功率突降',
+        string_mismatch: '组串差异', voltage_abnormal: '电压异常'
+      };
+      const stationNames = {};
+      stations.forEach(s => stationNames[s.id] = s.name);
+
+      let html = `
+        <table class="data-table">
+          <thead><tr>
+            <th>ID</th><th>规则名称</th><th>类型</th><th>指标</th><th>条件</th>
+            <th>严重级别</th><th>电站</th><th>冷却</th><th>自动工单</th><th>状态</th><th>操作</th>
+          </tr></thead>
+          <tbody>
+      `;
+
+      filtered.forEach(rule => {
+        const condition = `${rule.operator} ${rule.threshold}`;
+        const sevBadge = rule.severity === 'critical' ? 'badge-critical' : rule.severity === 'warning' ? 'badge-warning' : 'badge-info';
+        const sevText = rule.severity === 'critical' ? '严重' : rule.severity === 'warning' ? '警告' : '提示';
+        const statusBadge = rule.enabled ? 'badge-enabled' : 'badge-disabled';
+        const statusText = rule.enabled ? '启用' : '禁用';
+        const stationName = stationNames[rule.station_id] || '全局';
+
+        html += `<tr>
+          <td style="font-family:var(--font-mono);font-size:0.8rem;">#${rule.id}</td>
+          <td><strong>${rule.name}</strong></td>
+          <td>${typeNames[rule.type] || rule.type}</td>
+          <td style="font-family:var(--font-mono);font-size:0.82rem;">${rule.metric}</td>
+          <td><code style="color:var(--yellow);">${condition}</code></td>
+          <td><span class="badge ${sevBadge}">${sevText}</span></td>
+          <td>${stationName}</td>
+          <td>${rule.cooldown_minutes}min</td>
+          <td>${rule.auto_create_workorder ? '✅' : '❌'}</td>
+          <td><span class="badge ${statusBadge}"><span class="badge-dot"></span>${statusText}</span></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm ${rule.enabled ? 'btn-orange' : 'btn-green'}" onclick="toggleRule(${rule.id}, ${!rule.enabled})">${rule.enabled ? '禁用' : '启用'}</button>
+            <button class="btn btn-sm btn-red" onclick="deleteRule(${rule.id})">删除</button>
+          </td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+      html += `<div style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">共 ${filtered.length} 条规则</div>`;
+      container.innerHTML = html;
+    }
+
+    /* ============ Create Rule ============ */
+    function showCreateRule() { document.getElementById('createRuleSection').style.display = 'block'; }
+    function hideCreateRule() {
+      document.getElementById('createRuleSection').style.display = 'none';
+      document.getElementById('createRuleForm').reset();
+    }
+
+    async function createAlertRule(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch(`${API}/alert-rules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('ruleName').value,
+            type: document.getElementById('ruleType').value,
+            metric: document.getElementById('ruleMetric').value,
+            threshold: parseFloat(document.getElementById('ruleThreshold').value),
+            operator: document.getElementById('ruleOperator').value,
+            severity: document.getElementById('ruleSeverity').value,
+            station_id: null,
+            cooldown_minutes: parseInt(document.getElementById('ruleCooldown').value) || 30,
+            auto_create_workorder: document.getElementById('ruleAutoWO').checked,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast('规则创建成功', 'success');
+          hideCreateRule();
+          await loadAlertRules();
+        } else {
+          showToast('创建失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+      return false;
+    }
+
+    /* ============ Toggle Rule ============ */
+    async function toggleRule(id, enable) {
+      try {
+        const res = await fetch(`${API}/alert-rules/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: enable }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast(enable ? '规则已启用' : '规则已禁用', 'success');
+          await loadAlertRules();
+        } else {
+          showToast('操作失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    /* ============ Delete Rule ============ */
+    async function deleteRule(id) {
+      if (!confirm('确定删除此规则？此操作不可撤销。')) return;
+      try {
+        const res = await fetch(`${API}/alert-rules/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+          showToast('规则已删除', 'success');
+          await loadAlertRules();
+        } else {
+          showToast('删除失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    /* ============ Seed Rules ============ */
+    async function seedAlertRules() {
+      const stationId = document.getElementById('stationSelect').value;
+      if (stationId === 'all') {
+        showToast('请先选择具体电站', 'info');
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/alert-rules/seed/${stationId}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`已初始化 ${json.count} 条默认规则`, 'success');
+          await loadAlertRules();
+        } else {
+          showToast('初始化失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    /* ============ Station change ============ */
+    document.getElementById('stationSelect').addEventListener('change', () => loadAlertRules());
+
+    /* ============ Init ============ */
+    (async function() {
+      await loadStations();
+      await loadAlertRules();
+    })();
+  </script>
+</body>
+</html>

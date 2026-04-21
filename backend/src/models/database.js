@@ -195,6 +195,39 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_inspection_tasks_inspection_id ON inspection_tasks(inspection_id);
     CREATE INDEX IF NOT EXISTS idx_inspection_tasks_status ON inspection_tasks(status);
     CREATE INDEX IF NOT EXISTS idx_power_forecasts_station_date ON power_forecasts(station_id, forecast_date);
+
+    -- Users table (authentication & authorization)
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      display_name TEXT,
+      email TEXT UNIQUE,
+      role TEXT NOT NULL DEFAULT 'operator',
+      station_ids TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      last_login TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Audit logs table
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      action TEXT NOT NULL,
+      resource TEXT,
+      resource_id INTEGER,
+      details TEXT,
+      ip_address TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource);
   `);
 }
 

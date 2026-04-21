@@ -39,6 +39,26 @@ const alertService = {
       "SELECT * FROM alerts WHERE station_id = ? AND type = ? ORDER BY created_at DESC"
     );
     return stmt.all(stationId, type);
+  },
+
+  create(data) {
+    if (!data.message || !data.type || !data.station_id) {
+      throw new Error('message, type, and station_id are required');
+    }
+
+    const result = db.prepare(
+      `INSERT INTO alerts (station_id, type, message, severity, status)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(
+      data.station_id,
+      data.type,
+      data.message,
+      data.severity || 'warning',
+      data.status || 'active'
+    );
+
+    const stmt = db.prepare('SELECT * FROM alerts WHERE id = ?');
+    return stmt.get(result.lastInsertRowid);
   }
 };
 
