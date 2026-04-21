@@ -532,7 +532,7 @@
         <button class="btn btn-sm" onclick="exportData('alerts')">🔔 导出告警</button>
         <button class="btn btn-sm" onclick="exportData('workorders')">📋 导出工单</button>
       </div>
-      <div class="stats-grid">
+      <div class="stats-grid" id="kpiRow1">
         <div class="stat-card">
           <div class="stat-icon">⚡</div>
           <div class="stat-label">今日发电量</div>
@@ -556,6 +556,26 @@
           <div class="stat-label">异常组串数</div>
           <div class="stat-value" id="kpiAbnormal">--</div>
           <div class="stat-sub" id="kpiAbnormalSub">--</div>
+        </div>
+      </div>
+      <div class="stats-grid" id="kpiRow2" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card">
+          <div class="stat-icon">🔌</div>
+          <div class="stat-label">设备可用率</div>
+          <div class="stat-value" id="kpiAvailability">--<span class="stat-unit">%</span></div>
+          <div class="stat-sub" id="kpiAvailabilitySub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-label">收益估算</div>
+          <div class="stat-value" id="kpiRevenue">--<span class="stat-unit">元</span></div>
+          <div class="stat-sub" id="kpiRevenueSub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏱</div>
+          <div class="stat-label">等效利用小时</div>
+          <div class="stat-value" id="kpiUtilHours">--<span class="stat-unit">h</span></div>
+          <div class="stat-sub" id="kpiUtilHoursSub">--</div>
         </div>
       </div>
 
@@ -586,6 +606,24 @@
             <div class="loading"><div class="spinner"></div>加载中...</div>
           </div>
         </div>
+      </div>
+
+      <!-- Multi-station comparison chart -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🏭</span> 多电站对比</div>
+          <span class="section-subtitle">PR · 发电量 · 设备可用率</span>
+        </div>
+        <div class="chart-container" id="stationComparisonChart"></div>
+      </div>
+
+      <!-- Alert severity donut chart -->
+      <div class="section" style="max-width:500px;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🎯</span> 告警严重度分布</div>
+          <span class="section-subtitle" id="alertSeverityTotal">--</span>
+        </div>
+        <div class="chart-container small" id="alertSeverityChart"></div>
       </div>
     </div>
 
@@ -1018,6 +1056,8 @@
         Object.values(charts).forEach(c => c && c.resize());
         if (tab === 'inverter' && charts.stringBar) charts.stringBar.resize();
         if (tab === 'inverter' && charts.stringTrend) charts.stringTrend.resize();
+        if (tab === 'overview' && charts.stationComparison) charts.stationComparison.resize();
+        if (tab === 'overview' && charts.alertSeverity) charts.alertSeverity.resize();
       }, 100);
     }
 
@@ -1079,6 +1119,8 @@
       loadAlerts();
       loadWorkOrders();
       loadAlertRules();
+      loadStationComparisonChart();
+      loadAlertSeverityChart();
       // Re-subscribe WebSocket with new station room
       resubscribeWebSocket();
     });
@@ -1089,11 +1131,13 @@
       loadInverterGrid();
       loadAlertsOverview();
       loadPowerChart();
+      loadStationComparisonChart();
     }
 
     async function loadOverviewKPIs() {
       const sid = getEffectiveStationId();
       try {
+        // Fetch original overview data
         const json = await apiFetch(`${API}/stations/${sid}/overview`);
         if (json.success) {
           const d = json.data;
@@ -1110,11 +1154,48 @@
 
           document.getElementById('kpiPR').innerHTML = `${pr.toFixed(1)}<span class="stat-unit">%</span>`;
           const prColor = pr >= 80 ? 'var(--green)' : pr >= 60 ? 'var(--orange)' : 'var(--red)';
+          document.getElementById('kpiPR').querySelector('.stat-value').style.color = prColor;
           document.getElementById('kpiPRSub').innerHTML = `<span style="color:${prColor}">${pr >= 80 ? '● 良好' : pr >= 60 ? '● 偏低' : '● 异常'}</span>`;
 
           document.getElementById('kpiAbnormal').innerHTML = `<span style="color:${abnormal > 0 ? 'var(--orange)' : 'var(--green)'}">${abnormal}</span>`;
           document.getElementById('kpiAbnormalSub').textContent = abnormal > 0 ? `⚠ ${abnormal} 个组串需关注` : '✅ 全部正常';
         }
+
+        // Fetch enhanced KPI data
+        try {
+          const kpiJson = await apiFetch(`${API}/kpi/dashboard/${sid}`);
+          if (kpiJson.success) {
+            const kpi = kpiJson.data;
+
+            // Equipment availability
+            const avail = kpi.availability;
+            const availRate = avail.availabilityRate || 0;
+            const availColor = availRate >= 95 ? 'var(--green)' : availRate >= 80 ? 'var(--orange)' : 'var(--red)';
+            document.getElementById('kpiAvailability').innerHTML = `${availRate.toFixed(1)}<span class="stat-unit">%</span>`;
+            document.getElementById('kpiAvailabilitySub').innerHTML =
+              `<span style="color:${availColor}">组串 ${avail.activeStrings}/${avail.totalStrings} · 逆变器 ${avail.inverterOnline}/${avail.inverterTotal}</span>`;
+
+            // Revenue estimate
+            const rev = kpi.revenue;
+            document.getElementById('kpiRevenue').innerHTML = `¥${rev.revenue.toFixed(1)}<span class="stat-unit">元</span>`;
+            const revDod = kpi.dayOverDay.revenue;
+            const revArrow = revDod.change >= 0 ? '↑' : '↓';
+            const revColor = revDod.change >= 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('kpiRevenueSub').innerHTML =
+              `${rev.energy.toFixed(1)} kWh × ¥${rev.price} <span style="color:${revColor}">${revArrow}${Math.abs(revDod.changePercent)}%</span>`;
+
+            // Utilization hours
+            const eff = kpi.efficiency;
+            document.getElementById('kpiUtilHours').innerHTML = `${(eff.utilizationHours || 0).toFixed(1)}<span class="stat-unit">h</span>`;
+            document.getElementById('kpiUtilHoursSub').textContent = `额定 ${eff.ratedCapacity} kW`;
+          }
+        } catch (e) {
+          console.warn('Enhanced KPI load failed:', e);
+        }
+
+        // Load alert severity donut
+        loadAlertSeverityChart();
+
       } catch (e) {
         console.error('KPI load failed:', e);
         document.getElementById('kpiEnergy').innerHTML = '<span style="color:var(--red)">--</span>';
@@ -1182,6 +1263,159 @@
         }).join('')}</div>`;
       } catch (e) {
         container.innerHTML = '<div class="error-msg">告警加载失败</div>';
+      }
+    }
+
+    /* ============ Multi-Station Comparison Chart ============ */
+    async function loadStationComparisonChart() {
+      const dom = document.getElementById('stationComparisonChart');
+      if (!dom) return;
+      if (!charts.stationComparison) charts.stationComparison = echarts.init(dom, 'dark');
+
+      charts.stationComparison.setOption({ title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+
+      try {
+        const json = await apiFetch(`${API}/kpi/all-stations`);
+        if (!json.success || !json.data || json.data.length === 0) {
+          charts.stationComparison.setOption({ title: { text: '暂无电站数据', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+          return;
+        }
+
+        const stations = json.data;
+        const names = stations.map(s => s.station_name);
+        const prData = stations.map(s => s.pr);
+        const energyData = stations.map(s => s.actual_energy);
+        const availData = stations.map(s => s.availability_rate);
+
+        charts.stationComparison.setOption({
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(17,27,47,0.95)',
+            borderColor: '#2a4060',
+            textStyle: { color: '#e2e8f0', fontSize: 12 },
+            axisPointer: { type: 'shadow' },
+          },
+          legend: {
+            data: ['PR (%)', '发电量 (kWh)', '设备可用率 (%)'],
+            top: 5,
+            textStyle: { color: '#94a3b8' },
+          },
+          grid: { left: '4%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+          xAxis: {
+            type: 'category',
+            data: names,
+            axisLine: { lineStyle: { color: '#2a4060' } },
+            axisLabel: { color: '#94a3b8', fontSize: 11 },
+          },
+          yAxis: [
+            {
+              type: 'value',
+              name: 'PR / 可用率 (%)',
+              min: 0,
+              max: 100,
+              nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+              axisLine: { lineStyle: { color: '#2a4060' } },
+              splitLine: { lineStyle: { color: '#1a2236' } },
+              axisLabel: { color: '#94a3b8' },
+            },
+            {
+              type: 'value',
+              name: '发电量 (kWh)',
+              nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+              axisLine: { lineStyle: { color: '#2a4060' } },
+              splitLine: { show: false },
+              axisLabel: { color: '#94a3b8' },
+            },
+          ],
+          series: [
+            {
+              name: 'PR (%)',
+              type: 'bar',
+              data: prData.map((v, i) => ({
+                value: v,
+                itemStyle: {
+                  color: v >= 80 ? '#00ff88' : v >= 60 ? '#ff9800' : '#ff3d71',
+                  borderRadius: [4, 4, 0, 0],
+                },
+              })),
+              barMaxWidth: 40,
+            },
+            {
+              name: '设备可用率 (%)',
+              type: 'bar',
+              data: availData.map((v) => ({
+                value: v,
+                itemStyle: { color: '#448aff', borderRadius: [4, 4, 0, 0] },
+              })),
+              barMaxWidth: 40,
+            },
+            {
+              name: '发电量 (kWh)',
+              type: 'line',
+              yAxisIndex: 1,
+              data: energyData,
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              lineStyle: { color: '#ffd740', width: 2 },
+              itemStyle: { color: '#ffd740' },
+            },
+          ],
+        });
+      } catch (e) {
+        console.error('Station comparison chart failed:', e);
+        charts.stationComparison.setOption({ title: { text: '多电站对比加载失败', left: 'center', textStyle: { color: '#ff3d71', fontSize: 14 } } });
+      }
+    }
+
+    /* ============ Alert Severity Donut Chart ============ */
+    async function loadAlertSeverityChart() {
+      const dom = document.getElementById('alertSeverityChart');
+      if (!dom) return;
+      if (!charts.alertSeverity) charts.alertSeverity = echarts.init(dom, 'dark');
+
+      try {
+        const stationParam = stationId === 'all' ? '' : `?stationId=${stationId}`;
+        const json = await apiFetch(`${API}/kpi/alert-severity${stationParam}`);
+        if (!json.success) return;
+
+        const d = json.data;
+        const data = [
+          { value: d.critical, name: '严重', itemStyle: { color: '#ff3d71' } },
+          { value: d.warning, name: '警告', itemStyle: { color: '#ff9800' } },
+          { value: d.info, name: '提示', itemStyle: { color: '#448aff' } },
+        ];
+
+        document.getElementById('alertSeverityTotal').textContent = `共 ${d.total} 条活跃`;
+
+        charts.alertSeverity.setOption({
+          tooltip: {
+            trigger: 'item',
+            backgroundColor: 'rgba(17,27,47,0.95)',
+            borderColor: '#2a4060',
+            textStyle: { color: '#e2e8f0', fontSize: 12 },
+            formatter: '{b}: {c} 条 ({d}%)',
+          },
+          series: [
+            {
+              type: 'pie',
+              radius: ['45%', '72%'],
+              center: ['50%', '50%'],
+              avoidLabelOverlap: false,
+              itemStyle: { borderRadius: 6, borderColor: '#152035', borderWidth: 2 },
+              label: {
+                show: true,
+                formatter: '{b}\n{d}%',
+                color: '#94a3b8',
+                fontSize: 12,
+              },
+              labelLine: { lineStyle: { color: '#2a4060' } },
+              data: data,
+            },
+          ],
+        });
+      } catch (e) {
+        console.warn('Alert severity chart failed:', e);
       }
     }
 

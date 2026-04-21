@@ -54,6 +54,7 @@ const alertRuleRoutes = require('./src/routes/alertRuleRoutes');
 const exportRoutes = require('./src/routes/exportRoutes');
 const inspectionRoutes = require('./src/routes/inspectionRoutes');
 const forecastRoutes = require('./src/routes/forecastRoutes');
+const kpiRoutes = require('./src/routes/kpiRoutes');
 
 app.use('/api/stations', stationRoutes);
 app.use('/api/power-data', powerRoutes);
@@ -67,6 +68,7 @@ app.use('/api/alert-rules', alertRuleRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/inspections', inspectionRoutes);
 app.use('/api/forecast', forecastRoutes);
+app.use('/api/kpi', kpiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
