@@ -1091,16 +1091,17 @@
 
     <!-- ====== System Status ====== -->
     <div class="tab-content" id="tab-system">
+      <!-- KPI Cards -->
       <div class="section">
         <div class="section-header">
-          <div class="section-title"><span class="icon">🖥️</span> 系统状态</div>
+          <div class="section-title"><span class="icon">📊</span> 数据库概览</div>
           <div style="display:flex;gap:0.5rem;">
-            <button onclick="createBackup()" style="padding:0.3rem 0.8rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">创建备份</button>
-            <button onclick="loadSystemStatus()" style="padding:0.3rem 0.8rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:0.8rem;">刷新</button>
+            <button onclick="createBackup()" style="padding:0.3rem 0.8rem;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">📦 创建备份</button>
+            <button onclick="loadSystemStatus()" style="padding:0.3rem 0.8rem;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:0.8rem;">🔄 刷新</button>
           </div>
         </div>
         <div id="systemStatusContent" style="padding:0.5rem 0;">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;">
             <div class="kpi-card" style="text-align:center;">
               <div class="kpi-value" id="dbSize">--</div>
               <div class="kpi-label">数据库大小</div>
@@ -1117,10 +1118,35 @@
               <div class="kpi-value" id="backupCount">--</div>
               <div class="kpi-label">备份数量</div>
             </div>
+            <div class="kpi-card" style="text-align:center;">
+              <div class="kpi-value" id="autoBackupStatus" style="font-size:1.2rem;">⏰ 02:00</div>
+              <div class="kpi-label">自动备份时间</div>
+            </div>
           </div>
-          <div id="backupList" style="margin-top:1rem;display:none;">
-            <!-- Backup list populated by JS -->
-          </div>
+        </div>
+      </div>
+      <!-- Database Tables -->
+      <div class="section" style="margin-top:1rem;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🗄️</span> 数据表详情</div>
+        </div>
+        <div style="padding:0.5rem 0;">
+          <table class="data-table" id="tableDetailsTable">
+            <thead><tr><th>表名</th><th>记录数</th><th>占比</th></tr></thead>
+            <tbody id="tableDetailsBody"><tr><td colspan="3" style="text-align:center;color:var(--text-dim);">加载中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Backup Management -->
+      <div class="section" style="margin-top:1rem;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">💾</span> 备份管理</div>
+        </div>
+        <div style="padding:0.5rem 0;">
+          <table class="data-table" id="backupTable">
+            <thead><tr><th>文件名</th><th>大小</th><th>创建时间</th><th>操作</th></tr></thead>
+            <tbody id="backupTableBody"><tr><td colspan="4" style="text-align:center;color:var(--text-dim);">暂无备份</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -3093,6 +3119,38 @@
           const totalRecs = d.tables.reduce((s, t) => s + t.rowCount, 0);
           document.getElementById('totalRecords').textContent = totalRecs.toLocaleString();
           document.getElementById('backupCount').textContent = d.backupCount;
+
+          // Populate table details
+          const tbody = document.getElementById('tableDetailsBody');
+          if (d.tables.length > 0) {
+            tbody.innerHTML = d.tables.map(t => {
+              const pct = totalRecs > 0 ? ((t.rowCount / totalRecs) * 100).toFixed(1) : '0.0';
+              return `<tr><td><code>${t.name}</code></td><td>${t.rowCount.toLocaleString()}</td><td>${pct}%</td></tr>`;
+            }).sort((a, b) => b.rowCount - a.rowCount).join('');
+          }
+        }
+
+        // Populate backup list
+        const listRes = await fetch(`${API}/backup/list`);
+        const listJson = await listRes.json();
+        if (listJson.success) {
+          const bt = document.getElementById('backupTableBody');
+          if (listJson.data.length === 0) {
+            bt.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);">暂无备份</td></tr>';
+          } else {
+            bt.innerHTML = listJson.data.map(b => {
+              const time = new Date(b.createdAt).toLocaleString('zh-CN');
+              return `<tr>
+                <td style="font-size:0.82rem;">${b.filename}</td>
+                <td>${b.sizeHuman}</td>
+                <td style="font-size:0.82rem;">${time}</td>
+                <td>
+                  <button onclick="restoreBackup('${b.filename}')" style="padding:0.2rem 0.5rem;background:var(--warning);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.75rem;margin-right:0.3rem;">恢复</button>
+                  <button onclick="deleteBackup('${b.filename}')" style="padding:0.2rem 0.5rem;background:var(--danger);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:0.75rem;">删除</button>
+                </td>
+              </tr>`;
+            }).join('');
+          }
         }
       } catch(e) {
         console.warn('System status load failed:', e);
@@ -3104,13 +3162,45 @@
         const res = await fetch(`${API}/backup/create`, { method: 'POST' });
         const json = await res.json();
         if (json.success) {
-          alert(`备份创建成功: ${json.data.filename} (${json.data.sizeHuman})`);
+          showToast(`备份创建成功: ${json.data.sizeHuman}`, 'success');
           loadSystemStatus();
         } else {
-          alert('备份失败: ' + json.error);
+          showToast('备份失败: ' + json.error, 'error');
         }
       } catch(e) {
-        alert('备份请求失败: ' + e.message);
+        showToast('备份请求失败: ' + e.message, 'error');
+      }
+    }
+
+    async function restoreBackup(filename) {
+      if (!confirm(`确定要恢复备份 "${filename}" 吗？当前数据库将先备份。`)) return;
+      try {
+        const res = await fetch(`${API}/backup/restore/${encodeURIComponent(filename)}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`备份恢复成功: ${json.data.restored}`, 'success');
+          loadSystemStatus();
+        } else {
+          showToast('恢复失败: ' + json.error, 'error');
+        }
+      } catch(e) {
+        showToast('恢复请求失败: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteBackup(filename) {
+      if (!confirm(`确定要删除备份 "${filename}" 吗？此操作不可恢复。`)) return;
+      try {
+        const res = await fetch(`${API}/backup/delete/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+          showToast('备份已删除', 'success');
+          loadSystemStatus();
+        } else {
+          showToast('删除失败: ' + json.error, 'error');
+        }
+      } catch(e) {
+        showToast('删除请求失败: ' + e.message, 'error');
       }
     }
 
