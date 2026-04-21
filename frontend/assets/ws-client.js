@@ -13,7 +13,7 @@
   const RECONNECT_BASE_DELAY = 1000;    // 1s
   const RECONNECT_MAX_DELAY = 30000;    // 30s
   const RECONNECT_FACTOR = 2;
-  const AUTH_TIMEOUT = 5000;      // 5s to authenticate
+  const AUTH_TIMEOUT = 5000;   // 5s to authenticate
 
   function PVWebSocketClient() {
     this.url = WS_URL;

@@ -690,6 +690,37 @@
         <div class="chart-container" id="powerChart"></div>
       </div>
 
+
+      <!-- ====== Power Forecast Chart ====== -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔮</span> 功率预测（3天）</div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <select id="forecastModelSelect" style="min-width:120px;font-size:0.78rem;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.2rem 0.4rem;border-radius:4px;">
+              <option value="weighted_avg">加权平均</option>
+              <option value="baseline">基线模型</option>
+            </select>
+            <span class="section-subtitle" id="forecastAccuracyBadge">MAPE: -- | RMSE: --</span>
+          </div>
+        </div>
+        <div class="chart-container" id="forecastChart" style="height:350px;"></div>
+        <div style="display:flex;gap:1rem;margin-top:0.5rem;justify-content:center;">
+          <div style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;">
+            <span style="display:inline-block;width:12px;height:12px;background:rgba(0,229,255,0.3);border-radius:2px;"></span> 置信区间
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;">
+            <span style="display:inline-block;width:12px;height:3px;background:#00e5ff;border-radius:1px;"></span> 预测功率
+          </div>
+          <div style="font-size:0.75rem;color:var(--text-muted);display:flex;align-items:center;gap:0.3rem;">
+            <span style="display:inline-block;width:12px;height:3px;background:#ff9800;border-radius:1px;border-style:dashed;"></span> 实际功率
+          </div>
+        </div>
+        <div style="display:flex;gap:1.5rem;margin-top:0.5rem;justify-content:center;font-size:0.75rem;color:var(--text-muted);">
+          <span id="forecastTotalEnergy">预测总能量: --</span>
+          <span id="forecastAvgConfidence">平均置信度: --</span>
+        </div>
+      </div>
+
       <div class="two-col">
         <div class="section">
           <div class="section-header">
@@ -1268,6 +1299,7 @@
       loadInverterGrid();
       loadAlertsOverview();
       loadPowerChart();
+      loadForecastChart();
       loadStationComparisonChart();
     }
 
@@ -1683,6 +1715,233 @@
         charts.power.setOption({ title: { text: '发电曲线加载失败', left: 'center', textStyle: { color: '#ff3d71', fontSize: 14 } } });
       }
     }
+
+
+    /* ============ Power Forecast Chart ============ */
+    async function loadForecastChart() {
+      const dom = document.getElementById('forecastChart');
+      if (!dom) return;
+      if (!charts.forecast) charts.forecast = echarts.init(dom, 'dark');
+
+      const sid = getEffectiveStationId();
+      if (!sid || sid === 'all') {
+        charts.forecast.setOption({ title: { text: '请选择电站查看预测', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+        return;
+      }
+
+      charts.forecast.setOption({ title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+
+      const model = document.getElementById('forecastModelSelect')?.value || 'weighted_avg';
+      const today = new Date();
+      const dates = [];
+      for (let d = 0; d < 3; d++) {
+        const dt = new Date(today.getTime() + d * 86400000);
+        dates.push(dt.toISOString().split('T')[0]);
+      }
+
+      try {
+        let allHours = [];
+        let allPredicted = [];
+        let allUpper = [];
+        let allLower = [];
+        let allActual = [];
+        let totalEnergy = 0;
+        let totalConfidence = 0;
+        let totalPreds = 0;
+
+        for (const date of dates) {
+          // Fetch enhanced forecast
+          const res = await fetch(`${API}/forecast/enhanced/${sid}?date=${date}&model=${model}`);
+          const json = await res.json();
+
+          if (json.success && json.data) {
+            const preds = json.data.hourly_predictions || [];
+            totalEnergy += json.data.total_predicted_energy_kwh || 0;
+            totalConfidence += json.data.avg_confidence || 0;
+            totalPreds++;
+
+            for (const p of preds) {
+              const hourKey = date + ' ' + String(p.forecast_hour).padStart(2, '0') + ':00';
+              allHours.push(hourKey);
+              allPredicted.push(Math.round(p.predicted_power_kw * 100) / 100);
+              allUpper.push(Math.round((p.confidence_upper || p.predicted_power_kw * 1.15) * 100) / 100);
+              allLower.push(Math.round((p.confidence_lower || p.predicted_power_kw * 0.85) * 100) / 100);
+
+              // Try to get actual data for today
+              if (date === today.toISOString().split('T')[0] || date === new Date(today.getTime() - 86400000).toISOString().split('T')[0]) {
+                try {
+                  const actualRes = await fetch(`${API}/forecast/${sid}/compare?date=${date}`);
+                  const actualJson = await actualRes.json();
+                  if (actualJson.success && actualJson.data && actualJson.data.hourly_comparison) {
+                    const actualEntry = actualJson.data.hourly_comparison.find(a => a.hour === p.forecast_hour);
+                    allActual.push(actualEntry && actualEntry.actual_kw > 0 ? actualEntry.actual_kw : null);
+                  } else {
+                    allActual.push(null);
+                  }
+                } catch(e) {
+                  allActual.push(null);
+                }
+              } else {
+                allActual.push(null);
+              }
+            }
+          }
+        }
+
+        // Filter out null actuals for display
+        const displayActual = allActual.map(a => a !== null ? Math.round(a * 100) / 100 : null);
+
+        // Update summary info
+        const avgConf = totalPreds > 0 ? Math.round(totalConfidence / totalPreds * 100) / 100 : 0;
+        document.getElementById('forecastTotalEnergy').textContent = `预测总能量: ${Math.round(totalEnergy * 100) / 100} kWh`;
+        document.getElementById('forecastAvgConfidence').textContent = `平均置信度: ${Math.round(avgConf * 100)}%`;
+
+        // Fetch accuracy metrics
+        try {
+          const trendRes = await fetch(`${API}/forecast/trend/${sid}`);
+          const trendJson = await trendRes.json();
+          if (trendJson.success && trendJson.data && trendJson.data.overall) {
+            const mape = trendJson.data.overall.avg_mape;
+            const rmse = trendJson.data.overall.avg_mape !== null ? '--' : '--';
+            document.getElementById('forecastAccuracyBadge').textContent = `MAPE: ${mape !== null ? mape + '%' : '--'}`;
+          }
+        } catch(e) {
+          console.warn('Failed to load accuracy metrics:', e);
+        }
+
+        // Create ECharts option with confidence interval area
+        const chartDates = dates.map(d => {
+          const dt = new Date(d);
+          return (dt.getMonth()+1) + '/' + dt.getDate();
+        });
+
+        // Build xAxis with date markers
+        const xAxisData = allHours.map(h => {
+          const parts = h.split(' ');
+          const timeParts = parts[1].split(':');
+          return parts[0].slice(5) + ' ' + timeParts[0] + ':' + timeParts[1];
+        });
+
+        // Mark date boundaries
+        const markLineData = [];
+        for (let d = 1; d < dates.length; d++) {
+          const boundaryIdx = d * 24;
+          markLineData.push({ xAxis: boundaryIdx });
+        }
+
+        charts.forecast.setOption({
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(17,27,47,0.95)',
+            borderColor: '#2a4060',
+            textStyle: { color: '#e2e8f0', fontSize: 12 },
+            formatter: function(params) {
+              if (!params || params.length === 0) return '';
+              const idx = params[0].dataIndex;
+              let s = '<b>' + params[0].axisValue + '</b><br/>';
+              for (const p of params) {
+                if (p.value !== null && p.value !== undefined) {
+                  s += p.marker + ' ' + p.seriesName + ': ' + p.value + ' kW<br/>';
+                }
+              }
+              return s;
+            }
+          },
+          legend: {
+            data: ['预测功率', '置信区间', '实际功率'],
+            top: 5,
+            textStyle: { color: '#94a3b8', fontSize: 11 }
+          },
+          grid: { left: '4%', right: '4%', bottom: '3%', top: '18%', containLabel: true },
+          xAxis: {
+            type: 'category',
+            data: xAxisData,
+            axisLine: { lineStyle: { color: '#2a4060' } },
+            axisLabel: { color: '#94a3b8', fontSize: 10, interval: 5, rotate: 30 },
+            splitArea: {
+              show: true,
+              areaStyle: {
+                color: dates.map((d, i) => i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)')
+                  .reduce((acc, c) => { for (let i = 0; i < 24; i++) acc.push(c); return acc; }, []).slice(0, xAxisData.length)
+              }
+            }
+          },
+          yAxis: {
+            type: 'value',
+            name: '功率(kW)',
+            nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+            axisLine: { lineStyle: { color: '#2a4060' } },
+            splitLine: { lineStyle: { color: '#1a2236' } },
+            axisLabel: { color: '#94a3b8' }
+          },
+          markLine: {
+            silent: true,
+            lineStyle: { color: '#2a4060', type: 'dotted' },
+            label: { show: false },
+            data: markLineData
+          },
+          series: [
+            {
+              name: '置信区间',
+              type: 'line',
+              stack: 'confidence',
+              data: allLower,
+              lineStyle: { opacity: 0 },
+              symbol: 'none',
+              areaStyle: { color: 'rgba(0,229,255,0.15)' },
+              tooltip: { show: false }
+            },
+            {
+              name: '置信区间',
+              type: 'line',
+              stack: 'confidence',
+              data: allUpper.map((u, i) => Math.round((u - allLower[i]) * 100) / 100),
+              lineStyle: { opacity: 0 },
+              symbol: 'none',
+              areaStyle: { color: 'rgba(0,229,255,0.15)' },
+              tooltip: { show: false }
+            },
+            {
+              name: '预测功率',
+              type: 'line',
+              data: allPredicted,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { color: '#00e5ff', width: 2 },
+              areaStyle: {
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                  colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.2)' }, { offset: 1, color: 'rgba(0,229,255,0)' }]
+                }
+              }
+            },
+            {
+              name: '实际功率',
+              type: 'line',
+              data: displayActual,
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 4,
+              lineStyle: { color: '#ff9800', width: 1.5, type: 'dashed' },
+              connectNulls: false
+            }
+          ]
+        });
+
+      } catch (e) {
+        console.error('Forecast chart failed:', e);
+        charts.forecast.setOption({ title: { text: '预测数据加载失败', left: 'center', textStyle: { color: '#ff3d71', fontSize: 14 } } });
+      }
+    }
+
+    // Event listener for model dropdown change
+    document.addEventListener('DOMContentLoaded', function() {
+      const modelSelect = document.getElementById('forecastModelSelect');
+      if (modelSelect) {
+        modelSelect.addEventListener('change', function() {
+          loadForecastChart();
+        });
+      }
+    });
 
     /* ============ Tab 2: Inverter Monitor ============ */
     async function loadInverterDropdown() {
@@ -2241,6 +2500,7 @@
           if (activeTab && activeTab.dataset.tab === 'overview') {
             loadOverviewKPIs();
             loadPowerChart();
+            loadForecastChart();
           }
         }
       }, room);

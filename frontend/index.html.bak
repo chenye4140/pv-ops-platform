@@ -1,0 +1,2788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>光伏运维AI智能分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    /* ============ CSS Variables & Reset ============ */
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --accent-glow: rgba(0, 229, 255, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    /* ============ Navbar ============ */
+    .navbar {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+    }
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .navbar-brand .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .navbar-tabs {
+      display: flex;
+      gap: 4px;
+      margin-left: 2.5rem;
+    }
+    .nav-tab {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.25s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+      position: relative;
+    }
+    .nav-tab:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .nav-tab.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    .navbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+    .clock {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+    .clock-date { color: var(--text-muted); margin-right: 8px; font-size: 0.82rem; }
+
+    /* ============ Main Content ============ */
+    .main { max-width: 1600px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+    .tab-content { display: none; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* ============ KPI Cards ============ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+    .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-card .stat-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.8;
+    }
+    .stat-card .stat-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.4rem;
+    }
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+    .stat-card .stat-unit {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+    .stat-card .stat-sub {
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    /* ============ Section Panel ============ */
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-primary);
+    }
+    .section-title .icon { color: var(--accent); font-size: 1.1rem; }
+    .section-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ Charts ============ */
+    .chart-container {
+      width: 100%;
+      height: 380px;
+      border-radius: 8px;
+    }
+    .chart-container.small { height: 300px; }
+
+    /* ============ Grid Layouts ============ */
+    .two-col { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem; }
+    .grid-inverters { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+
+    /* ============ Inverter Card ============ */
+    .inv-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      transition: all 0.2s;
+      cursor: default;
+    }
+    .inv-card:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
+    .inv-card .inv-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .inv-card .inv-status { margin-bottom: 0.5rem; }
+    .inv-card .inv-strings {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+    .inv-card .inv-strings .normal { color: var(--green); }
+    .inv-card .inv-strings .abnormal { color: var(--red); }
+
+    /* ============ Status Badges ============ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge-normal { background: var(--green-dim); color: var(--green); }
+    .badge-warning { background: var(--orange-dim); color: var(--orange); }
+    .badge-error { background: var(--red-dim); color: var(--red); }
+    .badge-info { background: rgba(68,138,255,0.15); color: var(--blue); }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .badge-normal .badge-dot { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .badge-warning .badge-dot { background: var(--orange); box-shadow: 0 0 4px var(--orange); }
+    .badge-error .badge-dot { background: var(--red); box-shadow: 0 0 4px var(--red); }
+    .badge-info .badge-dot { background: var(--blue); }
+
+    /* ============ Alerts ============ */
+    .alert-list { display: flex; flex-direction: column; gap: 0.6rem; max-height: 420px; overflow-y: auto; }
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid;
+      background: var(--bg-secondary);
+      transition: background 0.2s;
+    }
+    .alert-item:hover { background: var(--bg-card-hover); }
+    .alert-critical { border-left-color: var(--red); }
+    .alert-warning { border-left-color: var(--orange); }
+    .alert-info { border-left-color: var(--blue); }
+    .alert-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+    .alert-content { flex: 1; min-width: 0; }
+    .alert-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; }
+    .alert-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* ============ Table ============ */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td {
+      padding: 0.7rem 0.85rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .data-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.5px;
+      background: var(--bg-secondary);
+    }
+    .data-table tr:hover td { background: var(--bg-card-hover); }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    /* ============ Forms ============ */
+    select, input[type="text"], input[type="date"] {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+      font-family: var(--font-sans);
+    }
+    select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+    .filter-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-row label { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ Buttons ============ */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #0091ea);
+      color: #000;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn:active { transform: translateY(0); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+    .btn-ack {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3);
+    }
+    .btn-ack:hover { background: rgba(0,255,136,0.25); }
+    .btn-danger {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255,61,113,0.3);
+    }
+    .btn-green {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3);
+    }
+    .btn-green:hover { background: rgba(0,255,136,0.25); }
+    .btn-red {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255,61,113,0.3);
+    }
+    .btn-red:hover { background: rgba(255,61,113,0.25); }
+    .btn-orange {
+      background: var(--orange-dim);
+      color: var(--orange);
+      border: 1px solid rgba(255,152,0,0.3);
+    }
+    .btn-orange:hover { background: rgba(255,152,0,0.25); }
+
+    /* ============ Upload Area ============ */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 1.25rem;
+    }
+    .upload-area:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .upload-area .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6; }
+    .upload-area .upload-text { color: var(--text-secondary); font-size: 0.9rem; }
+    .upload-area .upload-hint { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.3rem; }
+
+    /* ============ Image Placeholder ============ */
+    .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .img-placeholder {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .img-placeholder .img-body {
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .img-placeholder .img-body canvas { width: 100%; height: 100%; }
+    .img-placeholder .img-footer {
+      padding: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .img-placeholder .img-label { font-size: 0.82rem; font-weight: 600; }
+    .img-placeholder .img-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    /* ============ Report ============ */
+    .report-preview {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .report-header { text-align: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .report-header h2 { font-size: 1.3rem; color: var(--accent); margin-bottom: 0.3rem; }
+    .report-header .report-date { color: var(--text-muted); font-size: 0.85rem; }
+    .report-section { margin-bottom: 1.25rem; }
+    .report-section h3 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      padding-left: 0.75rem;
+      border-left: 3px solid var(--accent);
+    }
+    .report-section p, .report-section li { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7; }
+    .report-section ul { padding-left: 1.2rem; }
+    .report-section ul li { margin-bottom: 0.3rem; }
+    .report-stat { display: inline-block; font-family: var(--font-mono); color: var(--green); font-weight: 600; }
+
+    /* ============ Loading / Error ============ */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); gap: 0.75rem; }
+    .spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { text-align: center; padding: 2rem; color: var(--red); font-size: 0.88rem; }
+    .empty-msg { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.88rem; }
+
+    /* ============ Toast ============ */
+    .toast-container { position: fixed; top: 80px; right: 1.5rem; z-index: 200; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      animation: slideIn 0.3s ease;
+      max-width: 350px;
+      box-shadow: var(--shadow);
+    }
+    .toast-success { background: var(--green-dim); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+    .toast-error { background: var(--red-dim); border: 1px solid rgba(255,61,113,0.3); color: var(--red); }
+    .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ============ Alert Nav Badge ============ */
+    #alertBadgeCount.has-count { display: flex !important; }
+
+    /* ============ Hamburger Menu ============ */
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.4rem;
+      margin-left: 0.5rem;
+      min-width: 44px;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .hamburger:hover { color: var(--accent); background: var(--accent-dim); }
+    .hamburger.active { color: var(--accent); }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 1200px) {
+      .two-col { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .navbar { padding: 0 1rem; }
+      .navbar-tabs { margin-left: 1.5rem; }
+      .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+      .main { padding: 1rem; }
+    }
+    @media (max-width: 768px) {
+      /* Hamburger menu */
+      .hamburger { display: flex; }
+      .navbar-tabs {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bg-secondary);
+        flex-direction: column;
+        padding: 1rem;
+        gap: 0;
+        margin-left: 0;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 99;
+        border-top: 1px solid var(--border);
+      }
+      .navbar-tabs.open { transform: translateX(0); }
+      .nav-tab {
+        padding: 0.85rem 1rem;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        margin-bottom: 0.25rem;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+      .nav-tab.active::after { display: none; }
+      .nav-tab.active { border-left: 3px solid var(--accent); }
+      .navbar-right { gap: 0.75rem; }
+      .station-select { font-size: 0.75rem; padding: 0.3rem 0.5rem; max-width: 100px; }
+      .clock { font-size: 0.8rem; }
+      #userInfo { display: none; }
+      #wsStatus { display: none; }
+      /* Touch-friendly buttons */
+      .btn { padding: 0.7rem 1rem; font-size: 0.88rem; min-height: 44px; }
+      .btn-sm { padding: 0.5rem 0.8rem; font-size: 0.82rem; min-height: 38px; }
+      select, input[type="text"], input[type="date"] {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.9rem;
+        min-height: 44px;
+      }
+      .filter-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .filter-row label { min-height: 20px; }
+      /* Section adjustments */
+      .section { padding: 1rem; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      /* Font adjustments */
+      .stat-card .stat-value { font-size: 1.5rem; }
+      .stat-card .stat-label { font-size: 0.72rem; }
+      .stat-card { padding: 1rem; }
+      /* Chart container */
+      .chart-container { height: 300px; }
+      .chart-container.small { height: 250px; }
+      /* Table adjustments */
+      .data-table { font-size: 0.8rem; }
+      .data-table th, .data-table td { padding: 0.5rem 0.6rem; }
+      /* Report preview */
+      .report-preview { padding: 1.25rem; }
+      /* Create form grid */
+      form[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+      /* Upload area */
+      .upload-area { padding: 1.5rem; }
+      /* Image grid */
+      .img-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 550px) {
+      .stats-grid { grid-template-columns: 1fr !important; }
+      .navbar-brand span { display: none; }
+      .navbar-brand { font-size: 1rem; }
+      .clock-date { display: none; }
+      .alert-nav-badge { display: none !important; }
+      .main { padding: 0.75rem; }
+      .section { padding: 0.85rem; border-radius: 8px; }
+      .stat-card .stat-value { font-size: 1.35rem; }
+      .section-title { font-size: 0.92rem; }
+      .chart-container { height: 260px; }
+      .chart-container.small { height: 220px; }
+      .toast { max-width: calc(100vw - 2rem); margin-right: 0; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ============ Navbar ============ -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-icon">☀</div>
+      <span>光伏运维AI智能分析平台</span>
+    </div>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
+    <div class="navbar-tabs" id="tabBar">
+      <button class="nav-tab active" data-tab="overview">电站总览</button>
+      <button class="nav-tab" data-tab="inverter">逆变器监控</button>
+      <button class="nav-tab" data-tab="alerts">告警中心</button>
+      <button class="nav-tab" data-tab="diagnosis">图像诊断</button>
+      <button class="nav-tab" data-tab="report">智能日报</button>
+      <button class="nav-tab" data-tab="workorder">工单管理</button>
+      <button class="nav-tab" data-tab="alertrules">告警规则</button>
+      <a class="nav-tab" href="inspection.html" style="text-decoration:none;">巡检管理</a>
+      <a class="nav-tab" href="audit.html" style="text-decoration:none;">🛡️ 审计日志</a>
+    </div>
+    <div class="navbar-right">
+      <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
+        <option value="all">全部电站</option>
+      </select>
+      <div id="alertNavBadge" class="alert-nav-badge" style="position:relative;cursor:pointer;font-size:1.1rem;padding:0.2rem 0.4rem;" title="活跃告警" onclick="switchTab('alerts')">🔔<span id="alertBadgeCount" style="position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:0.65rem;border-radius:50%;min-width:16px;height:16px;display:none;align-items:center;justify-content:center;font-weight:600;">0</span></div>
+      <div id="wsStatus" class="ws-status" style="font-size:0.85rem;cursor:default;user-select:none;" title="WebSocket连接状态">🔴</div>
+      <div id="userInfo" style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.6rem;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;cursor:default;">
+        <span id="userDisplayName" style="font-size:0.8rem;color:var(--text-secondary);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">--</span>
+        <button class="btn btn-sm btn-outline" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="handleLogout()" title="退出登录">退出</button>
+      </div>
+      <div class="clock">
+        <span class="clock-date" id="clockDate"></span>
+        <span id="clockTime"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============ Toast Container ============ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <!-- ===== Tab 1: 电站总览 ===== -->
+    <div class="tab-content active" id="tab-overview">
+      <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:1rem;">
+        <button class="btn btn-sm" onclick="exportData('station')">📊 导出电站概览</button>
+        <button class="btn btn-sm" onclick="exportData('power')">⚡ 导出发电数据</button>
+        <button class="btn btn-sm" onclick="exportData('alerts')">🔔 导出告警</button>
+        <button class="btn btn-sm" onclick="exportData('workorders')">📋 导出工单</button>
+      </div>
+      <div class="stats-grid" id="kpiRow1">
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-label">今日发电量</div>
+          <div class="stat-value" id="kpiEnergy">--<span class="stat-unit">kWh</span></div>
+          <div class="stat-sub" id="kpiEnergySub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔋</div>
+          <div class="stat-label">当前功率</div>
+          <div class="stat-value" id="kpiPower">--<span class="stat-unit">kW</span></div>
+          <div class="stat-sub" id="kpiPowerSub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-label">综合效率 PR</div>
+          <div class="stat-value" id="kpiPR">--<span class="stat-unit">%</span></div>
+          <div class="stat-sub" id="kpiPRSub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚠</div>
+          <div class="stat-label">异常组串数</div>
+          <div class="stat-value" id="kpiAbnormal">--</div>
+          <div class="stat-sub" id="kpiAbnormalSub">--</div>
+        </div>
+      </div>
+      <div class="stats-grid" id="kpiRow2" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card">
+          <div class="stat-icon">🔌</div>
+          <div class="stat-label">设备可用率</div>
+          <div class="stat-value" id="kpiAvailability">--<span class="stat-unit">%</span></div>
+          <div class="stat-sub" id="kpiAvailabilitySub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-label">收益估算</div>
+          <div class="stat-value" id="kpiRevenue">--<span class="stat-unit">元</span></div>
+          <div class="stat-sub" id="kpiRevenueSub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏱</div>
+          <div class="stat-label">等效利用小时</div>
+          <div class="stat-value" id="kpiUtilHours">--<span class="stat-unit">h</span></div>
+          <div class="stat-sub" id="kpiUtilHoursSub">--</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📈</span> 发电曲线（24h）</div>
+          <span class="section-subtitle" id="overviewChartDate"></span>
+        </div>
+        <div class="chart-container" id="powerChart"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title"><span class="icon">🔌</span> 逆变器状态</div>
+            <span class="section-subtitle" id="invCount"></span>
+          </div>
+          <div id="inverterGrid">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title"><span class="icon">🔔</span> 最新告警</div>
+            <span class="section-subtitle" id="alertBadge"></span>
+          </div>
+          <div id="alertListOverview">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-station comparison chart -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🏭</span> 多电站对比</div>
+          <span class="section-subtitle">PR · 发电量 · 设备可用率</span>
+        </div>
+        <div class="chart-container" id="stationComparisonChart"></div>
+      </div>
+
+      <!-- Alert severity donut chart -->
+      <div class="section" style="max-width:500px;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🎯</span> 告警严重度分布</div>
+          <span class="section-subtitle" id="alertSeverityTotal">--</span>
+        </div>
+        <div class="chart-container small" id="alertSeverityChart"></div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 2: 逆变器监控 ===== -->
+    <div class="tab-content" id="tab-inverter">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔌</span> 逆变器监控</div>
+          <div style="display:flex;gap:0.75rem;align-items:center;">
+            <label style="font-size:0.82rem;color:var(--text-muted);">选择逆变器：</label>
+            <select id="inverterSelect" style="min-width:200px;">
+              <option value="">-- 请选择 --</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="inverterDetail">
+          <div class="empty-msg">请选择一台逆变器查看详情</div>
+        </div>
+
+        <div id="inverterMonitorContent" style="display:none;">
+          <div class="chart-container" id="stringBarChart" style="height:320px;"></div>
+
+          <div style="margin-top:1rem;">
+            <div class="section-header" style="border-bottom:none;margin-bottom:0.5rem;padding-bottom:0;">
+              <div class="section-title" style="font-size:0.92rem;"><span class="icon">📋</span> 组串列表</div>
+            </div>
+            <div id="stringTableContainer"></div>
+          </div>
+
+          <div style="margin-top:1.25rem;">
+            <div class="section-header" style="border-bottom:none;margin-bottom:0.5rem;padding-bottom:0;">
+              <div class="section-title" style="font-size:0.92rem;"><span class="icon">📉</span> 组串功率趋势</div>
+              <select id="stringTrendSelect" style="min-width:150px;">
+                <option value="">-- 选择组串 --</option>
+              </select>
+            </div>
+            <div class="chart-container small" id="stringTrendChart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 3: 告警中心 ===== -->
+    <div class="tab-content" id="tab-alerts">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔔</span> 告警中心</div>
+        </div>
+        <div class="filter-row">
+          <label>类型：</label>
+          <select id="alertFilterType">
+            <option value="all">全部</option>
+            <option value="string">组串异常</option>
+            <option value="inverter">逆变器故障</option>
+            <option value="weather">气象预警</option>
+            <option value="system">系统告警</option>
+          </select>
+          <label>严重程度：</label>
+          <select id="alertFilterSeverity">
+            <option value="all">全部</option>
+            <option value="critical">严重</option>
+            <option value="warning">警告</option>
+            <option value="info">提示</option>
+          </select>
+          <label>状态：</label>
+          <select id="alertFilterStatus">
+            <option value="all">全部</option>
+            <option value="active">活跃</option>
+            <option value="acked">已确认</option>
+          </select>
+          <button class="btn btn-sm btn-outline" onclick="applyAlertFilters()">筛选</button>
+        </div>
+        <div id="alertsTableContainer">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 4: 图像诊断 ===== -->
+    <div class="tab-content" id="tab-diagnosis">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔍</span> 红外图像诊断</div>
+          <button class="btn btn-sm" onclick="simulateUpload()">📤 上传图片</button>
+        </div>
+
+        <div class="upload-area" onclick="simulateUpload()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">点击上传红外热成像图片</div>
+          <div class="upload-hint">支持 JPG/PNG 格式，MVP阶段使用模拟数据</div>
+        </div>
+
+        <div class="img-grid" id="imageGrid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="section" style="margin-top:0;">
+          <div class="section-header">
+            <div class="section-title"><span class="icon">🐛</span> 缺陷列表</div>
+          </div>
+          <div id="defectTableContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 5: 智能日报 ===== -->
+    <div class="tab-content" id="tab-report">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📰</span> 智能运维日报</div>
+          <button class="btn" id="btnGenerateReport" onclick="generateReport()">📝 生成日报</button>
+        </div>
+        <div id="reportContainer">
+          <div class="empty-msg">点击「生成日报」按钮获取今日运维报告</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 6: 工单管理 ===== -->
+    <div class="tab-content" id="tab-workorder">
+      <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 1rem;">
+        <div class="stat-card">
+          <div class="stat-icon">📋</div>
+          <div class="stat-label">全部工单</div>
+          <div class="stat-value" id="woStatTotal">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-label">待处理</div>
+          <div class="stat-value" id="woStatPending" style="color:var(--orange)">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔧</div>
+          <div class="stat-label">处理中</div>
+          <div class="stat-value" id="woStatProgress" style="color:var(--blue)">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">已完成</div>
+          <div class="stat-value" id="woStatCompleted" style="color:var(--green)">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-label">已关闭</div>
+          <div class="stat-value" id="woStatClosed" style="color:var(--text-muted)">--</div>
+        </div>
+      </div>
+
+      <!-- Filter Row -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📋</span> 工单列表</div>
+          <button class="btn btn-sm" onclick="showCreateWorkOrderForm()">➕ 创建工单</button>
+        </div>
+        <div class="filter-row">
+          <label>类型：</label>
+          <select id="woFilterType">
+            <option value="all">全部</option>
+            <option value="defect_repair">缺陷修复</option>
+            <option value="routine_maintenance">定期维护</option>
+            <option value="inspection">巡检</option>
+            <option value="cleaning">清洗</option>
+            <option value="other">其他</option>
+          </select>
+          <label>优先级：</label>
+          <select id="woFilterPriority">
+            <option value="all">全部</option>
+            <option value="urgent">紧急</option>
+            <option value="high">高</option>
+            <option value="medium">中</option>
+            <option value="low">低</option>
+          </select>
+          <label>状态：</label>
+          <select id="woFilterStatus">
+            <option value="all">全部</option>
+            <option value="pending">待处理</option>
+            <option value="assigned">已分配</option>
+            <option value="in_progress">处理中</option>
+            <option value="completed">已完成</option>
+            <option value="closed">已关闭</option>
+          </select>
+          <label>负责人：</label>
+          <input type="text" id="woFilterAssignee" placeholder="输入负责人" style="width:120px;">
+          <button class="btn btn-sm btn-outline" onclick="applyWorkOrderFilters()">筛选</button>
+        </div>
+        <div id="workorderTableContainer">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+
+      <!-- Create Work Order Form (hidden by default) -->
+      <div class="section" id="createWorkOrderSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">➕</span> 创建工单</div>
+          <button class="btn btn-sm btn-outline" onclick="hideCreateWorkOrderForm()">取消</button>
+        </div>
+        <form id="createWorkOrderForm" onsubmit="return createWorkOrder(event)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">工单标题 *</label>
+              <input type="text" id="woTitle" required style="width:100%;" placeholder="请输入工单标题">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">工单类型 *</label>
+              <select id="woType" required style="width:100%;">
+                <option value="defect_repair">缺陷修复</option>
+                <option value="routine_maintenance">定期维护</option>
+                <option value="inspection">巡检</option>
+                <option value="cleaning">清洗</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">优先级</label>
+              <select id="woPriority" style="width:100%;">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+                <option value="urgent">紧急</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">负责人</label>
+              <input type="text" id="woAssignee" style="width:100%;" placeholder="请输入负责人">
+            </div>
+          </div>
+          <div style="margin-bottom:1rem;">
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">详细描述</label>
+            <textarea id="woDescription" style="width:100%;min-height:80px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.6rem;border-radius:var(--radius-sm);font-size:0.85rem;outline:none;font-family:var(--font-sans);resize:vertical;" placeholder="请输入工详细描述"></textarea>
+          </div>
+          <div style="display:flex;gap:0.75rem;">
+            <button type="submit" class="btn">创建工单</button>
+            <button type="button" class="btn btn-outline" onclick="hideCreateWorkOrderForm()">取消</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Work Order Detail Modal -->
+      <div class="section" id="workorderDetailSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📄</span> 工单详情</div>
+          <button class="btn btn-sm btn-outline" onclick="closeWorkOrderDetail()">关闭</button>
+        </div>
+        <div id="workorderDetailContent"></div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 7: 告警规则 ===== -->
+    <div class="tab-content" id="tab-alertrules">
+      <div class="stats-grid" style="margin-bottom:1.5rem;" id="alertRuleStats"></div>
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">⚙️</span> 告警规则配置</div>
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn btn-sm" onclick="seedAlertRules()">🌱 初始化默认规则</button>
+            <button class="btn btn-sm btn-green" onclick="runAlertEvaluation()">⚡ 执行规则评估</button>
+            <button class="btn btn-sm" onclick="showCreateRule()">➕ 创建规则</button>
+          </div>
+        </div>
+        <div id="alertRulesTable"></div>
+      </div>
+      <!-- Create Rule Modal -->
+      <div class="section" id="createRuleSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">➕</span> 新建告警规则</div>
+          <button class="btn btn-sm btn-outline" onclick="document.getElementById('createRuleSection').style.display='none'">关闭</button>
+        </div>
+        <form id="createRuleForm" onsubmit="return createAlertRule(event)" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">规则名称 *</label>
+            <input type="text" id="ruleName" required style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">规则类型 *</label>
+            <select id="ruleType" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="string_low_power">组串功率偏低</option>
+              <option value="string_zero_output">组串零输出</option>
+              <option value="temperature_high">温度过高</option>
+              <option value="irradiance_low">辐照度过低</option>
+              <option value="power_drop_sudden">功率突降</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">监控指标 *</label>
+            <select id="ruleMetric" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="power_ratio">功率比</option>
+              <option value="temperature">温度</option>
+              <option value="irradiance">辐照度</option>
+              <option value="zero_output_strings">零输出组串数</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">阈值 *</label>
+            <input type="number" id="ruleThreshold" step="0.01" required style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">操作符</label>
+            <select id="ruleOperator" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="<">小于 (&lt;)</option>
+              <option value=">">大于 (&gt;)</option>
+              <option value="<=">小于等于 (&lt;=)</option>
+              <option value=">=">大于等于 (&gt;=)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">严重程度</label>
+            <select id="ruleSeverity" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+              <option value="info">提示</option>
+              <option value="warning" selected>警告</option>
+              <option value="critical">严重</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">冷却时间（分钟）</label>
+            <input type="number" id="ruleCooldown" value="30" style="width:100%;padding:0.4rem 0.6rem;background:var(--bg-input);border:1px solid var(--border);border-radius:4px;color:var(--text-primary);">
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1.5rem;">
+              <input type="checkbox" id="ruleAutoWO"> 自动创建工单
+            </label>
+          </div>
+          <div style="grid-column:1/-1;display:flex;gap:0.5rem;justify-content:flex-end;">
+            <button type="button" class="btn" onclick="document.getElementById('createRuleSection').style.display='none'">取消</button>
+            <button type="submit" class="btn btn-green">创建规则</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/ws-client.js"></script>
+  <script>
+    /* ============ Authentication Check ============ */
+    (function() {
+      var token = localStorage.getItem('authToken');
+      if (!token) {
+        window.location.href = 'login.html';
+        return;
+      }
+      // Verify token validity
+      fetch('http://localhost:3000/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      }).then(function(res) {
+        if (!res.ok) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          window.location.href = 'login.html';
+        }
+      }).catch(function() {
+        // If server unreachable, allow access (will fail on API calls anyway)
+      });
+    })();
+
+    /* ============ Configuration ============ */
+    const API = 'http://localhost:3000/api';
+    let stationId = localStorage.getItem('selectedStation') || 'all';
+    let charts = {};
+    let refreshTimer = null;
+    let currentUser = null;
+
+    /* ============ Cached Alert Data ============ */
+    let cachedAlerts = [];
+
+    /* ============ Hamburger Menu ============ */
+    function toggleHamburger() {
+      var tabBar = document.getElementById('tabBar');
+      var btn = document.getElementById('hamburgerBtn');
+      tabBar.classList.toggle('open');
+      btn.classList.toggle('active');
+      btn.innerHTML = tabBar.classList.contains('open') ? '✕' : '☰';
+    }
+    // Close hamburger on tab click (mobile)
+    document.querySelectorAll('#tabBar .nav-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        var tabBar = document.getElementById('tabBar');
+        var btn = document.getElementById('hamburgerBtn');
+        tabBar.classList.remove('open');
+        btn.classList.remove('active');
+        btn.innerHTML = '☰';
+      });
+    });
+
+    /* ============ Chart Responsive Resize ============ */
+    (function() {
+      var resizeTimer;
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+          Object.keys(charts).forEach(function(key) {
+            if (charts[key] && typeof charts[key].resize === 'function') {
+              charts[key].resize();
+            }
+          });
+        }, 200);
+      });
+    })();
+
+    const MOCK_DEFECTS = [
+      { id: 1, image: '红外图像 #1', type: '热斑效应', position: 'A区-第3排-组串05', level: '严重', confidence: 0.94 },
+      { id: 2, image: '红外图像 #2', type: '二极管短路', position: 'B区-第1排-组串02', level: '中等', confidence: 0.87 },
+      { id: 3, image: '红外图像 #3', type: '接线盒过热', position: 'C区-第5排-组串08', level: '轻微', confidence: 0.76 },
+      { id: 4, image: '红外图像 #1', type: '组件隐裂', position: 'A区-第7排-组串03', level: '中等', confidence: 0.82 },
+    ];
+
+    /* ============ Clock ============ */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clockDate').textContent = now.toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' });
+      document.getElementById('clockTime').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ============ User Info ============ */
+    function displayUserInfo() {
+      const userStr = localStorage.getItem('currentUser');
+      if (userStr) {
+        try {
+          currentUser = JSON.parse(userStr);
+          document.getElementById('userDisplayName').textContent = currentUser.displayName || currentUser.username;
+        } catch(e) {
+          document.getElementById('userDisplayName').textContent = '用户';
+        }
+      }
+    }
+
+    function handleLogout() {
+      if (!confirm('确定要退出登录吗？')) return;
+      const token = localStorage.getItem('authToken');
+      // Disconnect WebSocket
+      if (typeof pvWS !== 'undefined') {
+        pvWS.disconnect();
+      }
+      // Call logout API (best effort)
+      if (token) {
+        fetch(API + '/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        }).catch(() => {});
+      }
+      // Clear local storage and redirect
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('selectedStation');
+      window.location.href = 'login.html';
+    }
+
+    /* ============ Tab Switching ============ */
+    document.getElementById('tabBar').addEventListener('click', e => {
+      if (!e.target.classList.contains('nav-tab')) return;
+      const tab = e.target.dataset.tab;
+      switchTab(tab);
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
+      // Load tab-specific data
+      if (tab === 'workorder') loadWorkOrders();
+      if (tab === 'alertrules') loadAlertRules();
+      // Resize charts after tab switch
+      setTimeout(() => {
+        Object.values(charts).forEach(c => c && c.resize());
+        if (tab === 'inverter' && charts.stringBar) charts.stringBar.resize();
+        if (tab === 'inverter' && charts.stringTrend) charts.stringTrend.resize();
+        if (tab === 'overview' && charts.stationComparison) charts.stationComparison.resize();
+        if (tab === 'overview' && charts.alertSeverity) charts.alertSeverity.resize();
+      }, 100);
+    }
+
+    /* ============ Toast ============ */
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    /* ============ API Helper ============ */
+    async function apiFetch(url) {
+      const token = localStorage.getItem('authToken');
+      const headers = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(url, { headers: headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    /* ============ Station Selector ============ */
+    function getEffectiveStationId() {
+      if (stationId === 'all') {
+        const select = document.getElementById('stationSelect');
+        const firstOption = select.querySelector('option:not([value="all"])');
+        return firstOption ? firstOption.value : '1';
+      }
+      return stationId;
+    }
+
+    async function loadStations() {
+      try {
+        const json = await apiFetch(`${API}/stations`);
+        if (json.success && json.data && json.data.length > 0) {
+          const select = document.getElementById('stationSelect');
+          // Keep the "全部电站" option already in HTML
+          const existingAll = select.querySelector('option[value="all"]');
+          const options = existingAll ? [existingAll.outerHTML] : ['<option value="all">全部电站</option>'];
+          options.push(...json.data.map(s => `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`));
+          select.innerHTML = options.join('');
+          // Restore previously selected station
+          if (stationId && stationId !== 'all') {
+            select.value = stationId;
+          }
+        }
+      } catch (e) {
+        console.warn('Stations load failed:', e);
+      }
+    }
+
+    document.getElementById('stationSelect').addEventListener('change', e => {
+      stationId = e.target.value;
+      localStorage.setItem('selectedStation', stationId);
+      loadOverview();
+      loadInverterDropdown();
+      loadAlerts();
+      loadWorkOrders();
+      loadAlertRules();
+      loadStationComparisonChart();
+      loadAlertSeverityChart();
+      // Re-subscribe WebSocket with new station room
+      resubscribeWebSocket();
+    });
+
+    /* ============ Tab 1: Overview ============ */
+    async function loadOverview() {
+      loadOverviewKPIs();
+      loadInverterGrid();
+      loadAlertsOverview();
+      loadPowerChart();
+      loadStationComparisonChart();
+    }
+
+    async function loadOverviewKPIs() {
+      const sid = getEffectiveStationId();
+      try {
+        // Fetch original overview data
+        const json = await apiFetch(`${API}/stations/${sid}/overview`);
+        if (json.success) {
+          const d = json.data;
+          const energy = d.todayEnergyKwh ?? d.today_energy_kwh ?? 0;
+          const power = d.currentPowerKw ?? d.current_power_kw ?? 0;
+          const pr = d.performanceRatio ?? d.performance_ratio ?? 0;
+          const abnormal = d.abnormalCount ?? d.abnormal_string_count ?? 0;
+
+          document.getElementById('kpiEnergy').innerHTML = `${energy.toFixed(1)}<span class="stat-unit">kWh</span>`;
+          document.getElementById('kpiEnergySub').textContent = `较昨日 ${energy > 0 ? '↑' : '--'}`;
+
+          document.getElementById('kpiPower').innerHTML = `${power.toFixed(1)}<span class="stat-unit">kW</span>`;
+          document.getElementById('kpiPowerSub').textContent = power > 0 ? '☀️ 发电中' : '🌙 夜间停机';
+
+          document.getElementById('kpiPR').innerHTML = `${pr.toFixed(1)}<span class="stat-unit">%</span>`;
+          const prColor = pr >= 80 ? 'var(--green)' : pr >= 60 ? 'var(--orange)' : 'var(--red)';
+          document.getElementById('kpiPR').querySelector('.stat-value').style.color = prColor;
+          document.getElementById('kpiPRSub').innerHTML = `<span style="color:${prColor}">${pr >= 80 ? '● 良好' : pr >= 60 ? '● 偏低' : '● 异常'}</span>`;
+
+          document.getElementById('kpiAbnormal').innerHTML = `<span style="color:${abnormal > 0 ? 'var(--orange)' : 'var(--green)'}">${abnormal}</span>`;
+          document.getElementById('kpiAbnormalSub').textContent = abnormal > 0 ? `⚠ ${abnormal} 个组串需关注` : '✅ 全部正常';
+        }
+
+        // Fetch enhanced KPI data
+        try {
+          const kpiJson = await apiFetch(`${API}/kpi/dashboard/${sid}`);
+          if (kpiJson.success) {
+            const kpi = kpiJson.data;
+
+            // Equipment availability
+            const avail = kpi.availability;
+            const availRate = avail.availabilityRate || 0;
+            const availColor = availRate >= 95 ? 'var(--green)' : availRate >= 80 ? 'var(--orange)' : 'var(--red)';
+            document.getElementById('kpiAvailability').innerHTML = `${availRate.toFixed(1)}<span class="stat-unit">%</span>`;
+            document.getElementById('kpiAvailabilitySub').innerHTML =
+              `<span style="color:${availColor}">组串 ${avail.activeStrings}/${avail.totalStrings} · 逆变器 ${avail.inverterOnline}/${avail.inverterTotal}</span>`;
+
+            // Revenue estimate
+            const rev = kpi.revenue;
+            document.getElementById('kpiRevenue').innerHTML = `¥${rev.revenue.toFixed(1)}<span class="stat-unit">元</span>`;
+            const revDod = kpi.dayOverDay.revenue;
+            const revArrow = revDod.change >= 0 ? '↑' : '↓';
+            const revColor = revDod.change >= 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('kpiRevenueSub').innerHTML =
+              `${rev.energy.toFixed(1)} kWh × ¥${rev.price} <span style="color:${revColor}">${revArrow}${Math.abs(revDod.changePercent)}%</span>`;
+
+            // Utilization hours
+            const eff = kpi.efficiency;
+            document.getElementById('kpiUtilHours').innerHTML = `${(eff.utilizationHours || 0).toFixed(1)}<span class="stat-unit">h</span>`;
+            document.getElementById('kpiUtilHoursSub').textContent = `额定 ${eff.ratedCapacity} kW`;
+          }
+        } catch (e) {
+          console.warn('Enhanced KPI load failed:', e);
+        }
+
+        // Load alert severity donut
+        loadAlertSeverityChart();
+
+      } catch (e) {
+        console.error('KPI load failed:', e);
+        document.getElementById('kpiEnergy').innerHTML = '<span style="color:var(--red)">--</span>';
+      }
+    }
+
+    async function loadInverterGrid() {
+      const container = document.getElementById('inverterGrid');
+      const sid = getEffectiveStationId();
+      try {
+        const json = await apiFetch(`${API}/stations/${sid}/inverters`);
+        if (json.success && json.data && json.data.length > 0) {
+          const inverters = json.data;
+          document.getElementById('invCount').textContent = `共 ${inverters.length} 台`;
+          container.innerHTML = `<div class="grid-inverters">${inverters.map(inv => {
+            const isNormal = (inv.abnormal_string_count || 0) === 0;
+            const statusClass = isNormal ? 'badge-normal' : (inv.abnormal_string_count > 2 ? 'badge-error' : 'badge-warning');
+            const statusText = isNormal ? '运行正常' : '存在异常';
+            const normalCount = (inv.string_count || 0) - (inv.abnormal_string_count || 0);
+            return `<div class="inv-card">
+              <div class="inv-name">${inv.name || 'INV-' + inv.id}</div>
+              <div class="inv-status"><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></div>
+              <div class="inv-strings">
+                <span class="normal">正常 ${normalCount}</span>
+                <span class="abnormal">异常 ${inv.abnormal_string_count || 0}</span>
+              </div>
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.4rem;">组串 ${inv.string_count || 0} 路</div>
+            </div>`;
+          }).join('')}</div>`;
+        } else {
+          container.innerHTML = '<div class="empty-msg">暂无逆变器数据</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">逆变器数据加载失败</div>';
+      }
+    }
+
+    async function loadAlertsOverview() {
+      const container = document.getElementById('alertListOverview');
+      try {
+        const url = stationId === 'all'
+          ? `${API}/alerts?status=active`
+          : `${API}/stations/${stationId}/alerts`;
+        const res = await fetch(url);
+        const json = await res.json();
+        const alerts = json.success ? (json.data || []).slice(0, 5) : [];
+        document.getElementById('alertBadge').textContent = `共 ${alerts.filter(a => a.status === 'active').length} 条活跃`;
+
+        if (alerts.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--green);">✅ 暂无活跃告警</div>';
+          return;
+        }
+        container.innerHTML = `<div class="alert-list">${alerts.map(a => {
+          const cls = a.severity === 'critical' ? 'alert-critical' : a.severity === 'warning' ? 'alert-warning' : 'alert-info';
+          const icon = a.severity === 'critical' ? '🔴' : a.severity === 'warning' ? '🟡' : '🔵';
+          const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
+          const time = new Date(a.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+          return `<div class="alert-item ${cls}">
+            <span class="alert-icon">${icon}</span>
+            <div class="alert-content">
+              <div class="alert-title">${a.message}</div>
+              <div class="alert-meta">${sevText} · ${time}</div>
+            </div>
+          </div>`;
+        }).join('')}</div>`;
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">告警加载失败</div>';
+      }
+    }
+
+    /* ============ Multi-Station Comparison Chart ============ */
+    async function loadStationComparisonChart() {
+      const dom = document.getElementById('stationComparisonChart');
+      if (!dom) return;
+      if (!charts.stationComparison) charts.stationComparison = echarts.init(dom, 'dark');
+
+      charts.stationComparison.setOption({ title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+
+      try {
+        const json = await apiFetch(`${API}/kpi/all-stations`);
+        if (!json.success || !json.data || json.data.length === 0) {
+          charts.stationComparison.setOption({ title: { text: '暂无电站数据', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+          return;
+        }
+
+        const stations = json.data;
+        const names = stations.map(s => s.station_name);
+        const prData = stations.map(s => s.pr);
+        const energyData = stations.map(s => s.actual_energy);
+        const availData = stations.map(s => s.availability_rate);
+
+        charts.stationComparison.setOption({
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(17,27,47,0.95)',
+            borderColor: '#2a4060',
+            textStyle: { color: '#e2e8f0', fontSize: 12 },
+            axisPointer: { type: 'shadow' },
+          },
+          legend: {
+            data: ['PR (%)', '发电量 (kWh)', '设备可用率 (%)'],
+            top: 5,
+            textStyle: { color: '#94a3b8' },
+          },
+          grid: { left: '4%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+          xAxis: {
+            type: 'category',
+            data: names,
+            axisLine: { lineStyle: { color: '#2a4060' } },
+            axisLabel: { color: '#94a3b8', fontSize: 11 },
+          },
+          yAxis: [
+            {
+              type: 'value',
+              name: 'PR / 可用率 (%)',
+              min: 0,
+              max: 100,
+              nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+              axisLine: { lineStyle: { color: '#2a4060' } },
+              splitLine: { lineStyle: { color: '#1a2236' } },
+              axisLabel: { color: '#94a3b8' },
+            },
+            {
+              type: 'value',
+              name: '发电量 (kWh)',
+              nameTextStyle: { color: '#94a3b8', fontSize: 11 },
+              axisLine: { lineStyle: { color: '#2a4060' } },
+              splitLine: { show: false },
+              axisLabel: { color: '#94a3b8' },
+            },
+          ],
+          series: [
+            {
+              name: 'PR (%)',
+              type: 'bar',
+              data: prData.map((v, i) => ({
+                value: v,
+                itemStyle: {
+                  color: v >= 80 ? '#00ff88' : v >= 60 ? '#ff9800' : '#ff3d71',
+                  borderRadius: [4, 4, 0, 0],
+                },
+              })),
+              barMaxWidth: 40,
+            },
+            {
+              name: '设备可用率 (%)',
+              type: 'bar',
+              data: availData.map((v) => ({
+                value: v,
+                itemStyle: { color: '#448aff', borderRadius: [4, 4, 0, 0] },
+              })),
+              barMaxWidth: 40,
+            },
+            {
+              name: '发电量 (kWh)',
+              type: 'line',
+              yAxisIndex: 1,
+              data: energyData,
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              lineStyle: { color: '#ffd740', width: 2 },
+              itemStyle: { color: '#ffd740' },
+            },
+          ],
+        });
+      } catch (e) {
+        console.error('Station comparison chart failed:', e);
+        charts.stationComparison.setOption({ title: { text: '多电站对比加载失败', left: 'center', textStyle: { color: '#ff3d71', fontSize: 14 } } });
+      }
+    }
+
+    /* ============ Alert Severity Donut Chart ============ */
+    async function loadAlertSeverityChart() {
+      const dom = document.getElementById('alertSeverityChart');
+      if (!dom) return;
+      if (!charts.alertSeverity) charts.alertSeverity = echarts.init(dom, 'dark');
+
+      try {
+        const stationParam = stationId === 'all' ? '' : `?stationId=${stationId}`;
+        const json = await apiFetch(`${API}/kpi/alert-severity${stationParam}`);
+        if (!json.success) return;
+
+        const d = json.data;
+        const data = [
+          { value: d.critical, name: '严重', itemStyle: { color: '#ff3d71' } },
+          { value: d.warning, name: '警告', itemStyle: { color: '#ff9800' } },
+          { value: d.info, name: '提示', itemStyle: { color: '#448aff' } },
+        ];
+
+        document.getElementById('alertSeverityTotal').textContent = `共 ${d.total} 条活跃`;
+
+        charts.alertSeverity.setOption({
+          tooltip: {
+            trigger: 'item',
+            backgroundColor: 'rgba(17,27,47,0.95)',
+            borderColor: '#2a4060',
+            textStyle: { color: '#e2e8f0', fontSize: 12 },
+            formatter: '{b}: {c} 条 ({d}%)',
+          },
+          series: [
+            {
+              type: 'pie',
+              radius: ['45%', '72%'],
+              center: ['50%', '50%'],
+              avoidLabelOverlap: false,
+              itemStyle: { borderRadius: 6, borderColor: '#152035', borderWidth: 2 },
+              label: {
+                show: true,
+                formatter: '{b}\n{d}%',
+                color: '#94a3b8',
+                fontSize: 12,
+              },
+              labelLine: { lineStyle: { color: '#2a4060' } },
+              data: data,
+            },
+          ],
+        });
+      } catch (e) {
+        console.warn('Alert severity chart failed:', e);
+      }
+    }
+
+    /* ============ Power Chart ============ */
+    async function loadPowerChart() {
+      const dom = document.getElementById('powerChart');
+      if (!charts.power) charts.power = echarts.init(dom, 'dark');
+      const sid = getEffectiveStationId();
+
+      charts.power.setOption({ title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+
+      try {
+        // Try to fetch real data from first inverter's first string
+        const invJson = await apiFetch(`${API}/stations/${sid}/inverters`);
+        if (!invJson.success || !invJson.data || invJson.data.length === 0) {
+          charts.power.setOption({ title: { text: '暂无数据', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
+          return;
+        }
+
+        const firstInv = invJson.data[0];
+
+        // Find the latest date with data (mock data is from past 7 days, not today)
+        const now = new Date();
+        let start, end;
+        try {
+          // Query first string's power data to find the latest available date
+          const strRes0 = await fetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
+          const strJson0 = await strRes0.json();
+          if (strJson0.success && strJson0.data.length > 0) {
+            // Get just the first and last records to determine date range
+            const pwRes0 = await fetch(`${API}/strings/${strJson0.data[0].id}/power`);
+            const pwJson0 = await pwRes0.json();
+            if (pwJson0.success && pwJson0.data && pwJson0.data.length > 0) {
+              const lastRecord = pwJson0.data[pwJson0.data.length - 1];
+              const latestDate = new Date(lastRecord.timestamp);
+              start = new Date(latestDate); start.setHours(0, 0, 0, 0);
+              end = new Date(latestDate); end.setHours(23, 59, 59, 999);
+            }
+          }
+        } catch(e) { /* will fall back to today */ }
+        if (!start) {
+          start = new Date(now); start.setHours(0, 0, 0, 0);
+          end = new Date(now); end.setHours(23, 59, 59, 999);
+        }
+
+        // Get strings
+        const strRes = await fetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
+        const strJson = await strRes.json();
+
+        let powerData = [], irradianceData = [], timeAxis = [];
+
+        if (strJson.success && strJson.data && strJson.data.length > 0) {
+          const firstStr = strJson.data[0];
+          // Try power data
+          try {
+            const pwRes = await fetch(`${API}/strings/${firstStr.id}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
+            const pwJson = await pwRes.json();
+            if (pwJson.success && pwJson.data && pwJson.data.length > 0) {
+              const pMap = {};
+              pwJson.data.forEach(p => {
+                const t = new Date(p.timestamp);
+                const key = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+                if (!pMap[key]) pMap[key] = [];
+                pMap[key].push(p.power_w || 0);
+              });
+              const sorted = Object.entries(pMap).sort((a,b) => a[0].localeCompare(b[0]));
+              timeAxis = sorted.map(s => s[0]);
+              powerData = sorted.map(s => { const arr = s[1]; return arr.reduce((a,b) => a+b, 0) / arr.length / 1000; });
+            }
+          } catch(e) { console.warn('Power data fetch failed:', e); }
+        }
+
+        // Try weather/irradiance
+        try {
+          const wRes = await fetch(`${API}/stations/${stationId}/weather?start=${start.toISOString()}&end=${end.toISOString()}`);
+          const wJson = await wRes.json();
+          if (wJson.success && wJson.data && wJson.data.length > 0) {
+            const wMap = {};
+            wJson.data.forEach(w => {
+              const t = new Date(w.timestamp);
+              const key = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+              if (!wMap[key]) wMap[key] = [];
+              wMap[key].push(w.irradiance_wm2 || 0);
+            });
+            const wSorted = Object.entries(wMap).sort((a,b) => a[0].localeCompare(b[0]));
+            if (wSorted.length > 0 && timeAxis.length === 0) {
+              timeAxis = wSorted.map(s => s[0]);
+              irradianceData = wSorted.map(s => { const arr = s[1]; return arr.reduce((a,b) => a+b, 0) / arr.length; });
+            }
+          }
+        } catch(e) { console.warn('Weather data fetch failed:', e); }
+
+        // Fallback: generate simulated data if no real data
+        if (timeAxis.length === 0) {
+          timeAxis = [];
+          powerData = [];
+          irradianceData = [];
+          for (let h = 0; h < 24; h++) {
+            for (let m = 0; m < 60; m += 15) {
+              const key = h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0');
+              timeAxis.push(key);
+              // Simulated bell curve for solar
+              const solarFactor = Math.max(0, Math.sin((h + m/60 - 6) / 14 * Math.PI));
+              powerData.push((solarFactor * 50 + Math.random() * 5).toFixed(2) * 1);
+              irradianceData.push((solarFactor * 800 + Math.random() * 30).toFixed(1) * 1);
+            }
+          }
+        }
+
+        document.getElementById('overviewChartDate').textContent = now.toLocaleDateString('zh-CN');
+
+        charts.power.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(17,27,47,0.95)', borderColor: '#2a4060', textStyle: { color: '#e2e8f0', fontSize: 12 } },
+          legend: { data: ['功率', '辐照度'], top: 5, textStyle: { color: '#94a3b8' } },
+          grid: { left: '4%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+          xAxis: { type: 'category', data: timeAxis, axisLine: { lineStyle: { color: '#2a4060' } }, axisLabel: { color: '#94a3b8', fontSize: 11, interval: 3 } },
+          yAxis: [
+            { type: 'value', name: '功率(kW)', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#94a3b8' } },
+            { type: 'value', name: '辐照度(W/m²)', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { show: false }, axisLabel: { color: '#94a3b8' } }
+          ],
+          series: [
+            { name: '功率', type: 'line', data: powerData, smooth: true, symbol: 'none', lineStyle: { color: '#00e5ff', width: 2 }, areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops: [{ offset:0, color:'rgba(0,229,255,0.3)' },{ offset:1, color:'rgba(0,229,255,0)' }] } } },
+            { name: '辐照度', type: 'line', yAxisIndex: 1, data: irradianceData, smooth: true, symbol: 'none', lineStyle: { color: '#ff9800', width: 1.5, type: 'dashed' } }
+          ]
+        });
+      } catch (e) {
+        console.error('Power chart failed:', e);
+        charts.power.setOption({ title: { text: '发电曲线加载失败', left: 'center', textStyle: { color: '#ff3d71', fontSize: 14 } } });
+      }
+    }
+
+    /* ============ Tab 2: Inverter Monitor ============ */
+    async function loadInverterDropdown() {
+      const select = document.getElementById('inverterSelect');
+      const sid = getEffectiveStationId();
+      try {
+        const json = await apiFetch(`${API}/stations/${sid}/inverters`);
+        if (json.success && json.data && json.data.length > 0) {
+          select.innerHTML = '<option value="">-- 请选择 --</option>' + json.data.map(inv => `<option value="${inv.id}">${inv.name || 'INV-' + inv.id} (${inv.string_count || 0}组串)</option>`).join('');
+        }
+      } catch (e) {
+        console.warn('Inverter dropdown failed:', e);
+      }
+    }
+
+    document.getElementById('inverterSelect').addEventListener('change', async e => {
+      const invId = e.target.value;
+      if (!invId) {
+        document.getElementById('inverterMonitorContent').style.display = 'none';
+        document.getElementById('inverterDetail').style.display = 'block';
+        document.getElementById('inverterDetail').innerHTML = '<div class="empty-msg">请选择一台逆变器查看详情</div>';
+        return;
+      }
+      await loadInverterDetail(invId);
+    });
+
+    async function loadInverterDetail(invId) {
+      document.getElementById('inverterDetail').style.display = 'none';
+      document.getElementById('inverterMonitorContent').style.display = 'block';
+
+      try {
+        const strRes = await fetch(`${API}/stations/${stationId}/inverters/${invId}/strings`);
+        const strJson = await strRes.json();
+
+        if (!strJson.success || !strJson.data || strJson.data.length === 0) {
+          document.getElementById('inverterMonitorContent').innerHTML = '<div class="error-msg">暂无组串数据</div>';
+          return;
+        }
+
+        const strings = strJson.data;
+
+        // Update string trend select
+        document.getElementById('stringTrendSelect').innerHTML = '<option value="">-- 选择组串 --</option>' +
+          strings.map(s => `<option value="${s.id}">${s.name || '组串-' + s.id}</option>`).join('');
+
+          // String bar chart
+        if (!charts.stringBar) {
+          charts.stringBar = echarts.init(document.getElementById('stringBarChart'), 'dark');
+        }
+        charts.stringBar.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(17,27,47,0.95)', borderColor: '#2a4060', textStyle: { color: '#e2e8f0' }, formatter: '{b}: {c} W' },
+          grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
+          xAxis: { type: 'category', data: strings.map(s => s.name || 'S' + s.id), axisLine: { lineStyle: { color: '#2a4060' } }, axisLabel: { color: '#94a3b8' } },
+          yAxis: { type: 'value', name: '功率(W)', nameTextStyle: { color: '#94a3b8' }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#94a3b8' } },
+          series: [{
+            type: 'bar',
+            data: strings.map(s => {
+              // Use peak_power for meaningful display (latest_power could be 0 at night)
+              const p = s.peak_power ?? s.latest_power ?? s.power_w ?? s.power ?? 0;
+              const isNormal = s.status === 'normal';
+              return {
+                value: p,
+                itemStyle: { color: isNormal ? '#00e5ff' : '#ff9800', borderRadius: [4, 4, 0, 0] }
+              };
+            }),
+            barMaxWidth: 50
+          }]
+        });
+
+        // String table
+        document.getElementById('stringTableContainer').innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>组串</th><th>峰值功率(W)</th><th>电压(V)</th><th>电流(A)</th><th>状态</th></tr></thead>
+            <tbody>${strings.map(s => {
+              const p = s.peak_power ?? s.latest_power ?? s.power_w ?? s.power ?? 0;
+              const v = s.latest_voltage ?? s.voltage ?? 0;
+              const c = s.latest_current ?? s.current ?? 0;
+              const isNormal = s.status === 'normal';
+              const statusClass = isNormal ? 'badge-normal' : 'badge-error';
+              const statusText = isNormal ? '正常' : '异常';
+              return `<tr>
+                <td>${s.name || '组串-' + s.id}</td>
+                <td style="font-family:var(--font-mono)">${p.toFixed(1)}</td>
+                <td style="font-family:var(--font-mono)">${v.toFixed(1)}</td>
+                <td style="font-family:var(--font-mono)">${c.toFixed(2)}</td>
+                <td><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>`;
+
+        // Auto-select first string for trend
+        if (strings.length > 0) {
+          document.getElementById('stringTrendSelect').value = strings[0].id;
+          loadStringTrend(strings[0].id);
+        }
+      } catch (e) {
+        console.error('Inverter detail failed:', e);
+        document.getElementById('inverterMonitorContent').innerHTML = '<div class="error-msg">组串数据加载失败</div>';
+      }
+    }
+
+    document.getElementById('stringTrendSelect').addEventListener('change', e => {
+      if (e.target.value) loadStringTrend(e.target.value);
+    });
+
+    async function loadStringTrend(strId) {
+      if (!charts.stringTrend) {
+        charts.stringTrend = echarts.init(document.getElementById('stringTrendChart'), 'dark');
+      }
+
+      const now = new Date();
+      const start = new Date(now); start.setHours(0, 0, 0, 0);
+      const end = new Date(now); end.setHours(23, 59, 59, 999);
+
+      try {
+        const pwRes = await fetch(`${API}/strings/${strId}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
+        const pwJson = await pwRes.json();
+
+        if (pwJson.success && pwJson.data && pwJson.data.length > 0) {
+          const sorted = pwJson.data.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+          const times = sorted.map(p => new Date(p.timestamp).toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' }));
+          const values = sorted.map(p => p.power_w || 0);
+
+          charts.stringTrend.setOption({
+            tooltip: { trigger: 'axis', backgroundColor: 'rgba(17,27,47,0.95)', borderColor: '#2a4060', textStyle: { color: '#e2e8f0' }, formatter: '{b}: {c} W' },
+            grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+            xAxis: { type: 'category', data: times, axisLine: { lineStyle: { color: '#2a4060' } }, axisLabel: { color: '#94a3b8', fontSize: 11, interval: 3 } },
+            yAxis: { type: 'value', name: '功率(W)', nameTextStyle: { color: '#94a3b8' }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#94a3b8' } },
+            series: [{ type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { color: '#00ff88', width: 2 }, areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops: [{ offset:0, color:'rgba(0,255,136,0.25)' },{ offset:1, color:'rgba(0,255,136,0)' }] } } }]
+          });
+        } else {
+          charts.stringTrend.setOption({ title: { text: '暂无功率数据', left: 'center', textStyle: { color: '#6b7280' } } });
+        }
+      } catch (e) {
+        charts.stringTrend.setOption({ title: { text: '趋势数据加载失败', left: 'center', textStyle: { color: '#ff3d71' } } });
+      }
+    }
+
+    /* ============ Tab 3: Alert Center ============ */
+    async function loadAlerts() {
+      const container = document.getElementById('alertsTableContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        const res = await fetch(`${API}/stations/${stationId}/alerts`);
+        const json = await res.json();
+        if (json.success) {
+          cachedAlerts = json.data || [];
+          renderAlertsTable();
+        } else {
+          container.innerHTML = '<div class="error-msg">告警加载失败</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">请求失败: ' + e.message + '</div>';
+      }
+    }
+
+    function applyAlertFilters() {
+      renderAlertsTable();
+    }
+
+    function renderAlertsTable() {
+      const typeFilter = document.getElementById('alertFilterType').value;
+      const sevFilter = document.getElementById('alertFilterSeverity').value;
+      const statusFilter = document.getElementById('alertFilterStatus').value;
+
+      let filtered = [...cachedAlerts];
+      if (typeFilter !== 'all') filtered = filtered.filter(a => a.type.includes(typeFilter));
+      if (sevFilter !== 'all') filtered = filtered.filter(a => a.severity === sevFilter);
+      if (statusFilter !== 'all') filtered = filtered.filter(a => a.status === statusFilter);
+
+      filtered.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const container = document.getElementById('alertsTableContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-msg">没有符合条件的告警记录</div>';
+        return;
+      }
+
+      const typeNames = { string_low_power: '组串功率低', inverter_fault: '逆变器故障', temperature_high: '温度过高', string_open_circuit: '组串开路', low_irradiance: '辐照度低', grid_disconnect: '电网断开', string_mismatch: '组串差异', maintenance_due: '维护提醒' };
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>时间</th><th>类型</th><th>严重等级</th><th>消息</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>${filtered.map(a => {
+            const sevClass = a.severity === 'critical' ? 'badge-error' : a.severity === 'warning' ? 'badge-warning' : 'badge-info';
+            const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
+            const statusClass = a.status === 'active' ? 'badge-error' : 'badge-normal';
+            const statusText = a.status === 'active' ? '活跃' : '已确认';
+            const time = new Date(a.created_at).toLocaleString('zh-CN');
+            return `<tr>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">${time}</td>
+              <td>${typeNames[a.type] || a.type}</td>
+              <td><span class="badge ${sevClass}"><span class="badge-dot"></span>${sevText}</span></td>
+              <td style="max-width:300px;">${a.message}</td>
+              <td><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></td>
+              <td>${a.status === 'active' ? `<button class="btn btn-sm btn-ack" onclick="acknowledgeAlert(${a.id})">确认</button>` : '-'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+        <div style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">共 ${filtered.length} 条告警</div>`;
+    }
+
+    async function acknowledgeAlert(id) {
+      try {
+        const res = await fetch(`${API}/stations/${stationId}/alerts/${id}/ack`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          await loadAlerts();
+          showToast(`告警 #${id} 已确认`, 'success');
+        }
+      } catch (e) {
+        showToast('确认失败: ' + e.message, 'error');
+      }
+    }
+
+    /* ============ Tab 4: Image Diagnosis ============ */
+    function initDiagnosis() {
+      const imageGrid = document.getElementById('imageGrid');
+      const sampleImages = [
+        { title: '红外图像 #1', desc: 'A区-第3排 热成像扫描', type: '热斑效应' },
+        { title: '红外图像 #2', desc: 'B区-第1排 热成像扫描', type: '二极管短路' },
+        { title: '红外图像 #3', desc: 'C区-第5排 热成像扫描', type: '接线盒过热' },
+        { title: '红外图像 #4', desc: 'A区-第7排 热成像扫描', type: '组件隐裂' },
+      ];
+
+      imageGrid.innerHTML = sampleImages.map((img, i) => `
+        <div class="img-placeholder">
+          <div class="img-body">
+            <canvas id="thermalCanvas${i}" width="260" height="180"></canvas>
+          </div>
+          <div class="img-footer">
+            <div class="img-label">${img.title}</div>
+            <div class="img-desc">${img.desc} · 检出: ${img.type}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Draw simulated thermal images
+      setTimeout(() => {
+        drawThermalImage('thermalCanvas0', 'hotspot');
+        drawThermalImage('thermalCanvas1', 'diode');
+        drawThermalImage('thermalCanvas2', 'junction');
+        drawThermalImage('thermalCanvas3', 'crack');
+      }, 200);
+
+      // Defect table
+      renderDefectTable();
+    }
+
+    function drawThermalImage(canvasId, defectType) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+
+      // Draw gradient background simulating thermal panel
+      const imageData = ctx.createImageData(w, h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          // Base: cool blue-ish panel
+          const baseR = 20 + Math.random() * 15;
+          const baseG = 30 + Math.random() * 20;
+          const baseB = 80 + Math.random() * 40;
+
+          let r = baseR, g = baseG, b = baseB;
+
+          // Add defects
+          if (defectType === 'hotspot') {
+            const dx = x - w * 0.6, dy = y - h * 0.45;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 40) { const f = 1 - dist/40; r += f * 200; g += f * 80; b -= f * 40; }
+          } else if (defectType === 'diode') {
+            if (x > w*0.3 && x < w*0.45 && y > h*0.2 && y < h*0.35) { r += 150 + Math.random()*50; g += 100; b -= 30; }
+          } else if (defectType === 'junction') {
+            const dx = x - w * 0.5, dy = y - h * 0.6;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 35) { const f = 1 - dist/35; r += f * 180; g += f * 60; b += f * 20; }
+          } else if (defectType === 'crack') {
+            const lineY = h * 0.5 + Math.sin(x * 0.05) * 10;
+            if (Math.abs(y - lineY) < 3) { r += 120; g += 80; b += 30; }
+          }
+
+          imageData.data[idx] = Math.min(255, Math.max(0, r));
+          imageData.data[idx+1] = Math.min(255, Math.max(0, g));
+          imageData.data[idx+2] = Math.min(255, Math.max(0, b));
+          imageData.data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      // Draw grid lines
+      ctx.strokeStyle = 'rgba(0,229,255,0.1)';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x < w; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let y = 0; y < h; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    }
+
+    function renderDefectTable() {
+      document.getElementById('defectTableContainer').innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>图像</th><th>缺陷类型</th><th>位置</th><th>等级</th><th>置信度</th></tr></thead>
+          <tbody>${MOCK_DEFECTS.map(d => {
+            const levelClass = d.level === '严重' ? 'badge-error' : d.level === '中等' ? 'badge-warning' : 'badge-info';
+            return `<tr>
+              <td>${d.image}</td>
+              <td>${d.type}</td>
+              <td style="font-family:var(--font-mono);font-size:0.82rem;">${d.position}</td>
+              <td><span class="badge ${levelClass}"><span class="badge-dot"></span>${d.level}</span></td>
+              <td style="font-family:var(--font-mono);color:var(--accent);">${(d.confidence * 100).toFixed(0)}%</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>`;
+    }
+
+    function simulateUpload() {
+      showToast('图片已上传，正在调用 AI 分析...', 'info');
+
+      // Create a sample SVG image to send to the AI
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+        <rect width="400" height="250" fill="#1a0a0a" />
+        <line x1="100" y1="0" x2="100" y2="250" stroke="#ff4444" stroke-width="0.5" opacity="0.3" />
+        <line x1="200" y1="0" x2="200" y2="250" stroke="#ff4444" stroke-width="0.5" opacity="0.3" />
+        <line x1="300" y1="0" x2="300" y2="250" stroke="#ff4444" stroke-width="0.5" opacity="0.3" />
+        <circle cx="180" cy="120" r="40" fill="#ff4444" opacity="0.5" />
+        <circle cx="180" cy="120" r="25" fill="#ff6644" opacity="0.7" />
+        <circle cx="180" cy="120" r="10" fill="#ffaa44" opacity="0.9" />
+        <text x="200" y="240" fill="#e5e7eb" text-anchor="middle" font-size="12">模拟热斑缺陷图像</text>
+      </svg>`;
+      const dataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+
+      // Call the real AI analysis API
+      fetch(`${API}/analysis/defect-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl, label: '模拟热斑缺陷' })
+      })
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data.defects) {
+          const defectTypes = { hot_spot: '热斑效应', crack: '隐裂', shadow: '遮挡', dirt: '污秽', unknown: '未知缺陷', visual_analysis: '视觉异常' };
+          const levelMap = { high: '严重', medium: '中等', low: '轻微' };
+          json.data.defects.forEach(d => {
+            MOCK_DEFECTS.push({
+              id: MOCK_DEFECTS.length + 1,
+              image: 'AI 分析 #' + MOCK_DEFECTS.length,
+              type: defectTypes[d.type] || d.type,
+              position: '新上传区域',
+              level: levelMap[d.severity] || '中等',
+              confidence: d.confidence
+            });
+          });
+          renderDefectTable();
+          const modelInfo = json.data.model_used ? ` (模型: ${json.data.model_used})` : '';
+          showToast(`AI 分析完成${modelInfo}，检出 ${json.data.defects.length} 个缺陷`, 'success');
+        } else {
+          showToast('AI 分析返回异常', 'error');
+        }
+      })
+      .catch(e => {
+        showToast('AI 分析请求失败: ' + e.message, 'error');
+      });
+    }
+
+    /* ============ Tab 5: Daily Report ============ */
+    async function generateReport() {
+      const btn = document.getElementById('btnGenerateReport');
+      btn.textContent = '⏳ 生成中...';
+      btn.disabled = true;
+
+      const container = document.getElementById('reportContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>AI 正在生成智能日报...</div>';
+
+      try {
+        const res = await fetch(`${API}/reports/daily/${stationId}`);
+        const json = await res.json();
+
+        if (!json.success) {
+          container.innerHTML = `<div class="error-msg">日报生成失败: ${json.error || '未知错误'}</div>`;
+          btn.textContent = '📝 生成日报';
+          btn.disabled = false;
+          return;
+        }
+
+        const r = json.data;
+        const dateObj = new Date(r.date + 'T00:00:00');
+        const dateStr = dateObj.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+
+        container.innerHTML = `
+          <div class="report-preview">
+            <div class="report-header">
+              <h2>☀ ${r.station.name} · 运维日报</h2>
+              <div class="report-date">${dateStr} · AI 智能生成</div>
+            </div>
+
+            <div class="report-section">
+              <h3>📊 发电概况</h3>
+              <p>今日总发电量 <span class="report-stat">${r.generation.total_energy_kwh.toFixed(1)} kWh</span>，峰值功率 <span class="report-stat">${r.generation.peak_power_kw.toFixed(1)} kW</span>，平均功率 <span class="report-stat">${r.generation.avg_power_kw.toFixed(1)} kW</span>。</p>
+              <p>电站装机容量 <span class="report-stat">${r.station.capacity_mw} MW</span> · 有效读数 <span class="report-stat">${r.generation.reading_count} 条</span>。</p>
+            </div>
+
+            <div class="report-section">
+              <h3>🌤 气象数据</h3>
+              <p>平均辐照度 <span class="report-stat">${r.weather.avg_irradiance_wm2} W/m²</span>，峰值辐照度 <span class="report-stat">${r.weather.peak_irradiance_wm2} W/m²</span>，平均温度 <span class="report-stat">${r.weather.avg_temperature_c}°C</span>。</p>
+            </div>
+
+            <div class="report-section">
+              <h3>📈 性能指标</h3>
+              <p>性能比 PR = <span class="report-stat" style="color: ${r.performance.performance_ratio >= 80 ? 'var(--green)' : r.performance.performance_ratio >= 60 ? 'var(--orange)' : 'var(--red)'}">${r.performance.performance_ratio.toFixed(1)}%</span>，活跃告警 <span class="report-stat">${r.performance.alerts_count} 条</span>（严重 ${r.performance.alerts_by_severity.critical} · 警告 ${r.performance.alerts_by_severity.warning} · 提示 ${r.performance.alerts_by_severity.info}）。</p>
+            </div>
+
+            <div class="report-section" style="border-left: 3px solid var(--purple);">
+              <h3>🤖 AI 智能分析 <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">(by ${r.ai_model === 'qwen-plus' ? '通义千问-plus' : '规则引擎'})</span></h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.9;white-space:pre-line;">${r.ai_summary || '暂无AI分析数据'}</p>
+            </div>
+
+            <div style="text-align:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.78rem;">
+              报告生成时间：${new Date().toLocaleString('zh-CN')} · 光伏运维AI智能分析平台
+            </div>
+          </div>`;
+
+        btn.textContent = '📝 生成日报';
+        btn.disabled = false;
+        showToast('日报生成成功', 'success');
+      } catch (e) {
+        container.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;
+        btn.textContent = '📝 生成日报';
+        btn.disabled = false;
+      }
+    }
+
+    /* ============ Window Resize ============ */
+    window.addEventListener('resize', () => {
+      Object.values(charts).forEach(c => { try { c && c.resize(); } catch(e) {} });
+    });
+
+    /* ============ Initialize ============ */
+    document.addEventListener('DOMContentLoaded', () => {
+      displayUserInfo();
+      loadStations();
+      loadOverview();
+      loadInverterDropdown();
+      loadAlerts();
+      updateAlertBadge();
+      initDiagnosis();
+      loadWorkOrders();
+
+      // Auto-refresh every 30 seconds
+      refreshTimer = setInterval(() => {
+        const activeTab = document.querySelector('.nav-tab.active');
+        if (!activeTab) return;
+        const tab = activeTab.dataset.tab;
+        if (tab === 'overview') {
+          loadOverviewKPIs();
+          loadInverterGrid();
+          loadAlertsOverview();
+        } else if (tab === 'alerts') {
+          loadAlerts();
+          updateAlertBadge();
+        } else if (tab === 'workorder') {
+          loadWorkOrders();
+        }
+      }, 30000);
+
+      // ============ WebSocket Integration ============
+      initWebSocket();
+    });
+
+    /* ============ WebSocket ============ */
+    function initWebSocket() {
+      const statusEl = document.getElementById('wsStatus');
+      if (!statusEl || typeof pvWS === 'undefined') return;
+
+      // Status indicator updates
+      pvWS.onStatus(function(status) {
+        switch(status) {
+          case 'connected':
+            statusEl.textContent = '🟢';
+            statusEl.title = 'WebSocket: 已连接';
+            break;
+          case 'connecting':
+            statusEl.textContent = '🟡';
+            statusEl.title = 'WebSocket: 连接中...';
+            break;
+          case 'disconnected':
+            statusEl.textContent = '🔴';
+            statusEl.title = 'WebSocket: 未连接';
+            break;
+          case 'error':
+            statusEl.textContent = '🔴';
+            statusEl.title = 'WebSocket: 连接错误';
+            break;
+        }
+      });
+
+      // Try to connect with auth token if available
+      function connectWithToken() {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          pvWS.connect(token);
+        } else {
+          // Connect without auth (will get limited access)
+          pvWS.connect();
+        }
+      }
+
+      connectWithToken();
+
+      subscribeToTopics();
+    }
+
+    function subscribeToTopics() {
+      const room = stationId === 'all' ? null : `station_${stationId}`;
+
+      // Subscribe to alerts - show toast on new alerts
+      pvWS.subscribe('alerts', function(data, event) {
+        if (event === 'created' && data) {
+          const sev = data.severity || 'warning';
+          const sevIcon = sev === 'critical' ? '🔴' : sev === 'warning' ? '🟡' : '🔵';
+          const sevText = sev === 'critical' ? '严重' : sev === 'warning' ? '警告' : '提示';
+          showToast(`${sevIcon} 新告警 [${sevText}]: ${data.message}`, 'error');
+          // Refresh alerts overview if on overview tab
+          loadAlertsOverview();
+          // Refresh alerts table if on alerts tab
+          loadAlerts();
+          // Update navbar badge
+          updateAlertBadge();
+        }
+      }, room);
+
+      // Subscribe to workorders - update workorder count
+      pvWS.subscribe('workorders', function(data, event) {
+        if (event === 'created' && data) {
+          showToast(`📋 新工单: ${data.title || '工单#' + data.id}`, 'info');
+          // Refresh workorder list if on workorder tab
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && activeTab.dataset.tab === 'workorder') {
+            loadWorkOrders();
+          }
+          // Update workorder stats badge
+          updateWorkOrderBadge();
+        } else if (event === 'updated' && data) {
+          showToast(`📋 工单状态更新: ${data.title || '工单#' + data.id}`, 'info');
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && activeTab.dataset.tab === 'workorder') {
+            loadWorkOrders();
+          }
+        }
+      }, room);
+
+      // Subscribe to power-data - refresh dashboard charts
+      pvWS.subscribe('power-data', function(data, event) {
+        if (event === 'new' && data) {
+          // Only refresh if viewing the overview tab
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && activeTab.dataset.tab === 'overview') {
+            loadOverviewKPIs();
+            loadPowerChart();
+          }
+        }
+      }, room);
+    }
+
+    function resubscribeWebSocket() {
+      if (typeof pvWS === 'undefined' || !pvWS.ws) return;
+      // Clear existing subscriptions
+      pvWS.unsubscribe('alerts');
+      pvWS.unsubscribe('workorders');
+      pvWS.unsubscribe('power-data');
+      // Re-subscribe with new room
+      subscribeToTopics();
+    }
+
+    /* ============ Alert Badge ============ */
+    async function updateAlertBadge() {
+      try {
+        const url = stationId === 'all'
+          ? `${API}/alerts`
+          : `${API}/stations/${stationId}/alerts`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.success) {
+          const alerts = json.data || [];
+          const activeCount = alerts.filter(a => a.status === 'active').length;
+          const badgeEl = document.getElementById('alertBadgeCount');
+          if (activeCount > 0) {
+            badgeEl.textContent = activeCount > 99 ? '99+' : activeCount;
+            badgeEl.classList.add('has-count');
+          } else {
+            badgeEl.classList.remove('has-count');
+          }
+        }
+      } catch (e) {
+        // Silently fail
+      }
+    }
+
+    function updateWorkOrderBadge() {
+      // Refresh work order stats if on workorder tab
+      if (cachedWorkOrders.length > 0) {
+        loadWorkOrderStats();
+      }
+    }
+
+    /* ============ Tab 6: Work Order Management ============ */
+    let cachedWorkOrders = [];
+
+    const WO_TYPE_NAMES = {
+      defect_repair: '缺陷修复',
+      routine_maintenance: '定期维护',
+      inspection: '巡检',
+      cleaning: '清洗',
+      other: '其他'
+    };
+
+    const WO_PRIORITY_NAMES = {
+      low: '低',
+      medium: '中',
+      high: '高',
+      urgent: '紧急'
+    };
+
+    const WO_STATUS_NAMES = {
+      pending: '待处理',
+      assigned: '已分配',
+      in_progress: '处理中',
+      completed: '已完成',
+      closed: '已关闭'
+    };
+
+    const WO_STATUS_TRANSITIONS = {
+      pending: ['assigned', 'closed'],
+      assigned: ['in_progress', 'pending', 'closed'],
+      in_progress: ['completed', 'pending'],
+      completed: ['closed', 'in_progress'],
+      closed: []
+    };
+
+    async function loadWorkOrders() {
+      const container = document.getElementById('workorderTableContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        const res = await fetch(`${API}/workorders`);
+        const json = await res.json();
+        if (json.success) {
+          cachedWorkOrders = json.data || [];
+          loadWorkOrderStats();
+          renderWorkOrderTable();
+        } else {
+          container.innerHTML = '<div class="error-msg">工单加载失败</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">请求失败: ' + e.message + '</div>';
+      }
+    }
+
+    function loadWorkOrderStats() {
+      const stats = { total: 0, pending: 0, in_progress: 0, completed: 0, closed: 0 };
+      cachedWorkOrders.forEach(wo => {
+        stats.total++;
+        if (stats[wo.status] !== undefined) stats[wo.status]++;
+      });
+      document.getElementById('woStatTotal').textContent = stats.total;
+      document.getElementById('woStatPending').textContent = stats.pending;
+      document.getElementById('woStatProgress').textContent = stats.in_progress;
+      document.getElementById('woStatCompleted').textContent = stats.completed;
+      document.getElementById('woStatClosed').textContent = stats.closed;
+    }
+
+    function applyWorkOrderFilters() {
+      renderWorkOrderTable();
+    }
+
+    function renderWorkOrderTable() {
+      const typeFilter = document.getElementById('woFilterType').value;
+      const priorityFilter = document.getElementById('woFilterPriority').value;
+      const statusFilter = document.getElementById('woFilterStatus').value;
+      const assigneeFilter = document.getElementById('woFilterAssignee').value.trim().toLowerCase();
+
+      let filtered = [...cachedWorkOrders];
+      if (typeFilter !== 'all') filtered = filtered.filter(w => w.type === typeFilter);
+      if (priorityFilter !== 'all') filtered = filtered.filter(w => w.priority === priorityFilter);
+      if (statusFilter !== 'all') filtered = filtered.filter(w => w.status === statusFilter);
+      if (assigneeFilter) filtered = filtered.filter(w => (w.assignee || '').toLowerCase().includes(assigneeFilter));
+
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const container = document.getElementById('workorderTableContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-msg">没有符合条件的工单记录</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>编号</th><th>标题</th><th>类型</th><th>优先级</th><th>状态</th><th>负责人</th><th>电站</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody>${filtered.map(w => {
+            const priClass = w.priority === 'urgent' ? 'badge-error' : w.priority === 'high' ? 'badge-warning' : w.priority === 'medium' ? 'badge-info' : 'badge-normal';
+            const priText = WO_PRIORITY_NAMES[w.priority] || w.priority;
+            const stClass = w.status === 'completed' ? 'badge-normal' : w.status === 'in_progress' ? 'badge-info' : w.status === 'assigned' ? 'badge-warning' : w.status === 'closed' ? 'badge-normal' : 'badge-error';
+            const stText = WO_STATUS_NAMES[w.status] || w.status;
+            const typeText = WO_TYPE_NAMES[w.type] || w.type;
+            const time = new Date(w.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+            return `<tr>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">#${w.id}</td>
+              <td style="max-width:200px;cursor:pointer;color:var(--accent);" onclick="viewWorkOrder(${w.id})">${w.title}</td>
+              <td>${typeText}</td>
+              <td><span class="badge ${priClass}"><span class="badge-dot"></span>${priText}</span></td>
+              <td><span class="badge ${stClass}"><span class="badge-dot"></span>${stText}</span></td>
+              <td>${w.assignee || '-'}</td>
+              <td>${w.station_name || '-'}</td>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">${time}</td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn-sm btn-outline" onclick="viewWorkOrder(${w.id})">详情</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteWorkOrder(${w.id})" style="margin-left:4px;">删除</button>
+              </td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+        <div style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">共 ${filtered.length} 条工单</div>`;
+    }
+
+    function showCreateWorkOrderForm() {
+      document.getElementById('createWorkOrderSection').style.display = 'block';
+      document.getElementById('workorderDetailSection').style.display = 'none';
+    }
+
+    function hideCreateWorkOrderForm() {
+      document.getElementById('createWorkOrderSection').style.display = 'none';
+      document.getElementById('createWorkOrderForm').reset();
+    }
+
+    async function createWorkOrder(e) {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('woTitle').value,
+        type: document.getElementById('woType').value,
+        priority: document.getElementById('woPriority').value,
+        assignee: document.getElementById('woAssignee').value || null,
+        description: document.getElementById('woDescription').value || null,
+        station_id: parseInt(document.getElementById('stationSelect').value) || null
+      };
+
+      try {
+        const res = await fetch(`${API}/workorders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast('工单创建成功', 'success');
+          hideCreateWorkOrderForm();
+          await loadWorkOrders();
+        } else {
+          showToast('创建失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+      return false;
+    }
+
+    async function viewWorkOrder(id) {
+      try {
+        const res = await fetch(`${API}/workorders/${id}`);
+        const json = await res.json();
+        if (!json.success) {
+          showToast('工单不存在', 'error');
+          return;
+        }
+
+        const wo = json.data;
+        const allowedTransitions = WO_STATUS_TRANSITIONS[wo.status] || [];
+        const priClass = wo.priority === 'urgent' ? 'badge-error' : wo.priority === 'high' ? 'badge-warning' : wo.priority === 'medium' ? 'badge-info' : 'badge-normal';
+        const stClass = wo.status === 'completed' ? 'badge-normal' : wo.status === 'in_progress' ? 'badge-info' : wo.status === 'assigned' ? 'badge-warning' : wo.status === 'closed' ? 'badge-normal' : 'badge-error';
+        const time = new Date(wo.created_at).toLocaleString('zh-CN');
+        const updateTime = new Date(wo.updated_at).toLocaleString('zh-CN');
+        const completeTime = wo.completed_at ? new Date(wo.completed_at).toLocaleString('zh-CN') : '-';
+
+        let html = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">工单编号</div>
+              <div style="font-family:var(--font-mono);font-size:1rem;">#${wo.id}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">标题</div>
+              <div style="font-weight:600;">${wo.title}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">类型</div>
+              <div>${WO_TYPE_NAMES[wo.type] || wo.type}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">优先级</div>
+              <div><span class="badge ${priClass}"><span class="badge-dot"></span>${WO_PRIORITY_NAMES[wo.priority]}</span></div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">状态</div>
+              <div><span class="badge ${stClass}"><span class="badge-dot"></span>${WO_STATUS_NAMES[wo.status]}</span></div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">负责人</div>
+              <div>${wo.assignee || '未分配'}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">关联电站</div>
+              <div>${wo.station_name || '-'}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">关联告警</div>
+              <div>${wo.alert_message || '-'}</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1rem;">
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">描述</div>
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6;">${wo.description || '无描述'}</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.25rem;font-size:0.8rem;">
+            <div>
+              <span style="color:var(--text-muted);">创建时间：</span>
+              <span style="font-family:var(--font-mono);">${time}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);">更新时间：</span>
+              <span style="font-family:var(--font-mono);">${updateTime}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);">完成时间：</span>
+              <span style="font-family:var(--font-mono);">${completeTime}</span>
+            </div>
+          </div>
+        `;
+
+        // Status transition buttons
+        if (allowedTransitions.length > 0) {
+          html += `
+            <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">状态变更</div>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                ${allowedTransitions.map(s => `<button class="btn btn-sm btn-outline" onclick="changeWorkOrderStatus(${wo.id}, '${s}')">${WO_STATUS_NAMES[s]}</button>`).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        // Notes section
+        html += `
+          <div style="padding-top:1rem;border-top:1px solid var(--border);">
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">备注记录 (${(wo.notes || []).length})</div>
+            <div id="woNotesList" style="max-height:200px;overflow-y:auto;margin-bottom:0.75rem;">
+              ${(wo.notes || []).length === 0 ? '<div style="color:var(--text-muted);font-size:0.82rem;padding:0.5rem;">暂无备注</div>' :
+                wo.notes.map(n => `
+                  <div style="padding:0.5rem;background:var(--bg-secondary);border-radius:var(--radius-sm);margin-bottom:0.4rem;">
+                    <div style="font-size:0.82rem;">${n.content}</div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem;">${n.created_by || '系统'} · ${new Date(n.created_at).toLocaleString('zh-CN')}</div>
+                  </div>
+                `).join('')
+              }
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <input type="text" id="woNoteInput" placeholder="输入备注内容" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addWorkOrderNote(${wo.id});}">
+              <button class="btn btn-sm" onclick="addWorkOrderNote(${wo.id})">添加</button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('workorderDetailContent').innerHTML = html;
+        document.getElementById('workorderDetailSection').style.display = 'block';
+        document.getElementById('createWorkOrderSection').style.display = 'none';
+      } catch (e) {
+        showToast('加载工单详情失败: ' + e.message, 'error');
+      }
+    }
+
+    async function changeWorkOrderStatus(id, newStatus) {
+      try {
+        const res = await fetch(`${API}/workorders/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`工单状态已变更为「${WO_STATUS_NAMES[newStatus]}」`, 'success');
+          await loadWorkOrders();
+          viewWorkOrder(id);
+        } else {
+          showToast('状态变更失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    async function addWorkOrderNote(id) {
+      const input = document.getElementById('woNoteInput');
+      const content = input.value.trim();
+      if (!content) {
+        showToast('备注内容不能为空', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/workorders/${id}/notes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, created_by: '操作员' })
+        });
+        const json = await res.json();
+        if (json.success) {
+          input.value = '';
+          showToast('备注添加成功', 'success');
+          viewWorkOrder(id);
+        } else {
+          showToast('添加失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteWorkOrder(id) {
+      if (!confirm(`确定要删除工单 #${id} 吗？`)) return;
+
+      try {
+        const res = await fetch(`${API}/workorders/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+          showToast('工单已删除', 'success');
+          document.getElementById('workorderDetailSection').style.display = 'none';
+          await loadWorkOrders();
+        } else {
+          showToast('删除失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    function closeWorkOrderDetail() {
+      document.getElementById('workorderDetailSection').style.display = 'none';
+    }
+
+    /* ============ Alert Rules ============ */
+    async function loadAlertRules() {
+      try {
+        const [rulesRes, statsRes] = await Promise.all([
+          fetch(`${API}/alert-rules?station_id=${stationId}`),
+          fetch(`${API}/alert-rules/stats`),
+        ]);
+        const rulesJson = await rulesRes.json();
+        const statsJson = await statsRes.json();
+
+        // Stats
+        if (statsJson.success) {
+          document.getElementById('alertRuleStats').innerHTML = `
+            <div class="stat-card"><div class="stat-value" style="color:var(--accent)">${statsJson.data.total}</div><div class="stat-label">规则总数</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--green)">${statsJson.data.enabled}</div><div class="stat-label">已启用</div></div>
+            <div class="stat-card"><div class="stat-value" style="color:var(--orange)">${statsJson.data.disabled}</div><div class="stat-label">已禁用</div></div>
+          `;
+        }
+
+        // Table
+        const container = document.getElementById('alertRulesTable');
+        if (!rulesJson.success || !rulesJson.data.length) {
+          container.innerHTML = '<div class="empty-msg" style="text-align:center;padding:2rem;color:var(--text-muted);">暂无告警规则，点击"初始化默认规则"或"创建规则"</div>';
+          return;
+        }
+        const typeNames = { string_low_power:'组串功率偏低', string_zero_output:'组串零输出', temperature_high:'温度过高', irradiance_low:'辐照度过低', power_drop_sudden:'功率突降', string_mismatch:'组串差异', inverter_offline:'逆变器离线', voltage_abnormal:'电压异常' };
+        const sevBadge = { info:'<span class="badge" style="background:var(--blue);color:#fff;">提示</span>', warning:'<span class="badge" style="background:var(--orange);color:#fff;">警告</span>', critical:'<span class="badge" style="background:var(--red);color:#fff;">严重</span>' };
+        let html = '<table><thead><tr><th>ID</th><th>规则名称</th><th>类型</th><th>指标</th><th>条件</th><th>严重度</th><th>冷却</th><th>自动工单</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+        rulesJson.data.forEach(rule => {
+          const condition = `${rule.operator} ${rule.threshold}`;
+          html += `<tr>
+            <td>${rule.id}</td>
+            <td><strong>${rule.name}</strong></td>
+            <td>${typeNames[rule.type] || rule.type}</td>
+            <td style="font-family:var(--font-mono);font-size:0.82rem;">${rule.metric}</td>
+            <td><code style="color:var(--yellow);">${condition}</code></td>
+            <td>${sevBadge[rule.severity]}</td>
+            <td>${rule.cooldown_minutes}min</td>
+            <td>${rule.auto_create_workorder ? '✅' : '❌'}</td>
+            <td><span class="badge" style="background:${rule.enabled ? 'var(--green)' : 'var(--text-muted)'};color:${rule.enabled ? '#fff' : 'var(--bg-primary)'};">${rule.enabled ? '启用' : '禁用'}</span></td>
+            <td class="actions-cell">
+              <button class="btn btn-sm ${rule.enabled ? 'btn-orange' : 'btn-green'}" onclick="toggleRule(${rule.id}, ${!rule.enabled})">${rule.enabled ? '禁用' : '启用'}</button>
+              <button class="btn btn-sm btn-red" onclick="deleteRule(${rule.id})">删除</button>
+            </td>
+          </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (e) {
+        document.getElementById('alertRulesTable').innerHTML = '<div class="error-msg">规则加载失败</div>';
+      }
+    }
+
+    function showCreateRule() { document.getElementById('createRuleSection').style.display = 'block'; }
+
+    async function createAlertRule(e) {
+      e.preventDefault();
+      try {
+        const res = await fetch(`${API}/alert-rules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('ruleName').value,
+            type: document.getElementById('ruleType').value,
+            metric: document.getElementById('ruleMetric').value,
+            threshold: parseFloat(document.getElementById('ruleThreshold').value),
+            operator: document.getElementById('ruleOperator').value,
+            severity: document.getElementById('ruleSeverity').value,
+            station_id: parseInt(stationId),
+            cooldown_minutes: parseInt(document.getElementById('ruleCooldown').value) || 30,
+            auto_create_workorder: document.getElementById('ruleAutoWO').checked,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('createRuleSection').style.display = 'none';
+          document.getElementById('createRuleForm').reset();
+          showToast('规则创建成功', 'success');
+          await loadAlertRules();
+        } else {
+          showToast('创建失败: ' + json.error, 'error');
+        }
+      } catch (e) { showToast('请求失败', 'error'); }
+      return false;
+    }
+
+    async function seedAlertRules() {
+      try {
+        const res = await fetch(`${API}/alert-rules/seed/${stationId}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`已初始化 ${json.count} 条默认规则`, 'success');
+          await loadAlertRules();
+        }
+      } catch (e) { showToast('初始化失败', 'error'); }
+    }
+
+    async function runAlertEvaluation() {
+      try {
+        showToast('正在执行规则评估...', 'info');
+        const res = await fetch(`${API}/alert-rules/evaluate-all/${stationId}`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          if (json.data.triggered > 0) {
+            showToast(`评估完成：触发 ${json.data.triggered} 条规则，创建 ${json.data.createdAlerts.length} 条告警`, 'warning');
+          } else {
+            showToast('评估完成：所有规则正常', 'success');
+          }
+          await loadAlertRules();
+        }
+      } catch (e) { showToast('评估失败', 'error'); }
+    }
+
+    async function toggleRule(id, enable) {
+      try {
+        await fetch(`${API}/alert-rules/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: enable }),
+        });
+        await loadAlertRules();
+      } catch (e) { showToast('操作失败', 'error'); }
+    }
+
+    async function deleteRule(id) {
+      if (!confirm('确定删除此规则？')) return;
+      try {
+        await fetch(`${API}/alert-rules/${id}`, { method: 'DELETE' });
+        await loadAlertRules();
+      } catch (e) { showToast('删除失败', 'error'); }
+    }
+
+    /* ============ Data Export ============ */
+    function exportData(type) {
+      const urls = {
+        station: `${API}/export/station/${stationId}`,
+        power: `${API}/export/power-data?station_id=${stationId}`,
+        alerts: `${API}/export/alerts?station_id=${stationId}`,
+        workorders: `${API}/export/workorders`,
+      };
+      const url = urls[type];
+      if (!url) return;
+      // Create a hidden link and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('导出下载已开始', 'success');
+    }
+
+  </script>
+</body>
+</html>

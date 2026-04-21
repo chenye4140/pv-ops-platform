@@ -7,6 +7,7 @@ const { initDatabase } = require('./src/models/database');
 const authService = require('./src/services/authService');
 const wsService = require('./src/services/websocketService');
 const forecastAutoGenerate = require('./src/services/forecastAutoGenerate');
+const alertEvaluationScheduler = require('./src/services/alertEvaluationScheduler');
 
 // Initialize database and seed default admin
 initDatabase();
@@ -14,14 +15,18 @@ authService.seedDefaultAdmin().catch((err) => {
   console.error('Error seeding default admin:', err.message);
 });
 
-// Auto-generate forecasts for all active stations on startup (with 5s delay after DB init)
+// Auto-generate forecasts for all active stations on startup (3 days ahead, with 5s delay after DB init)
 setTimeout(() => {
-  forecastAutoGenerate.generateForecastsForAllStations().catch((err) => {
+  forecastAutoGenerate.generateMultiDayForecasts(3).catch((err) => {
     console.error('[Startup] Forecast auto-generation failed:', err.message);
+    // Fallback to single-day if multi-day fails
+    forecastAutoGenerate.generateForecastsForAllStations().catch((err2) => {
+      console.error('[Startup] Fallback forecast generation also failed:', err2.message);
+    });
   });
 }, 5000);
 
-// Schedule daily forecast regeneration at 23:00
+// Schedule daily forecast regeneration at 23:00 (3 days ahead)
 const dailyForecast = forecastAutoGenerate.scheduleDailyForecast(23, 0);
 
 const app = express();
@@ -54,6 +59,7 @@ const alertRuleRoutes = require('./src/routes/alertRuleRoutes');
 const exportRoutes = require('./src/routes/exportRoutes');
 const inspectionRoutes = require('./src/routes/inspectionRoutes');
 const forecastRoutes = require('./src/routes/forecastRoutes');
+const forecastEnhancedRoutes = require('./src/routes/forecastEnhancedRoutes');
 const kpiRoutes = require('./src/routes/kpiRoutes');
 
 app.use('/api/stations', stationRoutes);
@@ -64,10 +70,23 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/strings', stringRoutes);
 app.use('/api/workorders', workorderRoutes);
+
+// Alert rule evaluation status endpoint — must be BEFORE the /api/alert-rules router
+// so it doesn't get caught by the /:id parametric route
+app.get('/api/alert-rules/evaluation-status', (req, res) => {
+  try {
+    const status = alertEvaluationScheduler.getEvaluationStatus();
+    res.json({ success: true, data: status });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.use('/api/alert-rules', alertRuleRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/inspections', inspectionRoutes);
 app.use('/api/forecast', forecastRoutes);
+app.use('/api/forecast', forecastEnhancedRoutes);
 app.use('/api/kpi', kpiRoutes);
 
 // Health check
@@ -95,6 +114,9 @@ app.get('*', (req, res) => {
 // Start Express server
 const server = app.listen(PORT, () => {
   console.log(`PV Ops Platform backend running on http://localhost:${PORT}`);
+
+  // Start the alert evaluation scheduler after the server is ready
+  alertEvaluationScheduler.startScheduler(5);
 });
 
 // Start WebSocket server (non-blocking)
