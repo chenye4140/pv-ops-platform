@@ -268,6 +268,65 @@
       margin-bottom: 0.5rem;
     }
 
+    /* Anomaly table */
+    .anomaly-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .anomaly-table th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .anomaly-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px dashed var(--border);
+    }
+    .anomaly-table tr:hover td {
+      background: var(--accent-glow);
+    }
+    .anomaly-table .string-name {
+      font-family: monospace;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .loss-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+    .loss-critical { background: rgba(239,68,68,0.2); color: var(--red); }
+    .loss-high { background: rgba(245,158,11,0.2); color: var(--orange); }
+    .loss-medium { background: rgba(59,130,246,0.2); color: var(--blue); }
+    .analyze-link {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 0.8rem;
+    }
+    .analyze-link:hover { color: #67e8f9; }
+    .anomaly-summary {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .anomaly-stat {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background: var(--bg-secondary);
+      font-size: 0.85rem;
+    }
+    .anomaly-stat .num { font-weight: 700; font-size: 1.1rem; }
+    .anomaly-stat .num.red { color: var(--red); }
+    .anomaly-stat .num.green { color: var(--green); }
+
     /* Loading */
     .loading {
       display: flex;
@@ -322,6 +381,14 @@
   </nav>
 
   <main class="main">
+    <!-- Anomaly Detection Section -->
+    <div class="section" id="anomalySection">
+      <div class="section-header"><span class="icon">🚨</span> 异常组串检测 <span id="anomalyStatus" style="font-size:0.75rem; color:var(--text-muted); font-weight:400; margin-left:0.5rem;">加载中...</span></div>
+      <div id="anomalyContent">
+        <div class="loading"><div class="spinner"></div>正在加载异常数据...</div>
+      </div>
+    </div>
+
     <!-- Upload Section -->
     <div class="section">
       <div class="section-header"><span class="icon">📤</span> 上传缺陷图片</div>
@@ -586,6 +653,96 @@
 
     // Init
     initGallery();
+    loadAnomalyData();
+
+    // ---- Anomaly Detection ----
+    // Map defect types to sample image indices
+    const defectTypeMap = {
+      'hot_spot': 0,   // 热斑
+      'crack': 1,      // 隐裂
+      'shadow': 2,     // 遮挡
+      'dirt': 3,       // 污秽
+    };
+    // Default: map unknown to hot_spot analysis
+    const defaultDefectType = 0;
+
+    async function loadAnomalyData() {
+      const content = document.getElementById('anomalyContent');
+      const status = document.getElementById('anomalyStatus');
+
+      try {
+        const res = await fetch(`${API}/analysis/station/1/anomaly`);
+        const json = await res.json();
+
+        if (!json.success) {
+          content.innerHTML = '<div class="error-msg" style="color:var(--red)">加载异常数据失败</div>';
+          status.textContent = '加载失败';
+          return;
+        }
+
+        const data = json.data;
+        const healthyCount = data.total_strings - data.abnormal_count;
+
+        status.textContent = `共 ${data.total_strings} 个组串 · ${data.abnormal_count} 个异常 · ${healthyCount} 个正常`;
+
+        if (data.abnormal_count === 0) {
+          content.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--green); font-weight:600;">✅ 所有组串运行正常</div>';
+          return;
+        }
+
+        let html = `<div class="anomaly-summary">
+          <div class="anomaly-stat"><span class="num green">${healthyCount}</span> 正常</div>
+          <div class="anomaly-stat"><span class="num red">${data.abnormal_count}</span> 异常</div>
+        </div>`;
+
+        html += '<table class="anomaly-table"><thead><tr>' +
+          '<th>组串编号</th><th>额定功率</th><th>当前功率</th><th>效率损失</th><th>建议操作</th>' +
+          '</tr></thead><tbody>';
+
+        data.abnormal_strings.forEach(s => {
+          const ratedKw = (s.rated_power_w / 1000).toFixed(1);
+          const currentKw = (s.latest_power_w / 1000).toFixed(2);
+          const loss = s.efficiency_loss;
+          const lossClass = loss >= 80 ? 'loss-critical' : loss >= 50 ? 'loss-high' : 'loss-medium';
+
+          // Map to a sample defect image for quick analysis
+          const sampleIdx = defaultDefectType;
+          const sampleLabel = sampleImages[sampleIdx].label;
+
+          html += `<tr>
+            <td><span class="string-name">${s.name}</span></td>
+            <td>${ratedKw} kW</td>
+            <td>${currentKw} kW</td>
+            <td><span class="loss-badge ${lossClass}">${loss}%</span></td>
+            <td><span class="analyze-link" onclick="quickAnomalyAnalysis(${sampleIdx}, '${s.name}')">🔍 AI分析</span></td>
+          </tr>`;
+        });
+
+        html += '</tbody></table>';
+        content.innerHTML = html;
+      } catch (e) {
+        content.innerHTML = '<div class="error-msg" style="color:var(--red)">请求失败: ' + e.message + '</div>';
+        status.textContent = '请求失败';
+      }
+    }
+
+    function quickAnomalyAnalysis(sampleIdx, stringName) {
+      selectedImage = sampleImages[sampleIdx].url;
+      selectedLabel = `${stringName} - ${sampleImages[sampleIdx].label}`;
+
+      // Highlight the gallery item
+      document.querySelectorAll('.gallery-item').forEach((el, i) => {
+        el.classList.toggle('selected', i === sampleIdx);
+      });
+
+      showPreview(selectedImage, selectedLabel);
+
+      // Scroll to analysis section
+      document.getElementById('analysisSection').scrollIntoView({ behavior: 'smooth' });
+
+      // Auto-run analysis
+      setTimeout(() => runAnalysis(), 500);
+    }
   </script>
 </body>
 </html>
