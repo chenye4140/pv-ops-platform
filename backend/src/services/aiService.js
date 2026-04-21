@@ -10,7 +10,8 @@
 
 const https = require('https');
 
-const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY || '';
+// Lazy-load API key to ensure dotenv is loaded first
+const getDashScopeApiKey = () => process.env.DASHSCOPE_API_KEY || '';
 const DASHSCOPE_BASE_URL = 'dashscope.aliyuncs.com';
 const VISION_MODEL = 'qwen-vl-max';
 const TEXT_MODEL = 'qwen-plus';
@@ -20,7 +21,8 @@ const TEXT_MODEL = 'qwen-plus';
 // ---------------------------------------------------------------------------
 
 function isConfigured() {
-  return DASHSCOPE_API_KEY && DASHSCOPE_API_KEY.startsWith('sk-');
+  const key = getDashScopeApiKey();
+  return key && key.startsWith('sk-');
 }
 
 /**
@@ -41,7 +43,7 @@ function dashscopePost(model, messages, maxTokens = 2048, temperature = 0.1) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+        'Authorization': `Bearer ${getDashScopeApiKey()}`,
         'Content-Length': Buffer.byteLength(payload),
       },
       timeout: 60000,

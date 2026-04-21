@@ -677,17 +677,8 @@
     let charts = {};
     let refreshTimer = null;
 
-    /* ============ Mock Data ============ */
-    const MOCK_ALERTS = [
-      { id: 1, type: 'string', severity: 'critical', message: '组串 INV-01-03 电流异常偏低，疑似断路', created_at: new Date(Date.now()-300000).toISOString(), status: 'active', inverter_name: 'INV-01' },
-      { id: 2, type: 'inverter', severity: 'warning', message: '逆变器 INV-04 温度偏高，当前 78°C', created_at: new Date(Date.now()-900000).toISOString(), status: 'active', inverter_name: 'INV-04' },
-      { id: 3, type: 'string', severity: 'warning', message: '组串 INV-02-05 功率偏离预期值 15%', created_at: new Date(Date.now()-1800000).toISOString(), status: 'acked', inverter_name: 'INV-02' },
-      { id: 4, type: 'weather', severity: 'info', message: '明日预计阴雨天气，辐照度将下降 40%', created_at: new Date(Date.now()-3600000).toISOString(), status: 'active', inverter_name: '' },
-      { id: 5, type: 'string', severity: 'critical', message: '组串 INV-07-02 完全无输出', created_at: new Date(Date.now()-7200000).toISOString(), status: 'active', inverter_name: 'INV-07' },
-      { id: 6, type: 'system', severity: 'info', message: '数据采集系统例行维护完成', created_at: new Date(Date.now()-14400000).toISOString(), status: 'acked', inverter_name: '' },
-      { id: 7, type: 'inverter', severity: 'warning', message: '逆变器 INV-09 通信延迟增加', created_at: new Date(Date.now()-28800000).toISOString(), status: 'active', inverter_name: 'INV-09' },
-      { id: 8, type: 'string', severity: 'warning', message: '组串 INV-03-01 电压波动超出阈值', created_at: new Date(Date.now()-43200000).toISOString(), status: 'acked', inverter_name: 'INV-03' },
-    ];
+    /* ============ Cached Alert Data ============ */
+    let cachedAlerts = [];
 
     const MOCK_DEFECTS = [
       { id: 1, image: '红外图像 #1', type: '热斑效应', position: 'A区-第3排-组串05', level: '严重', confidence: 0.94 },
@@ -828,27 +819,32 @@
 
     async function loadAlertsOverview() {
       const container = document.getElementById('alertListOverview');
-      // Alerts API returns 404, use mock data
-      const alerts = MOCK_ALERTS.slice(0, 5);
-      document.getElementById('alertBadge').textContent = `共 ${alerts.filter(a => a.status === 'active').length} 条活跃`;
+      try {
+        const res = await fetch(`${API}/stations/${stationId}/alerts`);
+        const json = await res.json();
+        const alerts = json.success ? (json.data || []).slice(0, 5) : [];
+        document.getElementById('alertBadge').textContent = `共 ${alerts.filter(a => a.status === 'active').length} 条活跃`;
 
-      if (alerts.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--green);">✅ 暂无活跃告警</div>';
-        return;
+        if (alerts.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--green);">✅ 暂无活跃告警</div>';
+          return;
+        }
+        container.innerHTML = `<div class="alert-list">${alerts.map(a => {
+          const cls = a.severity === 'critical' ? 'alert-critical' : a.severity === 'warning' ? 'alert-warning' : 'alert-info';
+          const icon = a.severity === 'critical' ? '🔴' : a.severity === 'warning' ? '🟡' : '🔵';
+          const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
+          const time = new Date(a.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+          return `<div class="alert-item ${cls}">
+            <span class="alert-icon">${icon}</span>
+            <div class="alert-content">
+              <div class="alert-title">${a.message}</div>
+              <div class="alert-meta">${sevText} · ${time}</div>
+            </div>
+          </div>`;
+        }).join('')}</div>`;
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">告警加载失败</div>';
       }
-      container.innerHTML = `<div class="alert-list">${alerts.map(a => {
-        const cls = a.severity === 'critical' ? 'alert-critical' : a.severity === 'warning' ? 'alert-warning' : 'alert-info';
-        const icon = a.severity === 'critical' ? '🔴' : a.severity === 'warning' ? '🟡' : '🔵';
-        const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
-        const time = new Date(a.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
-        return `<div class="alert-item ${cls}">
-          <span class="alert-icon">${icon}</span>
-          <div class="alert-content">
-            <div class="alert-title">${a.message}</div>
-            <div class="alert-meta">${sevText} · ${time}${a.inverter_name ? ' · ' + a.inverter_name : ''}</div>
-          </div>
-        </div>`;
-      }).join('')}</div>`;
     }
 
     /* ============ Power Chart ============ */
@@ -867,9 +863,30 @@
         }
 
         const firstInv = invJson.data[0];
+
+        // Find the latest date with data (mock data is from past 7 days, not today)
         const now = new Date();
-        const start = new Date(now); start.setHours(0, 0, 0, 0);
-        const end = new Date(now); end.setHours(23, 59, 59, 999);
+        let start, end;
+        try {
+          // Query first string's power data to find the latest available date
+          const strRes0 = await fetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
+          const strJson0 = await strRes0.json();
+          if (strJson0.success && strJson0.data.length > 0) {
+            // Get just the first and last records to determine date range
+            const pwRes0 = await fetch(`${API}/strings/${strJson0.data[0].id}/power`);
+            const pwJson0 = await pwRes0.json();
+            if (pwJson0.success && pwJson0.data && pwJson0.data.length > 0) {
+              const lastRecord = pwJson0.data[pwJson0.data.length - 1];
+              const latestDate = new Date(lastRecord.timestamp);
+              start = new Date(latestDate); start.setHours(0, 0, 0, 0);
+              end = new Date(latestDate); end.setHours(23, 59, 59, 999);
+            }
+          }
+        } catch(e) { /* will fall back to today */ }
+        if (!start) {
+          start = new Date(now); start.setHours(0, 0, 0, 0);
+          end = new Date(now); end.setHours(23, 59, 59, 999);
+        }
 
         // Get strings
         const strRes = await fetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
@@ -908,7 +925,7 @@
               const t = new Date(w.timestamp);
               const key = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
               if (!wMap[key]) wMap[key] = [];
-              wMap[key].push(w.irradiance || 0);
+              wMap[key].push(w.irradiance_wm2 || 0);
             });
             const wSorted = Object.entries(wMap).sort((a,b) => a[0].localeCompare(b[0]));
             if (wSorted.length > 0 && timeAxis.length === 0) {
@@ -1012,10 +1029,12 @@
           series: [{
             type: 'bar',
             data: strings.map(s => {
-              const p = s.latest_power ?? s.power_w ?? s.power ?? 0;
+              // Use peak_power for meaningful display (latest_power could be 0 at night)
+              const p = s.peak_power ?? s.latest_power ?? s.power_w ?? s.power ?? 0;
+              const isNormal = s.status === 'normal';
               return {
                 value: p,
-                itemStyle: { color: p > 0 ? '#00e5ff' : '#ff3d71', borderRadius: [4, 4, 0, 0] }
+                itemStyle: { color: isNormal ? '#00e5ff' : '#ff9800', borderRadius: [4, 4, 0, 0] }
               };
             }),
             barMaxWidth: 50
@@ -1025,14 +1044,14 @@
         // String table
         document.getElementById('stringTableContainer').innerHTML = `
           <table class="data-table">
-            <thead><tr><th>组串</th><th>功率(W)</th><th>电压(V)</th><th>电流(A)</th><th>状态</th></tr></thead>
+            <thead><tr><th>组串</th><th>峰值功率(W)</th><th>电压(V)</th><th>电流(A)</th><th>状态</th></tr></thead>
             <tbody>${strings.map(s => {
-              const p = s.latest_power ?? s.power_w ?? s.power ?? 0;
+              const p = s.peak_power ?? s.latest_power ?? s.power_w ?? s.power ?? 0;
               const v = s.latest_voltage ?? s.voltage ?? 0;
               const c = s.latest_current ?? s.current ?? 0;
-              const isNormal = p > 0;
+              const isNormal = s.status === 'normal';
               const statusClass = isNormal ? 'badge-normal' : 'badge-error';
-              const statusText = isNormal ? '正常' : '无输出';
+              const statusText = isNormal ? '正常' : '异常';
               return `<tr>
                 <td>${s.name || '组串-' + s.id}</td>
                 <td style="font-family:var(--font-mono)">${p.toFixed(1)}</td>
@@ -1092,6 +1111,23 @@
     }
 
     /* ============ Tab 3: Alert Center ============ */
+    async function loadAlerts() {
+      const container = document.getElementById('alertsTableContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        const res = await fetch(`${API}/stations/${stationId}/alerts`);
+        const json = await res.json();
+        if (json.success) {
+          cachedAlerts = json.data || [];
+          renderAlertsTable();
+        } else {
+          container.innerHTML = '<div class="error-msg">告警加载失败</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">请求失败: ' + e.message + '</div>';
+      }
+    }
+
     function applyAlertFilters() {
       renderAlertsTable();
     }
@@ -1101,8 +1137,8 @@
       const sevFilter = document.getElementById('alertFilterSeverity').value;
       const statusFilter = document.getElementById('alertFilterStatus').value;
 
-      let filtered = [...MOCK_ALERTS];
-      if (typeFilter !== 'all') filtered = filtered.filter(a => a.type === typeFilter);
+      let filtered = [...cachedAlerts];
+      if (typeFilter !== 'all') filtered = filtered.filter(a => a.type.includes(typeFilter));
       if (sevFilter !== 'all') filtered = filtered.filter(a => a.severity === sevFilter);
       if (statusFilter !== 'all') filtered = filtered.filter(a => a.status === statusFilter);
 
@@ -1114,7 +1150,7 @@
         return;
       }
 
-      const typeNames = { string: '组串异常', inverter: '逆变器故障', weather: '气象预警', system: '系统告警' };
+      const typeNames = { string_low_power: '组串功率低', inverter_fault: '逆变器故障', temperature_high: '温度过高', string_open_circuit: '组串开路', low_irradiance: '辐照度低', grid_disconnect: '电网断开', string_mismatch: '组串差异', maintenance_due: '维护提醒' };
 
       container.innerHTML = `
         <table class="data-table">
@@ -1138,12 +1174,16 @@
         <div style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">共 ${filtered.length} 条告警</div>`;
     }
 
-    function acknowledgeAlert(id) {
-      const alert = MOCK_ALERTS.find(a => a.id === id);
-      if (alert) {
-        alert.status = 'acked';
-        renderAlertsTable();
-        showToast(`告警 #${id} 已确认`, 'success');
+    async function acknowledgeAlert(id) {
+      try {
+        const res = await fetch(`${API}/stations/${stationId}/alerts/${id}/ack`, { method: 'POST' });
+        const json = await res.json();
+        if (json.success) {
+          await loadAlerts();
+          showToast(`告警 #${id} 已确认`, 'success');
+        }
+      } catch (e) {
+        showToast('确认失败: ' + e.message, 'error');
       }
     }
 
@@ -1248,100 +1288,119 @@
     }
 
     function simulateUpload() {
-      showToast('模拟上传成功：检测到1个新增缺陷', 'success');
-      MOCK_DEFECTS.push({
-        id: MOCK_DEFECTS.length + 1,
-        image: '红外图像 #' + (MOCK_DEFECTS.length + 1),
-        type: '旁路二极管开路',
-        position: 'D区-第2排-组串04',
-        level: '严重',
-        confidence: 0.91
+      showToast('图片已上传，正在调用 AI 分析...', 'info');
+
+      // Create a sample SVG image to send to the AI
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+        <rect width="400" height="250" fill="#1a0a0a" />
+        <line x1="100" y1="0" x2="100" y2="250" stroke="#ff4444" stroke-width="0.5" opacity="0.3" />
+        <line x1="200" y1="0" x2="200" y2="250" stroke="#ff4444" stroke-width="0.5" opacity="0.3" />
+        <line x1="300" y1="0" x2="300" y2="250" stroke="#ff4444" stroke-width="0.5" opacity="0.3" />
+        <circle cx="180" cy="120" r="40" fill="#ff4444" opacity="0.5" />
+        <circle cx="180" cy="120" r="25" fill="#ff6644" opacity="0.7" />
+        <circle cx="180" cy="120" r="10" fill="#ffaa44" opacity="0.9" />
+        <text x="200" y="240" fill="#e5e7eb" text-anchor="middle" font-size="12">模拟热斑缺陷图像</text>
+      </svg>`;
+      const dataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+
+      // Call the real AI analysis API
+      fetch(`${API}/analysis/defect-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl, label: '模拟热斑缺陷' })
+      })
+      .then(res => res.json())
+      .then(json => {
+        if (json.success && json.data.defects) {
+          const defectTypes = { hot_spot: '热斑效应', crack: '隐裂', shadow: '遮挡', dirt: '污秽', unknown: '未知缺陷', visual_analysis: '视觉异常' };
+          const levelMap = { high: '严重', medium: '中等', low: '轻微' };
+          json.data.defects.forEach(d => {
+            MOCK_DEFECTS.push({
+              id: MOCK_DEFECTS.length + 1,
+              image: 'AI 分析 #' + MOCK_DEFECTS.length,
+              type: defectTypes[d.type] || d.type,
+              position: '新上传区域',
+              level: levelMap[d.severity] || '中等',
+              confidence: d.confidence
+            });
+          });
+          renderDefectTable();
+          const modelInfo = json.data.model_used ? ` (模型: ${json.data.model_used})` : '';
+          showToast(`AI 分析完成${modelInfo}，检出 ${json.data.defects.length} 个缺陷`, 'success');
+        } else {
+          showToast('AI 分析返回异常', 'error');
+        }
+      })
+      .catch(e => {
+        showToast('AI 分析请求失败: ' + e.message, 'error');
       });
-      renderDefectTable();
     }
 
     /* ============ Tab 5: Daily Report ============ */
-    function generateReport() {
+    async function generateReport() {
       const btn = document.getElementById('btnGenerateReport');
       btn.textContent = '⏳ 生成中...';
       btn.disabled = true;
 
-      setTimeout(() => {
-        const now = new Date();
-        const today = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
-        const weekDay = now.toLocaleDateString('zh-CN', { weekday: 'long' });
+      const container = document.getElementById('reportContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>AI 正在生成智能日报...</div>';
 
-        document.getElementById('reportContainer').innerHTML = `
+      try {
+        const res = await fetch(`${API}/reports/daily/${stationId}`);
+        const json = await res.json();
+
+        if (!json.success) {
+          container.innerHTML = `<div class="error-msg">日报生成失败: ${json.error || '未知错误'}</div>`;
+          btn.textContent = '📝 生成日报';
+          btn.disabled = false;
+          return;
+        }
+
+        const r = json.data;
+        const dateObj = new Date(r.date + 'T00:00:00');
+        const dateStr = dateObj.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+
+        container.innerHTML = `
           <div class="report-preview">
             <div class="report-header">
-              <h2>☀ 光伏电站运维日报</h2>
-              <div class="report-date">${today}（${weekDay}）· 电站 #1 示范电站</div>
+              <h2>☀ ${r.station.name} · 运维日报</h2>
+              <div class="report-date">${dateStr} · AI 智能生成</div>
             </div>
 
             <div class="report-section">
               <h3>📊 发电概况</h3>
-              <p>今日总发电量 <span class="report-stat">1,247.8 kWh</span>，较昨日 <span style="color:var(--green)">↑ 3.2%</span>。</p>
-              <p>当前功率 <span class="report-stat">85.3 kW</span>，峰值功率 <span class="report-stat">142.6 kW</span>（出现于 12:30）。</p>
-              <p>累计本月发电 <span class="report-stat">18,542 kWh</span>，完成率 <span style="color:var(--accent)">87.4%</span>。</p>
+              <p>今日总发电量 <span class="report-stat">${r.generation.total_energy_kwh.toFixed(1)} kWh</span>，峰值功率 <span class="report-stat">${r.generation.peak_power_kw.toFixed(1)} kW</span>，平均功率 <span class="report-stat">${r.generation.avg_power_kw.toFixed(1)} kW</span>。</p>
+              <p>电站装机容量 <span class="report-stat">${r.station.capacity_mw} MW</span> · 有效读数 <span class="report-stat">${r.generation.reading_count} 条</span>。</p>
             </div>
 
             <div class="report-section">
-              <h3>⚡ 设备运行</h3>
-              <ul>
-                <li>逆变器 10 台，正常运行 <span class="report-stat">8</span> 台，存在异常 <span class="report-stat" style="color:var(--orange)">2</span> 台</li>
-                <li>组串共 80 路，正常 <span class="report-stat">75</span> 路，异常 <span class="report-stat" style="color:var(--red)">5</span> 路</li>
-                <li>综合效率 PR = <span class="report-stat">82.4%</span>，处于良好区间</li>
-                <li>逆变器 INV-04 温度偏高（78°C），建议安排巡检</li>
-                <li>逆变器 INV-09 通信延迟增加，已通知运维人员</li>
-              </ul>
+              <h3>🌤 气象数据</h3>
+              <p>平均辐照度 <span class="report-stat">${r.weather.avg_irradiance_wm2} W/m²</span>，峰值辐照度 <span class="report-stat">${r.weather.peak_irradiance_wm2} W/m²</span>，平均温度 <span class="report-stat">${r.weather.avg_temperature_c}°C</span>。</p>
             </div>
 
             <div class="report-section">
-              <h3>🔔 告警统计</h3>
-              <ul>
-                <li>今日新增告警 <span class="report-stat" style="color:var(--red)">3</span> 条，其中严重 <span class="report-stat" style="color:var(--red)">2</span> 条</li>
-                <li>待处理活跃告警 <span class="report-stat" style="color:var(--orange)">5</span> 条</li>
-                <li>已确认告警 <span class="report-stat">3</span> 条</li>
-                <li><span style="color:var(--red);font-weight:600;">需优先处理：</span>INV-01-03 组串断路、INV-07-02 组串无输出</li>
-              </ul>
+              <h3>📈 性能指标</h3>
+              <p>性能比 PR = <span class="report-stat" style="color: ${r.performance.performance_ratio >= 80 ? 'var(--green)' : r.performance.performance_ratio >= 60 ? 'var(--orange)' : 'var(--red)'}">${r.performance.performance_ratio.toFixed(1)}%</span>，活跃告警 <span class="report-stat">${r.performance.alerts_count} 条</span>（严重 ${r.performance.alerts_by_severity.critical} · 警告 ${r.performance.alerts_by_severity.warning} · 提示 ${r.performance.alerts_by_severity.info}）。</p>
             </div>
 
-            <div class="report-section">
-              <h3>🔍 图像诊断结果</h3>
-              <ul>
-                <li>今日完成红外扫描 <span class="report-stat">4</span> 个区域</li>
-                <li>检出缺陷 <span class="report-stat">4</span> 处：热斑效应×1、二极管短路×1、接线盒过热×1、组件隐裂×1</li>
-                <li>严重缺陷 <span class="report-stat" style="color:var(--red)">1</span> 处（A区-第3排 热斑），建议尽快更换组件</li>
-              </ul>
-            </div>
-
-            <div class="report-section">
-              <h3>🌤 气象信息</h3>
-              <ul>
-                <li>今日辐照度峰值 <span class="report-stat">876 W/m²</span>，日均 <span class="report-stat">412 W/m²</span></li>
-                <li>明日预计：多云转阴，辐照度下降 40%，建议调整运维计划</li>
-              </ul>
-            </div>
-
-            <div class="report-section">
-              <h3>📋 运维建议</h3>
-              <ul>
-                <li>优先处理 INV-01-03 和 INV-07-02 组串异常，预计可恢复 <span style="color:var(--green)">~12 kW</span> 功率</li>
-                <li>安排 A区-第3排 热斑组件更换，建议在辐照度较低时段（早晨/傍晚）作业</li>
-                <li>INV-04 温度异常，检查散热风扇及通风通道</li>
-                <li>明日阴雨天气，建议安排室内数据分析及文档工作</li>
-              </ul>
+            <div class="report-section" style="border-left: 3px solid var(--purple);">
+              <h3>🤖 AI 智能分析 <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">(by ${r.ai_model === 'qwen-plus' ? '通义千问-plus' : '规则引擎'})</span></h3>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.9;white-space:pre-line;">${r.ai_summary || '暂无AI分析数据'}</p>
             </div>
 
             <div style="text-align:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.78rem;">
-              报告生成时间：${now.toLocaleString('zh-CN')} · 光伏运维AI智能分析平台
+              报告生成时间：${new Date().toLocaleString('zh-CN')} · 光伏运维AI智能分析平台
             </div>
           </div>`;
 
         btn.textContent = '📝 生成日报';
         btn.disabled = false;
         showToast('日报生成成功', 'success');
-      }, 1500);
+      } catch (e) {
+        container.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;
+        btn.textContent = '📝 生成日报';
+        btn.disabled = false;
+      }
     }
 
     /* ============ Window Resize ============ */
@@ -1354,7 +1413,7 @@
       loadStations();
       loadOverview();
       loadInverterDropdown();
-      renderAlertsTable();
+      loadAlerts();
       initDiagnosis();
 
       // Auto-refresh every 60 seconds
