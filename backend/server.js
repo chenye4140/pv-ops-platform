@@ -66,6 +66,7 @@ const analysisRoutes = require('./src/routes/analysisRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const stringRoutes = require('./src/routes/stringRoutes');
 const workorderRoutes = require('./src/routes/workorderRoutes');
+const sparePartsRoutes = require('./src/routes/sparePartsRoutes');
 const alertRuleRoutes = require('./src/routes/alertRuleRoutes');
 const exportRoutes = require('./src/routes/exportRoutes');
 const inspectionRoutes = require('./src/routes/inspectionRoutes');
@@ -82,6 +83,7 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/strings', stringRoutes);
 app.use('/api/workorders', workorderRoutes);
+app.use('/api/spare-parts', sparePartsRoutes);
 
 // Alert rule evaluation status endpoint — must be BEFORE the /api/alert-rules router
 // so it doesn't get caught by the /:id parametric route
