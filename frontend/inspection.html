@@ -110,13 +110,53 @@
 
     #forecastChart { width: 100%; height: 300px; }
 
-    @media (max-width: 768px) {
+    /* Hamburger */
+    .hamburger { display: none; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.4rem; margin-left: 0.5rem; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s; }
+    .hamburger:hover { color: var(--accent); background: var(--accent-dim); }
+    .hamburger.active { color: var(--accent); }
+
+    @media (max-width: 900px) {
       .container { padding: 1rem; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .navbar { padding: 0 1rem; }
       .navbar-tabs { margin-left: 1rem; }
       table { font-size: 0.8rem; }
       th, td { padding: 0.5rem; }
+    }
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .navbar-tabs {
+        position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
+        background: var(--bg-secondary); flex-direction: column; padding: 1rem;
+        gap: 0; margin-left: 0; overflow-y: auto; transform: translateX(-100%);
+        transition: transform 0.3s ease; z-index: 99; border-top: 1px solid var(--border);
+      }
+      .navbar-tabs.open { transform: translateX(0); }
+      .nav-tab {
+        padding: 0.85rem 1rem; font-size: 0.95rem; border-radius: 8px;
+        margin-bottom: 0.25rem; min-height: 44px; display: flex; align-items: center;
+      }
+      .btn { padding: 0.7rem 1rem; font-size: 0.88rem; min-height: 44px; }
+      .btn-sm { padding: 0.5rem 0.8rem; font-size: 0.82rem; min-height: 38px; }
+      .section { padding: 1rem; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .stat-card { padding: 1rem; }
+      .stat-value { font-size: 1.5rem; }
+      .form-group input, .form-group select, .form-group textarea { padding: 0.6rem 0.8rem; font-size: 0.9rem; min-height: 44px; }
+      .modal { width: 95%; padding: 1.25rem; }
+      .tab-bar { overflow-x: auto; flex-wrap: nowrap; }
+      .tab-btn { padding: 0.7rem 1rem; font-size: 0.85rem; white-space: nowrap; }
+      #forecastChart { height: 260px; }
+    }
+    @media (max-width: 550px) {
+      .stats-grid { grid-template-columns: 1fr !important; }
+      .navbar-brand > span:last-child { display: none; }
+      .container { padding: 0.75rem; }
+      .section { padding: 0.85rem; border-radius: 8px; }
+      .stat-value { font-size: 1.35rem; }
+      .section-title { font-size: 0.92rem; }
+      #forecastChart { height: 220px; }
+      .modal { padding: 1rem; }
     }
   </style>
 </head>
@@ -126,6 +166,7 @@
       <span class="logo-icon">☀️</span>
       <span>光伏运维AI平台</span>
     </div>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
     <div class="navbar-tabs">
       <a class="nav-tab" href="index.html">Dashboard</a>
       <a class="nav-tab" href="analysis.html">图像分析</a>
@@ -268,6 +309,37 @@
     const STATION_ID = 1;
     let currentTaskId = null;
     let forecastChart = null;
+
+    /* ============ Hamburger Menu ============ */
+    function toggleHamburger() {
+      var tabBar = document.querySelector('.navbar-tabs');
+      var btn = document.getElementById('hamburgerBtn');
+      tabBar.classList.toggle('open');
+      btn.classList.toggle('active');
+      btn.innerHTML = tabBar.classList.contains('open') ? '✕' : '☰';
+    }
+    document.querySelectorAll('.navbar-tabs .nav-tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        var tabBar = document.querySelector('.navbar-tabs');
+        var btn = document.getElementById('hamburgerBtn');
+        tabBar.classList.remove('open');
+        btn.classList.remove('active');
+        btn.innerHTML = '☰';
+      });
+    });
+
+    /* ============ Chart Responsive Resize ============ */
+    (function() {
+      var resizeTimer;
+      window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+          if (forecastChart && typeof forecastChart.resize === 'function') {
+            forecastChart.resize();
+          }
+        }, 200);
+      });
+    })();
 
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {

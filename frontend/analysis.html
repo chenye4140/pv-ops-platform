@@ -347,16 +347,43 @@
 
     .hidden { display: none !important; }
 
+    /* Hamburger */
+    .hamburger { display: none; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.4rem; margin-left: 0.5rem; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s; }
+    .hamburger:hover { color: var(--accent); background: var(--accent-glow); }
+    .hamburger.active { color: var(--accent); }
+
     /* Responsive */
     @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .navbar-links {
+        position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+        background: var(--bg-secondary); flex-direction: column; padding: 1rem;
+        gap: 0; margin-left: 0; overflow-y: auto; transform: translateX(-100%);
+        transition: transform 0.3s ease; z-index: 99; border-top: 1px solid var(--border);
+      }
+      .navbar-links.open { transform: translateX(0); }
+      .navbar-links a {
+        padding: 0.85rem 1rem; font-size: 0.95rem; border-radius: 8px;
+        margin-bottom: 0.25rem; min-height: 44px; display: flex; align-items: center;
+      }
       .preview-container { flex-direction: column; }
       .main { padding: 1rem; }
       .navbar { padding: 0 1rem; }
-      .navbar-links { margin-left: 1.5rem; }
       .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+      .section { padding: 1rem; }
+      .btn { padding: 0.7rem 1rem; font-size: 0.88rem; min-height: 44px; }
+      .upload-area { padding: 1.5rem; }
+      .defect-card { padding: 0.85rem; }
+      .health-badge { font-size: 0.82rem; padding: 0.4rem 0.8rem; }
     }
     @media (max-width: 480px) {
       .gallery-grid { grid-template-columns: 1fr; }
+      .navbar-brand > span:last-child { display: none; }
+      .main { padding: 0.75rem; }
+      .section { padding: 0.85rem; border-radius: 8px; }
+      .anomaly-summary { flex-direction: column; }
+      .anomaly-stat { min-width: unset; }
+      .upload-area { padding: 1.25rem; }
     }
   </style>
 </head>
@@ -373,6 +400,7 @@
       </svg>
       PV运维平台
     </a>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
     <div class="navbar-links">
       <a href="index.html">Dashboard</a>
       <a href="analysis.html" class="active">图像分析</a>
@@ -437,6 +465,24 @@
     const API = 'http://localhost:3000/api';
     let selectedImage = null;
     let selectedLabel = '';
+
+    /* ============ Hamburger Menu ============ */
+    function toggleHamburger() {
+      var links = document.querySelector('.navbar-links');
+      var btn = document.getElementById('hamburgerBtn');
+      links.classList.toggle('open');
+      btn.classList.toggle('active');
+      btn.innerHTML = links.classList.contains('open') ? '✕' : '☰';
+    }
+    document.querySelectorAll('.navbar-links a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        var links = document.querySelector('.navbar-links');
+        var btn = document.getElementById('hamburgerBtn');
+        links.classList.remove('open');
+        btn.classList.remove('active');
+        btn.innerHTML = '☰';
+      });
+    });
 
     // Sample defect images (SVG generated placeholders)
     const sampleImages = [

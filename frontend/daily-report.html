@@ -267,12 +267,43 @@
       .alert-stat { background: #f5f5f5 !important; }
     }
 
+    /* Hamburger */
+    .hamburger { display: none; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.4rem; margin-left: 0.5rem; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s; }
+    .hamburger:hover { color: var(--accent); background: var(--accent-glow); }
+    .hamburger.active { color: var(--accent); }
+
     /* Responsive */
     @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .navbar-links {
+        position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+        background: var(--bg-secondary); flex-direction: column; padding: 1rem;
+        gap: 0; margin-left: 0; overflow-y: auto; transform: translateX(-100%);
+        transition: transform 0.3s ease; z-index: 99; border-top: 1px solid var(--border);
+      }
+      .navbar-links.open { transform: translateX(0); }
+      .navbar-links a {
+        padding: 0.85rem 1rem; font-size: 0.95rem; border-radius: 8px;
+        margin-bottom: 0.25rem; min-height: 44px; display: flex; align-items: center;
+      }
       .main { padding: 1rem; }
       .navbar { padding: 0 1rem; }
-      .navbar-links { margin-left: 1.5rem; }
+      .section { padding: 1rem; }
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .station-select { max-width: 120px; font-size: 0.8rem; padding: 0.35rem 0.6rem; }
+      .btn-print { font-size: 0.8rem; padding: 0.35rem 0.6rem; }
+      .report-header h1 { font-size: 1.2rem; }
+      .detail-row { flex-direction: column; gap: 0.2rem; padding: 0.5rem 0; }
+      .alert-summary { flex-direction: column; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .navbar-brand > span:last-child { display: none; }
+      .main { padding: 0.75rem; }
+      .section { padding: 0.85rem; border-radius: 8px; }
+      .stat-item .value { font-size: 1.3rem; }
+      .report-header h1 { font-size: 1.05rem; }
+      .alert-stat { min-width: unset; }
     }
   </style>
 </head>
@@ -289,6 +320,7 @@
       </svg>
       PV运维平台
     </a>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
     <div class="navbar-links">
       <a href="index.html">Dashboard</a>
       <a href="analysis.html">图像分析</a>
@@ -310,6 +342,24 @@
   <script>
     const API = 'http://localhost:3000/api';
     let stationId = '1';
+
+    /* ============ Hamburger Menu ============ */
+    function toggleHamburger() {
+      var links = document.querySelector('.navbar-links');
+      var btn = document.getElementById('hamburgerBtn');
+      links.classList.toggle('open');
+      btn.classList.toggle('active');
+      btn.innerHTML = links.classList.contains('open') ? '✕' : '☰';
+    }
+    document.querySelectorAll('.navbar-links a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        var links = document.querySelector('.navbar-links');
+        var btn = document.getElementById('hamburgerBtn');
+        links.classList.remove('open');
+        btn.classList.remove('active');
+        btn.innerHTML = '☰';
+      });
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
       loadStations();
