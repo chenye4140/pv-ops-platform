@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>审计日志 - 光伏运维AI智能分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    /* ============ CSS Variables & Reset ============ */
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --accent-glow: rgba(0, 229, 255, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    /* ============ Navbar ============ */
+    .navbar {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+    }
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+    .navbar-brand .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .navbar-tabs {
+      display: flex;
+      gap: 4px;
+      margin-left: 2.5rem;
+    }
+    .nav-tab {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.25s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+      position: relative;
+    }
+    .nav-tab:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .nav-tab.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
+    .clock {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    /* ============ Main ============ */
+    .main { max-width: 1600px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+    /* ============ Stats Grid ============ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+    .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-card .stat-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.8;
+    }
+    .stat-card .stat-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.4rem;
+    }
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+    .stat-card .stat-sub {
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    /* ============ Section ============ */
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-primary);
+    }
+    .section-title .icon { color: var(--accent); font-size: 1.1rem; }
+
+    /* ============ Chart ============ */
+    .chart-container {
+      width: 100%;
+      height: 350px;
+      border-radius: 8px;
+    }
+
+    /* ============ Table ============ */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td {
+      padding: 0.7rem 0.85rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .data-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.5px;
+      background: var(--bg-secondary);
+    }
+    .data-table tr:hover td { background: var(--bg-card-hover); }
+    .data-table tr:last-child td { border-bottom: none; }
+
+    /* ============ Badges ============ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .badge-login { background: var(--green-dim); color: var(--green); }
+    .badge-login .badge-dot { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .badge-create { background: var(--accent-dim); color: var(--accent); }
+    .badge-create .badge-dot { background: var(--accent); box-shadow: 0 0 4px var(--accent); }
+    .badge-update { background: rgba(68,138,255,0.15); color: var(--blue); }
+    .badge-update .badge-dot { background: var(--blue); }
+    .badge-delete { background: var(--red-dim); color: var(--red); }
+    .badge-delete .badge-dot { background: var(--red); box-shadow: 0 0 4px var(--red); }
+    .badge-export { background: var(--orange-dim); color: var(--orange); }
+    .badge-export .badge-dot { background: var(--orange); box-shadow: 0 0 4px var(--orange); }
+    .badge-default { background: rgba(148,163,184,0.15); color: var(--text-secondary); }
+
+    /* ============ Forms ============ */
+    select, input[type="text"], input[type="date"] {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+      font-family: var(--font-sans);
+    }
+    select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+    .filter-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-row label { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ Buttons ============ */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #0091ea);
+      color: #000;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+    .btn-danger {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255,61,113,0.3);
+    }
+    .btn-danger:hover { background: rgba(255,61,113,0.25); }
+
+    /* ============ Pagination ============ */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .pagination-info { font-size: 0.82rem; color: var(--text-muted); }
+    .pagination-buttons { display: flex; gap: 0.4rem; }
+    .page-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.35rem 0.7rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      min-width: 36px;
+      text-align: center;
+    }
+    .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .page-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+    /* ============ Loading / Empty ============ */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); gap: 0.75rem; }
+    .spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.88rem; }
+    .error-msg { text-align: center; padding: 2rem; color: var(--red); font-size: 0.88rem; }
+
+    /* ============ Toast ============ */
+    .toast-container { position: fixed; top: 80px; right: 1.5rem; z-index: 200; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      animation: slideIn 0.3s ease;
+      max-width: 350px;
+      box-shadow: var(--shadow);
+    }
+    .toast-success { background: var(--green-dim); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+    .toast-error { background: var(--red-dim); border: 1px solid rgba(255,61,113,0.3); color: var(--red); }
+    .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .navbar { padding: 0 1rem; }
+      .navbar-tabs { margin-left: 1.5rem; }
+      .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+      .main { padding: 1rem; }
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .navbar-brand span { display: none; }
+    }
+
+    /* ============ Details Tooltip ============ */
+    .details-cell {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .details-cell:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <!-- ============ Navbar ============ -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-icon">☀</div>
+      <span>光伏运维AI智能分析平台</span>
+    </div>
+    <div class="navbar-tabs">
+      <a class="nav-tab" href="index.html">📊 监控大屏</a>
+      <a class="nav-tab" href="analysis.html">🔍 智能分析</a>
+      <a class="nav-tab" href="alert-rules.html">🔔 告警规则</a>
+      <a class="nav-tab" href="inspection.html">📋 巡检管理</a>
+      <a class="nav-tab" href="daily-report.html">📝 智能日报</a>
+      <a class="nav-tab active" href="audit.html">🛡️ 审计日志</a>
+    </div>
+    <div class="navbar-right">
+      <div class="clock"><span id="clockTime"></span></div>
+    </div>
+  </nav>
+
+  <!-- ============ Toast Container ============ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============ Main ============ -->
+  <main class="main">
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- Chart Section -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="icon">📊</span> 操作频率趋势</div>
+        <div class="section-subtitle">近7天操作分布</div>
+      </div>
+      <div id="actionChart" class="chart-container"></div>
+    </div>
+
+    <!-- Audit Logs Section -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="icon">🛡️</span> 审计日志</div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-sm btn-outline" onclick="refreshLogs()">🔄 刷新</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-row">
+        <label>日期范围：</label>
+        <input type="date" id="filterStartDate">
+        <span style="color:var(--text-muted);">至</span>
+        <input type="date" id="filterEndDate">
+        <label>操作类型：</label>
+        <select id="filterAction">
+          <option value="">全部</option>
+          <option value="login">登录</option>
+          <option value="logout">登出</option>
+          <option value="create">创建</option>
+          <option value="update">更新</option>
+          <option value="delete">删除</option>
+          <option value="export">导出</option>
+          <option value="import">导入</option>
+        </select>
+        <label>用户：</label>
+        <select id="filterUser">
+          <option value="">全部</option>
+        </select>
+        <label>资源：</label>
+        <select id="filterResource">
+          <option value="">全部</option>
+          <option value="station">电站</option>
+          <option value="alert_rule">告警规则</option>
+          <option value="inspection">巡检计划</option>
+          <option value="user">用户</option>
+          <option value="report">日报</option>
+          <option value="image">图像</option>
+          <option value="system">系统</option>
+        </select>
+        <button class="btn btn-sm btn-outline" onclick="applyFilters()">筛选</button>
+        <button class="btn btn-sm btn-outline" onclick="resetFilters()">重置</button>
+      </div>
+
+      <!-- Table -->
+      <div id="auditTableContainer">
+        <div class="loading"><div class="spinner"></div>加载审计日志...</div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </main>
+
+  <script>
+    /* ============ Configuration ============ */
+    const API = 'http://localhost:3000/api';
+    const PAGE_SIZE = 50;
+    let currentPage = 1;
+    let totalRecords = 0;
+    let allLogs = [];
+    let statsData = null;
+    let chartInstance = null;
+
+    /* ============ Clock ============ */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clockTime').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ============ Toast ============ */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    /* ============ Badge Class ============ */
+    function getActionBadgeClass(action) {
+      const map = {
+        login: 'badge-login',
+        logout: 'badge-login',
+        create: 'badge-create',
+        update: 'badge-update',
+        delete: 'badge-delete',
+        export: 'badge-export',
+        import: 'badge-export',
+      };
+      return map[action] || 'badge-default';
+    }
+
+    function getActionLabel(action) {
+      const map = {
+        login: '登录',
+        logout: '登出',
+        create: '创建',
+        update: '更新',
+        delete: '删除',
+        export: '导出',
+        import: '导入',
+        view: '查看',
+        query: '查询',
+      };
+      return map[action] || action;
+    }
+
+    /* ============ Load Stats ============ */
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API}/audit/stats`);
+        const json = await res.json();
+        if (!json.success) {
+          // If auth failed or no data, show placeholder
+          renderStatsPlaceholder();
+          return;
+        }
+        statsData = json.data;
+        renderStats(statsData);
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+        renderStatsPlaceholder();
+      }
+    }
+
+    function renderStats(data) {
+      const container = document.getElementById('statsGrid');
+
+      // Calculate today's count from last24Hours as proxy
+      const todayCount = data.last24Hours || 0;
+      const uniqueUsers = data.topUsers ? data.topUsers.length : 0;
+      const mostCommonAction = data.actionDistribution && data.actionDistribution.length > 0
+        ? getActionLabel(data.actionDistribution[0].action)
+        : '无数据';
+      const mostCommonCount = data.actionDistribution && data.actionDistribution.length > 0
+        ? data.actionDistribution[0].count
+        : 0;
+
+      // Security events: count delete actions as security events
+      const deleteDist = data.actionDistribution ? data.actionDistribution.find(d => d.action === 'delete') : null;
+      const securityEvents = deleteDist ? deleteDist.count : 0;
+
+      container.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-icon">📋</div>
+          <div class="stat-label">今日操作数</div>
+          <div class="stat-value">${todayCount}</div>
+          <div class="stat-sub">近24小时</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-label">活跃用户数</div>
+          <div class="stat-value">${uniqueUsers}</div>
+          <div class="stat-sub">有操作记录的用户</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-label">最高频操作</div>
+          <div class="stat-value">${mostCommonAction}</div>
+          <div class="stat-sub">共 ${mostCommonCount} 次</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔒</div>
+          <div class="stat-label">删除事件</div>
+          <div class="stat-value">${securityEvents}</div>
+          <div class="stat-sub">安全关注事件</div>
+        </div>
+      `;
+    }
+
+    function renderStatsPlaceholder() {
+      const container = document.getElementById('statsGrid');
+      container.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-icon">📋</div>
+          <div class="stat-label">今日操作数</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-label">活跃用户数</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-label">最高频操作</div>
+          <div class="stat-value">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔒</div>
+          <div class="stat-label">安全事件</div>
+          <div class="stat-value">--</div>
+        </div>
+      `;
+    }
+
+    /* ============ Render Chart ============ */
+    function renderChart() {
+      const chartDom = document.getElementById('actionChart');
+      if (!chartInstance) {
+        chartInstance = echarts.init(chartDom, null, { renderer: 'canvas' });
+      }
+
+      if (!statsData || !statsData.actionsPerDay || statsData.actionsPerDay.length === 0) {
+        chartInstance.setOption({
+          title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#475569', fontSize: 14 } },
+          grid: { top: 40, right: 30, bottom: 40, left: 50 },
+          xAxis: { type: 'category', data: [] },
+          yAxis: { type: 'value' },
+          series: [{ type: 'bar', data: [] }],
+          backgroundColor: 'transparent',
+        });
+        return;
+      }
+
+      // Reverse to get chronological order
+      const days = [...statsData.actionsPerDay].reverse();
+      const dates = days.map(d => d.date);
+      const counts = days.map(d => d.count);
+
+      chartInstance.setOption({
+        backgroundColor: 'transparent',
+        grid: { top: 40, right: 30, bottom: 50, left: 60 },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: '#152035',
+          borderColor: '#1e3050',
+          textStyle: { color: '#e2e8f0' },
+          formatter: '{b}<br/>操作数: {c}'
+        },
+        xAxis: {
+          type: 'category',
+          data: dates,
+          axisLine: { lineStyle: { color: '#1e3050' } },
+          axisLabel: { color: '#94a3b8', fontSize: 12 },
+          axisTick: { show: false },
+        },
+        yAxis: {
+          type: 'value',
+          splitLine: { lineStyle: { color: '#1e3050', type: 'dashed' } },
+          axisLabel: { color: '#94a3b8' },
+        },
+        series: [{
+          name: '操作数',
+          type: 'bar',
+          data: counts,
+          barWidth: '50%',
+          itemStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#00e5ff' },
+              { offset: 1, color: '#0091ea' },
+            ]),
+            borderRadius: [4, 4, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#00ff88' },
+                { offset: 1, color: '#00e5ff' },
+              ]),
+            },
+          },
+        }],
+      });
+    }
+
+    /* ============ Load Logs ============ */
+    async function loadLogs(page = 1) {
+      currentPage = page;
+      const container = document.getElementById('auditTableContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载审计日志...</div>';
+
+      try {
+        const params = new URLSearchParams();
+        params.set('limit', PAGE_SIZE);
+        params.set('offset', (page - 1) * PAGE_SIZE);
+
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+        const action = document.getElementById('filterAction').value;
+        const userId = document.getElementById('filterUser').value;
+        const resource = document.getElementById('filterResource').value;
+
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate + 'T23:59:59');
+        if (action) params.set('action', action);
+        if (userId) params.set('userId', userId);
+        if (resource) params.set('resource', resource);
+
+        const res = await fetch(`${API}/audit/logs?${params.toString()}`);
+        const json = await res.json();
+
+        if (!json.success) {
+          container.innerHTML = '<div class="error-msg">日志加载失败 — 请确认已以管理员身份登录</div>';
+          return;
+        }
+
+        const { logs, total } = json.data;
+        allLogs = logs || [];
+        totalRecords = total || 0;
+
+        if (allLogs.length === 0) {
+          container.innerHTML = '<div class="empty-msg">📭 暂无审计日志记录</div>';
+        } else {
+          renderTable(allLogs);
+        }
+        renderPagination();
+      } catch (e) {
+        console.error('Failed to load logs:', e);
+        container.innerHTML = '<div class="error-msg">网络错误，请稍后重试</div>';
+      }
+    }
+
+    /* ============ Render Table ============ */
+    function renderTable(logs) {
+      const container = document.getElementById('auditTableContainer');
+
+      let html = '<table class="data-table"><thead><tr>';
+      html += '<th>时间</th><th>用户</th><th>操作</th><th>资源</th><th>IP 地址</th><th>详情</th>';
+      html += '</tr></thead><tbody>';
+
+      logs.forEach(log => {
+        const time = log.created_at ? new Date(log.created_at).toLocaleString('zh-CN', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        }) : '-';
+        const user = log.display_name || log.username || '-';
+        const actionBadge = getActionBadgeClass(log.action);
+        const actionLabel = getActionLabel(log.action);
+        const resource = log.resource || '-';
+        const ip = log.ip_address || '-';
+
+        let details = '-';
+        if (log.details && typeof log.details === 'object') {
+          details = JSON.stringify(log.details);
+        } else if (log.details) {
+          details = String(log.details);
+        }
+
+        html += `<tr>
+          <td style="white-space:nowrap;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);">${time}</td>
+          <td>${user}</td>
+          <td><span class="badge ${actionBadge}"><span class="badge-dot"></span>${actionLabel}</span></td>
+          <td>${resource}</td>
+          <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);">${ip}</td>
+          <td class="details-cell" title="${details.replace(/"/g, '&quot;')}">${details}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    /* ============ Pagination ============ */
+    function renderPagination() {
+      const container = document.getElementById('pagination');
+      const totalPages = Math.ceil(totalRecords / PAGE_SIZE);
+      const start = (currentPage - 1) * PAGE_SIZE + 1;
+      const end = Math.min(currentPage * PAGE_SIZE, totalRecords);
+
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = `<span class="pagination-info">显示 ${start}-${end} 条，共 ${totalRecords} 条</span>`;
+      html += '<div class="pagination-buttons">';
+      html += `<button class="page-btn" onclick="loadLogs(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>‹</button>`;
+
+      // Smart page number display
+      let pages = [];
+      if (totalPages <= 7) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+      } else {
+        pages.push(1);
+        if (currentPage > 3) pages.push('...');
+        for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+          pages.push(i);
+        }
+        if (currentPage < totalPages - 2) pages.push('...');
+        pages.push(totalPages);
+      }
+
+      pages.forEach(p => {
+        if (p === '...') {
+          html += '<span style="color:var(--text-muted);padding:0 0.3rem;">…</span>';
+        } else {
+          html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="loadLogs(${p})">${p}</button>`;
+        }
+      });
+
+      html += `<button class="page-btn" onclick="loadLogs(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>›</button>`;
+      html += '</div>';
+
+      container.innerHTML = html;
+    }
+
+    /* ============ Filter Functions ============ */
+    function applyFilters() {
+      loadLogs(1);
+    }
+
+    function resetFilters() {
+      document.getElementById('filterStartDate').value = '';
+      document.getElementById('filterEndDate').value = '';
+      document.getElementById('filterAction').value = '';
+      document.getElementById('filterUser').value = '';
+      document.getElementById('filterResource').value = '';
+      loadLogs(1);
+      showToast('筛选条件已重置', 'info');
+    }
+
+    function refreshLogs() {
+      loadLogs(currentPage);
+      loadStats();
+      showToast('已刷新', 'success');
+    }
+
+    /* ============ Populate User Filter from Stats ============ */
+    function populateUserFilter() {
+      const select = document.getElementById('filterUser');
+      if (statsData && statsData.topUsers) {
+        statsData.topUsers.forEach(u => {
+          select.innerHTML += `<option value="${u.id || ''}">${u.display_name || u.username}</option>`;
+        });
+      }
+    }
+
+    /* ============ Initialize ============ */
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set default date range (last 7 days)
+      const today = new Date();
+      const weekAgo = new Date(today);
+      weekAgo.setDate(today.getDate() - 7);
+      document.getElementById('filterEndDate').value = today.toISOString().split('T')[0];
+      document.getElementById('filterStartDate').value = weekAgo.toISOString().split('T')[0];
+
+      // Load everything
+      loadStats().then(() => {
+        renderChart();
+        populateUserFilter();
+      });
+      loadLogs(1);
+
+      // Resize handler
+      window.addEventListener('resize', () => {
+        if (chartInstance) chartInstance.resize();
+      });
+    });
+  </script>
+</body>
+</html>

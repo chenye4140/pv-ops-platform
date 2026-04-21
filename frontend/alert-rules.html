@@ -88,6 +88,18 @@
       transition: all 0.25s;
     }
     .navbar-back:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .navbar-tabs { display: flex; gap: 4px; margin-left: 1.5rem; }
+    .nav-tab {
+      background: none; border: none; color: var(--text-secondary); padding: 0.5rem 1.1rem;
+      border-radius: 6px; font-size: 0.88rem; cursor: pointer; transition: all 0.25s;
+      font-family: var(--font-sans); white-space: nowrap; position: relative; text-decoration: none;
+    }
+    .nav-tab:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .nav-tab.active { color: var(--accent); background: var(--accent-dim); }
+    .nav-tab.active::after {
+      content: ''; position: absolute; bottom: -1px; left: 20%; right: 20%;
+      height: 2px; background: var(--accent); border-radius: 1px;
+    }
     .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
     .clock {
       font-family: var(--font-mono);
@@ -297,6 +309,14 @@
       <span>光伏运维AI智能分析平台</span>
     </div>
     <a class="navbar-back" href="index.html">← 返回仪表盘</a>
+    <div class="navbar-tabs">
+      <a class="nav-tab" href="index.html">📊 监控大屏</a>
+      <a class="nav-tab" href="analysis.html">🔍 智能分析</a>
+      <a class="nav-tab active" href="alert-rules.html">🔔 告警规则</a>
+      <a class="nav-tab" href="inspection.html">📋 巡检管理</a>
+      <a class="nav-tab" href="daily-report.html">📝 智能日报</a>
+      <a class="nav-tab" href="audit.html">🛡️ 审计日志</a>
+    </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select">
         <option value="all">全部电站</option>
