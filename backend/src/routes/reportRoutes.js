@@ -107,12 +107,25 @@ router.get('/daily/:stationId', async (req, res) => {
       }
     };
 
+    // Build alerts detail for AI summary
+    const alertDetail = {
+      total: alertsToday.count,
+      by_severity: alertSeverityMap,
+      list: db.prepare(`
+        SELECT id, severity, type, message, created_at
+        FROM alerts WHERE station_id = ? AND status = 'active'
+        ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END
+        LIMIT 10
+      `).all(stationId)
+    };
+
     // Generate AI-powered daily report summary
     const aiSummary = await generateDailyReportSummary({
       station: report.station,
       generation: report.generation,
       weather: report.weather,
       performance: report.performance,
+      alerts: alertDetail,
     });
 
     report.ai_summary = aiSummary;
