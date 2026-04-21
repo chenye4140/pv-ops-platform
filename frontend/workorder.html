@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工单管理 - 光伏运维AI智能分析平台</title>
+  <style>
+    /* ============ CSS Variables & Reset ============ */
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --accent-glow: rgba(0, 229, 255, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    /* ============ Navbar ============ */
+    .navbar {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.15rem; font-weight: 700; color: var(--accent); letter-spacing: 0.5px;
+    }
+    .navbar-brand .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .navbar-back {
+      margin-left: 2rem; color: var(--text-secondary); text-decoration: none;
+      font-size: 0.88rem; padding: 0.4rem 0.8rem; border-radius: 6px; transition: all 0.25s;
+    }
+    .navbar-back:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
+    .clock { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-secondary); letter-spacing: 0.5px; }
+    .clock-date { color: var(--text-muted); margin-right: 8px; font-size: 0.82rem; }
+
+    /* ============ Main Content ============ */
+    .main { max-width: 100%; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+    /* ============ Stats Bar ============ */
+    .stats-bar {
+      display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+    }
+    .stat-item {
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1rem 1.5rem; flex: 1; min-width: 150px; position: relative; overflow: hidden;
+      transition: all 0.3s;
+    }
+    .stat-item::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.6;
+    }
+    .stat-item:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-item .stat-icon { font-size: 1.3rem; margin-bottom: 0.3rem; opacity: 0.8; }
+    .stat-item .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .stat-item .stat-value { font-size: 1.6rem; font-weight: 700; font-family: var(--font-mono); line-height: 1.2; }
+
+    /* ============ Filter Bar ============ */
+    .filter-bar {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    }
+    .filter-bar label { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+    .filter-bar input, .filter-bar select {
+      background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0.4rem 0.6rem; font-size: 0.82rem;
+      outline: none; font-family: var(--font-sans);
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
+    .filter-bar input[type="text"] { width: 180px; }
+    .btn {
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      color: #0b1120; border: none; border-radius: var(--radius-sm);
+      padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.25s; font-family: var(--font-sans); white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 12px var(--accent-glow); }
+    .btn-outline {
+      background: transparent; color: var(--accent); border: 1px solid var(--accent);
+    }
+    .btn-outline:hover { background: var(--accent-dim); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-danger:hover { opacity: 0.9; }
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.75rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .create-btn { margin-left: auto; }
+
+    /* ============ Kanban Board ============ */
+    .kanban-board {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      min-height: 60vh;
+    }
+    .kanban-column {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
+      transition: all 0.3s;
+    }
+    .kanban-column.drag-over {
+      border-color: var(--accent);
+      background: rgba(0, 229, 255, 0.05);
+    }
+    .column-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .column-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .column-count {
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border-radius: 12px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+    }
+    .column-cards {
+      flex: 1;
+      padding: 0.75rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .column-cards:empty::after {
+      content: '拖拽至此';
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      text-align: center;
+      padding: 2rem 0;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ============ Kanban Card ============ */
+    .kanban-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+      cursor: grab;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .kanban-card:hover {
+      border-color: var(--border-light);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    .kanban-card.dragging {
+      opacity: 0.5;
+      transform: rotate(2deg);
+    }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .priority-badge {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .priority-urgent { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,61,113,0.3); }
+    .priority-high { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,152,0,0.3); }
+    .priority-medium { background: rgba(68,138,255,0.15); color: var(--blue); border: 1px solid rgba(68,138,255,0.3); }
+    .priority-low { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+    .card-station {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .card-type-icon {
+      font-size: 0.9rem;
+      margin-right: 0.2rem;
+    }
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+      margin-top: 0.4rem;
+    }
+    .card-assignee {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .card-assignee-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+    }
+    .card-time {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* ============ Modal ============ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+    .modal-large { max-width: 750px; }
+    .modal-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h3 { font-size: 1rem; font-weight: 600; }
+    .modal-close {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 1.5rem; cursor: pointer; padding: 0.2rem;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { padding: 1.25rem; }
+    .modal-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+
+    /* ============ Form Styles ============ */
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block; font-size: 0.78rem; color: var(--text-muted);
+      margin-bottom: 0.3rem; font-weight: 500;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; background: var(--bg-input); color: var(--text-primary);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 0.5rem 0.7rem; font-size: 0.85rem; outline: none;
+      font-family: var(--font-sans);
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* ============ Detail Modal Styles ============ */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 1.25rem; }
+    .detail-field { }
+    .detail-field .field-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.2rem; }
+    .detail-field .field-value { font-size: 0.88rem; }
+    .detail-description {
+      padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-sm);
+      font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem;
+    }
+    .status-history { margin-bottom: 1.25rem; }
+    .status-history h4 { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .status-timeline { display: flex; flex-direction: column; gap: 0.4rem; }
+    .status-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.4rem 0.6rem; background: var(--bg-secondary);
+      border-radius: var(--radius-sm); font-size: 0.78rem;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    }
+    .notes-section { padding-top: 1rem; border-top: 1px solid var(--border); }
+    .notes-section h4 { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .notes-list { max-height: 180px; overflow-y: auto; margin-bottom: 0.75rem; }
+    .note-item {
+      padding: 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm);
+      margin-bottom: 0.4rem;
+    }
+    .note-content { font-size: 0.82rem; }
+    .note-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .note-input-row { display: flex; gap: 0.5rem; }
+    .note-input-row input { flex: 1; }
+    .action-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+
+    /* ============ Badge ============ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.2rem 0.6rem; border-radius: 12px;
+      font-size: 0.72rem; font-weight: 500;
+    }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .badge-error { background: var(--red-dim); color: var(--red); }
+    .badge-error .badge-dot { background: var(--red); }
+    .badge-warning { background: var(--orange-dim); color: var(--orange); }
+    .badge-warning .badge-dot { background: var(--orange); }
+    .badge-info { background: rgba(68,138,255,0.15); color: var(--blue); }
+    .badge-info .badge-dot { background: var(--blue); }
+    .badge-normal { background: var(--green-dim); color: var(--green); }
+    .badge-normal .badge-dot { background: var(--green); }
+    .badge-neutral { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border); }
+    .badge-neutral .badge-dot { background: var(--text-muted); }
+
+    /* ============ Loading & Empty ============ */
+    .loading, .empty-msg {
+      text-align: center; padding: 3rem 1rem; color: var(--text-muted);
+    }
+    .spinner {
+      display: inline-block; width: 24px; height: 24px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast {
+      position: fixed; bottom: 2rem; right: 2rem; padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-sm); font-size: 0.85rem; z-index: 300;
+      animation: slideIn 0.3s ease;
+    }
+    .toast-success { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+    .toast-error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,61,113,0.3); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 1200px) {
+      .kanban-board { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 900px) {
+      .kanban-board {
+        grid-template-columns: none;
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 1rem;
+        padding-bottom: 1rem;
+      }
+      .kanban-column {
+        min-width: 280px;
+        max-width: 320px;
+        scroll-snap-align: start;
+      }
+      .stats-bar { flex-direction: column; }
+      .stat-item { min-width: 100%; }
+      .form-row { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .navbar { padding: 0 1rem; }
+      .main { padding: 1rem; }
+    }
+    @media (max-width: 600px) {
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-bar input[type="text"] { width: 100%; }
+      .create-btn { margin-left: 0; }
+      .navbar-brand span { display: none; }
+      .modal { max-width: 100%; margin: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <div class="logo-icon">☀</div>
+      <span>光伏运维AI智能分析平台</span>
+    </div>
+    <a class="navbar-back" href="index.html">← 返回主页</a>
+    <div class="navbar-right">
+      <div class="clock">
+        <span class="clock-date" id="clockDate"></span>
+        <span id="clockTime"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-item">
+        <div class="stat-icon">📋</div>
+        <div class="stat-label">待处理工单</div>
+        <div class="stat-value" id="statOpen" style="color:var(--orange)">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-label">紧急工单</div>
+        <div class="stat-value" id="statUrgent" style="color:var(--red)">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-label">平均完成时间</div>
+        <div class="stat-value" id="statAvgTime" style="color:var(--blue)">--</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">今日完成</div>
+        <div class="stat-value" id="statTodayDone" style="color:var(--green)">--</div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <label>搜索：</label>
+      <input type="text" id="filterSearch" placeholder="搜索工单标题...">
+      <label>优先级：</label>
+      <select id="filterPriority">
+        <option value="all">全部</option>
+        <option value="urgent">紧急</option>
+        <option value="high">高</option>
+        <option value="medium">中</option>
+        <option value="low">低</option>
+      </select>
+      <label>类型：</label>
+      <select id="filterType">
+        <option value="all">全部</option>
+        <option value="defect_repair">缺陷修复</option>
+        <option value="routine_maintenance">定期维护</option>
+        <option value="inspection">巡检</option>
+        <option value="cleaning">清洗</option>
+        <option value="other">其他</option>
+      </select>
+      <label>电站：</label>
+      <select id="filterStation">
+        <option value="all">全部</option>
+      </select>
+      <button class="btn btn-sm btn-outline" onclick="applyFilters()">筛选</button>
+      <button class="btn create-btn" onclick="openCreateModal()">➕ 创建工单</button>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="kanban-board" id="kanbanBoard">
+      <div class="kanban-column" data-status="pending" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="column-header">
+          <div class="column-title">⏳ 待处理 <span class="column-count" id="count-pending">0</span></div>
+        </div>
+        <div class="column-cards" id="col-pending"></div>
+      </div>
+      <div class="kanban-column" data-status="assigned" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="column-header">
+          <div class="column-title">📌 已分配 <span class="column-count" id="count-assigned">0</span></div>
+        </div>
+        <div class="column-cards" id="col-assigned"></div>
+      </div>
+      <div class="kanban-column" data-status="in_progress" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="column-header">
+          <div class="column-title">🔧 进行中 <span class="column-count" id="count-in_progress">0</span></div>
+        </div>
+        <div class="column-cards" id="col-in_progress"></div>
+      </div>
+      <div class="kanban-column" data-status="completed" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="column-header">
+          <div class="column-title">✅ 已完成 <span class="column-count" id="count-completed">0</span></div>
+        </div>
+        <div class="column-cards" id="col-completed"></div>
+      </div>
+      <div class="kanban-column" data-status="closed" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="column-header">
+          <div class="column-title">📦 已关闭 <span class="column-count" id="count-closed">0</span></div>
+        </div>
+        <div class="column-cards" id="col-closed"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Work Order Modal -->
+  <div class="modal-overlay" id="createModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>➕ 创建工单</h3>
+        <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+      </div>
+      <form id="createForm" onsubmit="return handleCreate(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>工单标题 *</label>
+            <input type="text" id="newTitle" required placeholder="请输入工单标题">
+          </div>
+          <div class="form-group">
+            <label>描述</label>
+            <textarea id="newDescription" placeholder="请输入工单描述..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>工单类型 *</label>
+              <select id="newType" required>
+                <option value="defect_repair">缺陷修复</option>
+                <option value="routine_maintenance">定期维护</option>
+                <option value="inspection">巡检</option>
+                <option value="cleaning">清洗</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>优先级</label>
+              <select id="newPriority">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+                <option value="urgent">紧急</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>关联电站</label>
+              <select id="newStation">
+                <option value="">不关联</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>负责人</label>
+              <input type="text" id="newAssignee" placeholder="输入负责人姓名">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeCreateModal()">取消</button>
+          <button type="submit" class="btn">创建工单</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <h3 id="detailTitle">工单详情</h3>
+        <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="detailBody">
+        <!-- Dynamic content -->
+      </div>
+      <div class="modal-footer" id="detailFooter">
+        <!-- Dynamic buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
+
+  <script>
+    // ============ Constants ============
+    const API = window.API_URL || (location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api');
+
+    const WO_TYPE_NAMES = {
+      defect_repair: '缺陷修复',
+      routine_maintenance: '定期维护',
+      inspection: '巡检',
+      cleaning: '清洗',
+      other: '其他'
+    };
+
+    const WO_TYPE_ICONS = {
+      defect_repair: '🔧',
+      routine_maintenance: '🛠️',
+      inspection: '🔍',
+      cleaning: '🧹',
+      other: '📋'
+    };
+
+    const WO_PRIORITY_NAMES = {
+      urgent: '紧急',
+      high: '高',
+      medium: '中',
+      low: '低'
+    };
+
+    const WO_STATUS_NAMES = {
+      pending: '待处理',
+      assigned: '已分配',
+      in_progress: '进行中',
+      completed: '已完成',
+      closed: '已关闭'
+    };
+
+    const WO_STATUS_TRANSITIONS = {
+      pending: ['assigned', 'closed'],
+      assigned: ['in_progress', 'pending', 'closed'],
+      in_progress: ['completed', 'pending'],
+      completed: ['closed', 'in_progress'],
+      closed: []
+    };
+
+    // ============ State ============
+    let allWorkOrders = [];
+    let stations = [];
+    let currentDetailId = null;
+
+    // ============ Init ============
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateClock();
+      setInterval(updateClock, 1000);
+      await Promise.all([loadStations(), loadWorkOrders()]);
+    });
+
+    function updateClock() {
+      const now = new Date();
+      const dateEl = document.getElementById('clockDate');
+      const timeEl = document.getElementById('clockTime');
+      if (dateEl) dateEl.textContent = now.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', weekday: 'short' });
+      if (timeEl) timeEl.textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    // ============ API Calls ============
+    async function apiFetch(url, options = {}) {
+      try {
+        const res = await fetch(url, {
+          ...options,
+          headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+        return await res.json();
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+        throw e;
+      }
+    }
+
+    async function loadStations() {
+      try {
+        const json = await apiFetch(`${API}/stations`);
+        if (json.success) {
+          stations = json.data || [];
+          populateStationDropdowns();
+        }
+      } catch (e) { /* stations optional */ }
+    }
+
+    function populateStationDropdowns() {
+      const filterSelect = document.getElementById('filterStation');
+      const newStationSelect = document.getElementById('newStation');
+      const options = stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      if (filterSelect) filterSelect.innerHTML = '<option value="all">全部</option>' + options;
+      if (newStationSelect) newStationSelect.innerHTML = '<option value="">不关联</option>' + options;
+    }
+
+    async function loadWorkOrders() {
+      const board = document.getElementById('kanbanBoard');
+      const columns = document.querySelectorAll('.column-cards');
+      columns.forEach(c => c.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>');
+
+      try {
+        const json = await apiFetch(`${API}/workorders`);
+        if (json.success) {
+          allWorkOrders = json.data || [];
+          // Also load stations if not already loaded (for station_name)
+          if (stations.length === 0) await loadStations();
+          renderBoard();
+          updateStats();
+        } else {
+          columns.forEach(c => c.innerHTML = '<div class="empty-msg">加载失败</div>');
+        }
+      } catch (e) {
+        columns.forEach(c => c.innerHTML = '<div class="empty-msg">请求失败: ' + e.message + '</div>');
+      }
+    }
+
+    async function loadWorkOrderDetail(id) {
+      try {
+        const json = await apiFetch(`${API}/workorders/${id}`);
+        return json.success ? json.data : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function updateWorkOrderStatus(id, newStatus) {
+      try {
+        const json = await apiFetch(`${API}/workorders/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (json.success) {
+          showToast(`状态已变更为「${WO_STATUS_NAMES[newStatus]}」`, 'success');
+          await loadWorkOrders();
+          if (currentDetailId === id) openDetailModal(id);
+          return true;
+        } else {
+          showToast('状态变更失败: ' + (json.error || '未知错误'), 'error');
+          return false;
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+        return false;
+      }
+    }
+
+    async function addNote(id, content) {
+      try {
+        const json = await apiFetch(`${API}/workorders/${id}/notes`, {
+          method: 'POST',
+          body: JSON.stringify({ content, created_by: '操作员' })
+        });
+        if (json.success) {
+          showToast('备注添加成功', 'success');
+          openDetailModal(id);
+          return true;
+        } else {
+          showToast('添加失败: ' + (json.error || '未知错误'), 'error');
+          return false;
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+        return false;
+      }
+    }
+
+    async function deleteWorkOrder(id) {
+      if (!confirm('确定要删除此工单吗？此操作不可撤销。')) return;
+      try {
+        const json = await apiFetch(`${API}/workorders/${id}`, { method: 'DELETE' });
+        if (json.success) {
+          showToast('工单已删除', 'success');
+          closeDetailModal();
+          await loadWorkOrders();
+        } else {
+          showToast('删除失败: ' + (json.error || '未知错误'), 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    // ============ Render ============
+    function getFilteredOrders() {
+      const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+      const priority = document.getElementById('filterPriority').value;
+      const type = document.getElementById('filterType').value;
+      const station = document.getElementById('filterStation').value;
+
+      let filtered = [...allWorkOrders];
+      if (search) filtered = filtered.filter(w => w.title.toLowerCase().includes(search));
+      if (priority !== 'all') filtered = filtered.filter(w => w.priority === priority);
+      if (type !== 'all') filtered = filtered.filter(w => w.type === type);
+      if (station !== 'all') filtered = filtered.filter(w => String(w.station_id) === station);
+      return filtered;
+    }
+
+    function applyFilters() {
+      renderBoard();
+    }
+
+    function renderBoard() {
+      const filtered = getFilteredOrders();
+      const columns = { pending: [], assigned: [], in_progress: [], completed: [], closed: [] };
+
+      filtered.forEach(wo => {
+        if (columns[wo.status]) columns[wo.status].push(wo);
+      });
+
+      const statuses = ['pending', 'assigned', 'in_progress', 'completed', 'closed'];
+      statuses.forEach(status => {
+        const container = document.getElementById(`col-${status}`);
+        const countEl = document.getElementById(`count-${status}`);
+        const orders = columns[status].sort((a, b) => {
+          // Sort by priority urgency first, then by date
+          const priOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+          if ((priOrder[a.priority] ?? 4) !== (priOrder[b.priority] ?? 4)) {
+            return (priOrder[a.priority] ?? 4) - (priOrder[b.priority] ?? 4);
+          }
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        countEl.textContent = orders.length;
+        container.innerHTML = orders.map(wo => renderCard(wo)).join('');
+      });
+    }
+
+    function renderCard(wo) {
+      const icon = WO_TYPE_ICONS[wo.type] || '📋';
+      const stationName = wo.station_name || (stations.find(s => s.id === wo.station_id)?.name) || '-';
+      const initials = (wo.assignee || '?').charAt(0).toUpperCase();
+      const time = formatTime(wo.created_at);
+
+      return `
+        <div class="kanban-card" draggable="true" data-id="${wo.id}"
+             ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)"
+             onclick="openDetailModal(${wo.id})">
+          <div class="card-title">${escapeHtml(wo.title)}</div>
+          <div class="card-meta">
+            <span class="priority-badge priority-${wo.priority}">${WO_PRIORITY_NAMES[wo.priority] || wo.priority}</span>
+            <span class="card-station"><span class="card-type-icon">${icon}</span>${escapeHtml(stationName)}</span>
+          </div>
+          <div class="card-footer">
+            <div class="card-assignee">
+              <div class="card-assignee-avatar">${initials}</div>
+              ${escapeHtml(wo.assignee || '未分配')}
+            </div>
+            <div class="card-time">${time}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateStats() {
+      const open = allWorkOrders.filter(w => ['pending', 'assigned', 'in_progress'].includes(w.status)).length;
+      const urgent = allWorkOrders.filter(w => w.priority === 'urgent' && w.status !== 'closed' && w.status !== 'completed').length;
+      const todayDone = allWorkOrders.filter(w => {
+        if (w.status !== 'completed' && w.status !== 'closed') return false;
+        if (!w.completed_at) return false;
+        const d = new Date(w.completed_at);
+        const today = new Date();
+        return d.toDateString() === today.toDateString();
+      }).length;
+
+      // Calculate average completion time
+      const completed = allWorkOrders.filter(w => w.completed_at && w.created_at);
+      let avgTime = '--';
+      if (completed.length > 0) {
+        const totalMs = completed.reduce((sum, w) => {
+          return sum + (new Date(w.completed_at) - new Date(w.created_at));
+        }, 0);
+        const avgMs = totalMs / completed.length;
+        const hours = Math.floor(avgMs / (1000 * 60 * 60));
+        const mins = Math.floor((avgMs % (1000 * 60 * 60)) / (1000 * 60));
+        if (hours > 0) avgTime = `${hours}h${mins}m`;
+        else avgTime = `${mins}m`;
+      }
+
+      document.getElementById('statOpen').textContent = open;
+      document.getElementById('statUrgent').textContent = urgent;
+      document.getElementById('statAvgTime').textContent = avgTime;
+      document.getElementById('statTodayDone').textContent = todayDone;
+    }
+
+    // ============ Drag & Drop ============
+    let draggedId = null;
+
+    function handleDragStart(e) {
+      draggedId = e.target.dataset.id;
+      e.target.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', draggedId);
+    }
+
+    function handleDragEnd(e) {
+      e.target.classList.remove('dragging');
+      document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+      draggedId = null;
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const column = e.target.closest('.kanban-column');
+      if (column) column.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      const column = e.target.closest('.kanban-column');
+      if (column && !column.contains(e.relatedTarget)) {
+        column.classList.remove('drag-over');
+      }
+    }
+
+    async function handleDrop(e) {
+      e.preventDefault();
+      const column = e.target.closest('.kanban-column');
+      if (!column) return;
+      column.classList.remove('drag-over');
+
+      const newStatus = column.dataset.status;
+      const woId = parseInt(e.dataTransfer.getData('text/plain'));
+
+      if (!woId || !newStatus) return;
+
+      const wo = allWorkOrders.find(w => w.id === woId);
+      if (!wo) return;
+
+      // Check if transition is valid
+      const allowed = WO_STATUS_TRANSITIONS[wo.status] || [];
+      if (!allowed.includes(newStatus)) {
+        showToast(`不允许从「${WO_STATUS_NAMES[wo.status]}」变更为「${WO_STATUS_NAMES[newStatus]}」`, 'error');
+        return;
+      }
+
+      if (wo.status === newStatus) return;
+
+      await updateWorkOrderStatus(woId, newStatus);
+    }
+
+    // ============ Create Modal ============
+    function openCreateModal() {
+      document.getElementById('createModal').classList.add('active');
+      document.getElementById('createForm').reset();
+      document.getElementById('newTitle').focus();
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.remove('active');
+    }
+
+    async function handleCreate(e) {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('newTitle').value.trim(),
+        description: document.getElementById('newDescription').value.trim() || null,
+        type: document.getElementById('newType').value,
+        priority: document.getElementById('newPriority').value,
+        station_id: document.getElementById('newStation').value ? parseInt(document.getElementById('newStation').value) : null,
+        assignee: document.getElementById('newAssignee').value.trim() || null
+      };
+
+      if (!data.title) {
+        showToast('请输入工单标题', 'error');
+        return false;
+      }
+
+      try {
+        const json = await apiFetch(`${API}/workorders`, {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+        if (json.success) {
+          showToast('工单创建成功', 'success');
+          closeCreateModal();
+          await loadWorkOrders();
+        } else {
+          showToast('创建失败: ' + (json.error || '未知错误'), 'error');
+        }
+      } catch (e) { /* handled */ }
+      return false;
+    }
+
+    // ============ Detail Modal ============
+    async function openDetailModal(id) {
+      currentDetailId = id;
+      const wo = await loadWorkOrderDetail(id);
+      if (!wo) {
+        showToast('工单不存在', 'error');
+        return;
+      }
+
+      const allowedTransitions = WO_STATUS_TRANSITIONS[wo.status] || [];
+      const icon = WO_TYPE_ICONS[wo.type] || '📋';
+      const stationName = wo.station_name || (stations.find(s => s.id === wo.station_id)?.name) || '-';
+      const priClass = wo.priority === 'urgent' ? 'badge-error' : wo.priority === 'high' ? 'badge-warning' : wo.priority === 'medium' ? 'badge-info' : 'badge-normal';
+      const stClass = wo.status === 'completed' ? 'badge-normal' : wo.status === 'in_progress' ? 'badge-info' : wo.status === 'assigned' ? 'badge-warning' : wo.status === 'closed' ? 'badge-neutral' : 'badge-error';
+
+      // Build status history (from transitions + timestamps)
+      let statusHistoryHtml = '';
+      const historyItems = [
+        { status: 'pending', time: wo.created_at },
+        ...(wo.updated_at && wo.updated_at !== wo.created_at ? [{ status: wo.status, time: wo.updated_at }] : []),
+        ...(wo.completed_at ? [{ status: 'completed', time: wo.completed_at }] : [])
+      ];
+      // Deduplicate
+      const seen = new Set();
+      const uniqueHistory = historyItems.filter(h => {
+        const key = h.status + h.time;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      statusHistoryHtml = uniqueHistory.map(h => `
+        <div class="status-item">
+          <div class="status-dot"></div>
+          <span>${WO_STATUS_NAMES[h.status] || h.status}</span>
+          <span style="margin-left:auto;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-muted);">${formatDateTime(h.time)}</span>
+        </div>
+      `).join('');
+
+      const notesHtml = (wo.notes || []).length === 0
+        ? '<div style="color:var(--text-muted);font-size:0.82rem;padding:0.5rem;">暂无备注</div>'
+        : wo.notes.map(n => `
+            <div class="note-item">
+              <div class="note-content">${escapeHtml(n.content)}</div>
+              <div class="note-meta">${escapeHtml(n.created_by || '系统')} · ${formatDateTime(n.created_at)}</div>
+            </div>
+          `).join('');
+
+      document.getElementById('detailTitle').textContent = `工单 #${wo.id} - ${wo.title}`;
+
+      document.getElementById('detailBody').innerHTML = `
+        <div class="detail-grid">
+          <div class="detail-field">
+            <div class="field-label">工单编号</div>
+            <div class="field-value" style="font-family:var(--font-mono);">#${wo.id}</div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">类型</div>
+            <div class="field-value">${icon} ${WO_TYPE_NAMES[wo.type] || wo.type}</div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">优先级</div>
+            <div class="field-value"><span class="badge ${priClass}"><span class="badge-dot"></span>${WO_PRIORITY_NAMES[wo.priority]}</span></div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">状态</div>
+            <div class="field-value"><span class="badge ${stClass}"><span class="badge-dot"></span>${WO_STATUS_NAMES[wo.status]}</span></div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">负责人</div>
+            <div class="field-value">${wo.assignee || '未分配'}</div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">关联电站</div>
+            <div class="field-value">${escapeHtml(stationName)}</div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">创建时间</div>
+            <div class="field-value" style="font-family:var(--font-mono);font-size:0.8rem;">${formatDateTime(wo.created_at)}</div>
+          </div>
+          <div class="detail-field">
+            <div class="field-label">更新时间</div>
+            <div class="field-value" style="font-family:var(--font-mono);font-size:0.8rem;">${formatDateTime(wo.updated_at)}</div>
+          </div>
+          ${wo.completed_at ? `<div class="detail-field">
+            <div class="field-label">完成时间</div>
+            <div class="field-value" style="font-family:var(--font-mono);font-size:0.8rem;">${formatDateTime(wo.completed_at)}</div>
+          </div>` : ''}
+          ${wo.alert_message ? `<div class="detail-field">
+            <div class="field-label">关联告警</div>
+            <div class="field-value">${escapeHtml(wo.alert_message)}</div>
+          </div>` : ''}
+        </div>
+
+        <div style="margin-bottom:1rem;">
+          <div class="field-label" style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.2rem;">描述</div>
+          <div class="detail-description">${escapeHtml(wo.description || '无描述')}</div>
+        </div>
+
+        ${allowedTransitions.length > 0 ? `
+          <div style="margin-bottom:1rem;padding-top:0.75rem;border-top:1px solid var(--border);">
+            <div class="field-label" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">状态变更操作</div>
+            <div class="action-buttons">
+              ${allowedTransitions.map(s => `<button class="btn btn-sm btn-outline" onclick="changeStatusFromDetail(${wo.id}, '${s}')">${WO_STATUS_NAMES[s]}</button>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="status-history">
+          <h4>📊 状态历史</h4>
+          <div class="status-timeline">${statusHistoryHtml}</div>
+        </div>
+
+        <div class="notes-section">
+          <h4>📝 备注记录 (${(wo.notes || []).length})</h4>
+          <div class="notes-list" id="detailNotesList">${notesHtml}</div>
+          <div class="note-input-row">
+            <input type="text" id="detailNoteInput" placeholder="输入备注内容..."
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();addNoteFromDetail(${wo.id});}">
+            <button class="btn btn-sm" onclick="addNoteFromDetail(${wo.id})">添加</button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('detailFooter').innerHTML = `
+        <button class="btn btn-sm btn-danger" onclick="deleteWorkOrder(${wo.id})">🗑️ 删除</button>
+        <button class="btn btn-sm btn-outline" onclick="closeDetailModal()">关闭</button>
+      `;
+
+      document.getElementById('detailModal').classList.add('active');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').classList.remove('active');
+      currentDetailId = null;
+    }
+
+    async function changeStatusFromDetail(id, newStatus) {
+      const ok = await updateWorkOrderStatus(id, newStatus);
+      if (ok) openDetailModal(id);
+    }
+
+    async function addNoteFromDetail(id) {
+      const input = document.getElementById('detailNoteInput');
+      const content = input.value.trim();
+      if (!content) {
+        showToast('备注内容不能为空', 'error');
+        return;
+      }
+      const ok = await addNote(id, content);
+      if (ok) input.value = '';
+    }
+
+    // ============ Utilities ============
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function formatTime(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      const now = new Date();
+      const diff = now - d;
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+      return d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+    }
+
+    function formatDateTime(dateStr) {
+      if (!dateStr) return '-';
+      return new Date(dateStr).toLocaleString('zh-CN');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Close modals on overlay click
+    document.getElementById('createModal').addEventListener('click', function(e) {
+      if (e.target === this) closeCreateModal();
+    });
+    document.getElementById('detailModal').addEventListener('click', function(e) {
+      if (e.target === this) closeDetailModal();
+    });
+
+    // Escape key to close modals
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeCreateModal();
+        closeDetailModal();
+      }
+    });
+  </script>
+</body>
+</html>
