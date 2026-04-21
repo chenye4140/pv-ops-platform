@@ -155,7 +155,7 @@ function generateMockData() {
   db.exec('DELETE FROM stations');
 
   // Reset autoincrement
-  db.exec('DELETE FROM sqlite_sequence WHERE name IN ("stations", "inverters", "strings", "power_data", "weather_data", "alerts")');
+  db.exec("DELETE FROM sqlite_sequence WHERE name IN ('stations', 'inverters', 'strings', 'power_data', 'weather_data', 'alerts')");
 
   // ============================================================
   // Create station
