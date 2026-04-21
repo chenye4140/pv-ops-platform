@@ -9,6 +9,7 @@ const wsService = require('./src/services/websocketService');
 const forecastAutoGenerate = require('./src/services/forecastAutoGenerate');
 const alertEvaluationScheduler = require('./src/services/alertEvaluationScheduler');
 const autoBackupScheduler = require('./src/services/autoBackupScheduler');
+const { apiLimiter, authLimiter, backupLimiter } = require('./src/middleware/rateLimiter');
 
 // Initialize database and seed default admin
 initDatabase();
@@ -44,11 +45,17 @@ app.use(express.urlencoded({ extended: true }));
 
 // Auth routes (login/register don't require auth, user management does)
 const authRoutes = require('./src/routes/authRoutes');
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 
 // Audit routes (require admin auth - handled in routes)
 const auditRoutes = require('./src/routes/auditRoutes');
 app.use('/api/audit', auditRoutes);
+
+// General API rate limiter for all remaining routes
+app.use('/api', apiLimiter);
+
+// Backup rate limiter (expensive disk I/O operations)
+app.use('/api/backup', backupLimiter);
 
 // Existing routes
 const stationRoutes = require('./src/routes/stationRoutes');
