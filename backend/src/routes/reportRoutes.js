@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../models/database');
+const { generateDailyReportSummary, isConfigured } = require('../services/aiService');
 
 // GET /api/reports/daily/:stationId
 // Generates a daily report preview for the specified station
-router.get('/daily/:stationId', (req, res) => {
+router.get('/daily/:stationId', async (req, res) => {
   try {
     const stationId = req.params.stationId;
 
@@ -54,17 +55,26 @@ router.get('/daily/:stationId', (req, res) => {
       WHERE station_id = ? AND timestamp >= ? AND timestamp < ?
     `).get(stationId, refStr, nextStr);
 
-    // Active alerts
+    // Active alerts with severity breakdown
     const alertsToday = db.prepare(`
       SELECT COUNT(*) as count FROM alerts
       WHERE station_id = ? AND status = 'active'
     `).get(stationId);
 
+    const alertsBySeverity = db.prepare(`
+      SELECT severity, COUNT(*) as count FROM alerts
+      WHERE station_id = ? AND status = 'active'
+      GROUP BY severity
+    `).all(stationId);
+
+    const alertSeverityMap = {};
+    alertsBySeverity.forEach(a => { alertSeverityMap[a.severity] = a.count; });
+
     // Performance ratio
     const capacityKW = station.capacity_mw * 1000;
     const totalEnergy = energyData.total_energy_kwh || 0;
     const pr = totalEnergy > 0
-      ? Math.min(0.95, (totalEnergy / (capacityKW * 6)) * 100).toFixed(1)
+      ? Math.min(95, (totalEnergy / (capacityKW * 6)) * 100).toFixed(1)
       : '0.0';
 
     const report = {
@@ -88,9 +98,25 @@ router.get('/daily/:stationId', (req, res) => {
       },
       performance: {
         performance_ratio: parseFloat(pr),
-        alerts_count: alertsToday.count
+        alerts_count: alertsToday.count,
+        alerts_by_severity: {
+          critical: alertSeverityMap.critical || 0,
+          warning: alertSeverityMap.warning || 0,
+          info: alertSeverityMap.info || 0,
+        }
       }
     };
+
+    // Generate AI-powered daily report summary
+    const aiSummary = await generateDailyReportSummary({
+      station: report.station,
+      generation: report.generation,
+      weather: report.weather,
+      performance: report.performance,
+    });
+
+    report.ai_summary = aiSummary;
+    report.ai_model = isConfigured() ? 'qwen-plus' : 'rule_based';
 
     res.json({ success: true, data: report });
   } catch (error) {

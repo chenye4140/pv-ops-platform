@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../models/database');
+const { analyzeDefectImage, isConfigured } = require('../services/aiService');
 
 // GET /api/analysis/station/:id/anomaly
 // Returns anomaly analysis results for a station
@@ -57,34 +58,37 @@ router.get('/station/:id/anomaly', (req, res) => {
 });
 
 // POST /api/analysis/defect-image
-// MVP: returns mock analysis results
-router.post('/defect-image', (req, res) => {
+// Analyzes uploaded PV defect images using qwen-vl-max (or mock if no API key)
+router.post('/defect-image', async (req, res) => {
   try {
-    // In full implementation, this would process an uploaded image
-    // through a defect detection ML model
-    const mockResult = {
+    const { image, label } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ success: false, error: '缺少图像数据' });
+    }
+
+    const result = await analyzeDefectImage(image, label || '未知图片');
+
+    // Map the AI service result to the expected frontend format
+    const response = {
       success: true,
       data: {
-        defects: [
-          {
-            type: 'hot_spot',
-            confidence: 0.92,
-            bounding_box: { x: 120, y: 80, width: 45, height: 35 },
-            severity: 'high'
-          },
-          {
-            type: 'crack',
-            confidence: 0.78,
-            bounding_box: { x: 300, y: 200, width: 60, height: 20 },
-            severity: 'medium'
-          }
-        ],
-        overall_health: 'degraded',
-        recommendation: '建议现场巡检确认热斑缺陷，及时更换受损组件'
+        defects: result.defects.map(d => ({
+          type: d.type,
+          confidence: d.confidence,
+          bounding_box: d.bounding_box || { x: 0, y: 0, width: 100, height: 100 },
+          severity: d.severity,
+          description: d.description || ''
+        })),
+        overall_health: result.overall_health,
+        recommendation: result.recommendation,
+        model_used: result.model_used
       }
     };
-    res.json(mockResult);
+
+    res.json(response);
   } catch (error) {
+    console.error('[Analysis] Error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });

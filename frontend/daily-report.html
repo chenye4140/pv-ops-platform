@@ -455,22 +455,24 @@
           <div class="section-title"><span class="icon">🔔</span> 告警统计</div>
           <div class="alert-summary">
             <div class="alert-stat alert-critical">
-              <div class="count">${r.performance.alerts_count}</div>
-              <div class="desc">今日告警总数</div>
-            </div>
-            <div class="alert-stat" style="background:var(--bg-secondary);">
-              <div class="count" style="color:var(--text-muted);">—</div>
+              <div class="count">${r.performance.alerts_by_severity.critical || 0}</div>
               <div class="desc">严重</div>
             </div>
-            <div class="alert-stat" style="background:var(--bg-secondary);">
-              <div class="count" style="color:var(--text-muted);">—</div>
+            <div class="alert-stat alert-warning">
+              <div class="count">${r.performance.alerts_by_severity.warning || 0}</div>
               <div class="desc">警告</div>
             </div>
-            <div class="alert-stat" style="background:var(--bg-secondary);">
-              <div class="count" style="color:var(--text-muted);">—</div>
+            <div class="alert-stat alert-info">
+              <div class="count">${r.performance.alerts_by_severity.info || 0}</div>
               <div class="desc">提示</div>
             </div>
           </div>
+        </div>
+
+        <!-- AI Summary -->
+        <div class="section" style="border-left: 3px solid var(--purple);">
+          <div class="section-title"><span class="icon">🤖</span> AI 智能分析摘要 <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400; margin-left:0.5rem;">(by ${r.ai_model === 'qwen-plus' ? '通义千问' : '规则引擎'})</span></div>
+          <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.9; white-space: pre-line;">${r.ai_summary || '暂无AI分析数据'}</p>
         </div>
 
         <!-- Weather Summary Text -->

@@ -556,7 +556,8 @@
           <div class="confidence-bar">
             <div class="confidence-fill ${fillClass}" style="width: ${conf}%"></div>
           </div>
-          <div class="detail-row">
+          ${d.description ? `<div style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary); line-height:1.6;">${d.description}</div>` : ''}
+          <div class="detail-row" style="margin-top:0.5rem;">
             <span class="label">位置</span>
             <span class="value">(${bb.x}, ${bb.y}) · ${bb.width}×${bb.height}px</span>
           </div>
@@ -568,8 +569,9 @@
                           data.overall_health === 'degraded' ? 'health-degraded' : 'health-good';
       const healthText = data.overall_health === 'critical' ? '严重' :
                          data.overall_health === 'degraded' ? '退化' : '良好';
-      panel.innerHTML = `<div style="margin-bottom:1rem;">
+      panel.innerHTML = `<div style="margin-bottom:1rem; display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
         <span class="health-badge ${healthClass}">组件健康状态: ${healthText}</span>
+        <span style="font-size:0.75rem; color:var(--text-muted);">分析模型: ${data.model_used || '未知'}</span>
       </div>` + panel.innerHTML;
 
       // Recommendation

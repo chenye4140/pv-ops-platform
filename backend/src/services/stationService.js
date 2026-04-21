@@ -81,7 +81,7 @@ const stationService = {
     // Simplified: use today's energy vs theoretical max
     const capacityKW = station.capacity_mw * 1000;
     const pr = todayEnergy.energy_kwh > 0
-      ? Math.min(0.95, (todayEnergy.energy_kwh / (capacityKW * 6)) * 100).toFixed(1)
+      ? Math.min(95, (todayEnergy.energy_kwh / (capacityKW * 6)) * 100).toFixed(1)
       : '0.0';
 
     // Total inverter count
