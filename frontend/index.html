@@ -477,6 +477,7 @@
       <button class="nav-tab" data-tab="alerts">告警中心</button>
       <button class="nav-tab" data-tab="diagnosis">图像诊断</button>
       <button class="nav-tab" data-tab="report">智能日报</button>
+      <button class="nav-tab" data-tab="workorder">工单管理</button>
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
@@ -668,6 +669,135 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== Tab 6: 工单管理 ===== -->
+    <div class="tab-content" id="tab-workorder">
+      <div class="stats-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 1rem;">
+        <div class="stat-card">
+          <div class="stat-icon">📋</div>
+          <div class="stat-label">全部工单</div>
+          <div class="stat-value" id="woStatTotal">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-label">待处理</div>
+          <div class="stat-value" id="woStatPending" style="color:var(--orange)">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔧</div>
+          <div class="stat-label">处理中</div>
+          <div class="stat-value" id="woStatProgress" style="color:var(--blue)">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✅</div>
+          <div class="stat-label">已完成</div>
+          <div class="stat-value" id="woStatCompleted" style="color:var(--green)">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📦</div>
+          <div class="stat-label">已关闭</div>
+          <div class="stat-value" id="woStatClosed" style="color:var(--text-muted)">--</div>
+        </div>
+      </div>
+
+      <!-- Filter Row -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📋</span> 工单列表</div>
+          <button class="btn btn-sm" onclick="showCreateWorkOrderForm()">➕ 创建工单</button>
+        </div>
+        <div class="filter-row">
+          <label>类型：</label>
+          <select id="woFilterType">
+            <option value="all">全部</option>
+            <option value="defect_repair">缺陷修复</option>
+            <option value="routine_maintenance">定期维护</option>
+            <option value="inspection">巡检</option>
+            <option value="cleaning">清洗</option>
+            <option value="other">其他</option>
+          </select>
+          <label>优先级：</label>
+          <select id="woFilterPriority">
+            <option value="all">全部</option>
+            <option value="urgent">紧急</option>
+            <option value="high">高</option>
+            <option value="medium">中</option>
+            <option value="low">低</option>
+          </select>
+          <label>状态：</label>
+          <select id="woFilterStatus">
+            <option value="all">全部</option>
+            <option value="pending">待处理</option>
+            <option value="assigned">已分配</option>
+            <option value="in_progress">处理中</option>
+            <option value="completed">已完成</option>
+            <option value="closed">已关闭</option>
+          </select>
+          <label>负责人：</label>
+          <input type="text" id="woFilterAssignee" placeholder="输入负责人" style="width:120px;">
+          <button class="btn btn-sm btn-outline" onclick="applyWorkOrderFilters()">筛选</button>
+        </div>
+        <div id="workorderTableContainer">
+          <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+
+      <!-- Create Work Order Form (hidden by default) -->
+      <div class="section" id="createWorkOrderSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">➕</span> 创建工单</div>
+          <button class="btn btn-sm btn-outline" onclick="hideCreateWorkOrderForm()">取消</button>
+        </div>
+        <form id="createWorkOrderForm" onsubmit="return createWorkOrder(event)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">工单标题 *</label>
+              <input type="text" id="woTitle" required style="width:100%;" placeholder="请输入工单标题">
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">工单类型 *</label>
+              <select id="woType" required style="width:100%;">
+                <option value="defect_repair">缺陷修复</option>
+                <option value="routine_maintenance">定期维护</option>
+                <option value="inspection">巡检</option>
+                <option value="cleaning">清洗</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">优先级</label>
+              <select id="woPriority" style="width:100%;">
+                <option value="low">低</option>
+                <option value="medium" selected>中</option>
+                <option value="high">高</option>
+                <option value="urgent">紧急</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">负责人</label>
+              <input type="text" id="woAssignee" style="width:100%;" placeholder="请输入负责人">
+            </div>
+          </div>
+          <div style="margin-bottom:1rem;">
+            <label style="display:block;font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">详细描述</label>
+            <textarea id="woDescription" style="width:100%;min-height:80px;background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.6rem;border-radius:var(--radius-sm);font-size:0.85rem;outline:none;font-family:var(--font-sans);resize:vertical;" placeholder="请输入工详细描述"></textarea>
+          </div>
+          <div style="display:flex;gap:0.75rem;">
+            <button type="submit" class="btn">创建工单</button>
+            <button type="button" class="btn btn-outline" onclick="hideCreateWorkOrderForm()">取消</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Work Order Detail Modal -->
+      <div class="section" id="workorderDetailSection" style="display:none;">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📄</span> 工单详情</div>
+          <button class="btn btn-sm btn-outline" onclick="closeWorkOrderDetail()">关闭</button>
+        </div>
+        <div id="workorderDetailContent"></div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -706,6 +836,8 @@
     function switchTab(tab) {
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
+      // Load tab-specific data
+      if (tab === 'workorder') loadWorkOrders();
       // Resize charts after tab switch
       setTimeout(() => {
         Object.values(charts).forEach(c => c && c.resize());
@@ -1414,6 +1546,7 @@
       loadInverterDropdown();
       loadAlerts();
       initDiagnosis();
+      loadWorkOrders();
 
       // Auto-refresh every 30 seconds
       refreshTimer = setInterval(() => {
@@ -1426,9 +1559,355 @@
           loadAlertsOverview();
         } else if (tab === 'alerts') {
           loadAlerts();
+        } else if (tab === 'workorder') {
+          loadWorkOrders();
         }
       }, 30000);
     });
+
+    /* ============ Tab 6: Work Order Management ============ */
+    let cachedWorkOrders = [];
+
+    const WO_TYPE_NAMES = {
+      defect_repair: '缺陷修复',
+      routine_maintenance: '定期维护',
+      inspection: '巡检',
+      cleaning: '清洗',
+      other: '其他'
+    };
+
+    const WO_PRIORITY_NAMES = {
+      low: '低',
+      medium: '中',
+      high: '高',
+      urgent: '紧急'
+    };
+
+    const WO_STATUS_NAMES = {
+      pending: '待处理',
+      assigned: '已分配',
+      in_progress: '处理中',
+      completed: '已完成',
+      closed: '已关闭'
+    };
+
+    const WO_STATUS_TRANSITIONS = {
+      pending: ['assigned', 'closed'],
+      assigned: ['in_progress', 'pending', 'closed'],
+      in_progress: ['completed', 'pending'],
+      completed: ['closed', 'in_progress'],
+      closed: []
+    };
+
+    async function loadWorkOrders() {
+      const container = document.getElementById('workorderTableContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        const res = await fetch(`${API}/workorders`);
+        const json = await res.json();
+        if (json.success) {
+          cachedWorkOrders = json.data || [];
+          loadWorkOrderStats();
+          renderWorkOrderTable();
+        } else {
+          container.innerHTML = '<div class="error-msg">工单加载失败</div>';
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="error-msg">请求失败: ' + e.message + '</div>';
+      }
+    }
+
+    function loadWorkOrderStats() {
+      const stats = { total: 0, pending: 0, in_progress: 0, completed: 0, closed: 0 };
+      cachedWorkOrders.forEach(wo => {
+        stats.total++;
+        if (stats[wo.status] !== undefined) stats[wo.status]++;
+      });
+      document.getElementById('woStatTotal').textContent = stats.total;
+      document.getElementById('woStatPending').textContent = stats.pending;
+      document.getElementById('woStatProgress').textContent = stats.in_progress;
+      document.getElementById('woStatCompleted').textContent = stats.completed;
+      document.getElementById('woStatClosed').textContent = stats.closed;
+    }
+
+    function applyWorkOrderFilters() {
+      renderWorkOrderTable();
+    }
+
+    function renderWorkOrderTable() {
+      const typeFilter = document.getElementById('woFilterType').value;
+      const priorityFilter = document.getElementById('woFilterPriority').value;
+      const statusFilter = document.getElementById('woFilterStatus').value;
+      const assigneeFilter = document.getElementById('woFilterAssignee').value.trim().toLowerCase();
+
+      let filtered = [...cachedWorkOrders];
+      if (typeFilter !== 'all') filtered = filtered.filter(w => w.type === typeFilter);
+      if (priorityFilter !== 'all') filtered = filtered.filter(w => w.priority === priorityFilter);
+      if (statusFilter !== 'all') filtered = filtered.filter(w => w.status === statusFilter);
+      if (assigneeFilter) filtered = filtered.filter(w => (w.assignee || '').toLowerCase().includes(assigneeFilter));
+
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const container = document.getElementById('workorderTableContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-msg">没有符合条件的工单记录</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>编号</th><th>标题</th><th>类型</th><th>优先级</th><th>状态</th><th>负责人</th><th>电站</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody>${filtered.map(w => {
+            const priClass = w.priority === 'urgent' ? 'badge-error' : w.priority === 'high' ? 'badge-warning' : w.priority === 'medium' ? 'badge-info' : 'badge-normal';
+            const priText = WO_PRIORITY_NAMES[w.priority] || w.priority;
+            const stClass = w.status === 'completed' ? 'badge-normal' : w.status === 'in_progress' ? 'badge-info' : w.status === 'assigned' ? 'badge-warning' : w.status === 'closed' ? 'badge-normal' : 'badge-error';
+            const stText = WO_STATUS_NAMES[w.status] || w.status;
+            const typeText = WO_TYPE_NAMES[w.type] || w.type;
+            const time = new Date(w.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+            return `<tr>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">#${w.id}</td>
+              <td style="max-width:200px;cursor:pointer;color:var(--accent);" onclick="viewWorkOrder(${w.id})">${w.title}</td>
+              <td>${typeText}</td>
+              <td><span class="badge ${priClass}"><span class="badge-dot"></span>${priText}</span></td>
+              <td><span class="badge ${stClass}"><span class="badge-dot"></span>${stText}</span></td>
+              <td>${w.assignee || '-'}</td>
+              <td>${w.station_name || '-'}</td>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">${time}</td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn-sm btn-outline" onclick="viewWorkOrder(${w.id})">详情</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteWorkOrder(${w.id})" style="margin-left:4px;">删除</button>
+              </td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+        <div style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">共 ${filtered.length} 条工单</div>`;
+    }
+
+    function showCreateWorkOrderForm() {
+      document.getElementById('createWorkOrderSection').style.display = 'block';
+      document.getElementById('workorderDetailSection').style.display = 'none';
+    }
+
+    function hideCreateWorkOrderForm() {
+      document.getElementById('createWorkOrderSection').style.display = 'none';
+      document.getElementById('createWorkOrderForm').reset();
+    }
+
+    async function createWorkOrder(e) {
+      e.preventDefault();
+      const data = {
+        title: document.getElementById('woTitle').value,
+        type: document.getElementById('woType').value,
+        priority: document.getElementById('woPriority').value,
+        assignee: document.getElementById('woAssignee').value || null,
+        description: document.getElementById('woDescription').value || null,
+        station_id: parseInt(document.getElementById('stationSelect').value) || null
+      };
+
+      try {
+        const res = await fetch(`${API}/workorders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast('工单创建成功', 'success');
+          hideCreateWorkOrderForm();
+          await loadWorkOrders();
+        } else {
+          showToast('创建失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+      return false;
+    }
+
+    async function viewWorkOrder(id) {
+      try {
+        const res = await fetch(`${API}/workorders/${id}`);
+        const json = await res.json();
+        if (!json.success) {
+          showToast('工单不存在', 'error');
+          return;
+        }
+
+        const wo = json.data;
+        const allowedTransitions = WO_STATUS_TRANSITIONS[wo.status] || [];
+        const priClass = wo.priority === 'urgent' ? 'badge-error' : wo.priority === 'high' ? 'badge-warning' : wo.priority === 'medium' ? 'badge-info' : 'badge-normal';
+        const stClass = wo.status === 'completed' ? 'badge-normal' : wo.status === 'in_progress' ? 'badge-info' : wo.status === 'assigned' ? 'badge-warning' : wo.status === 'closed' ? 'badge-normal' : 'badge-error';
+        const time = new Date(wo.created_at).toLocaleString('zh-CN');
+        const updateTime = new Date(wo.updated_at).toLocaleString('zh-CN');
+        const completeTime = wo.completed_at ? new Date(wo.completed_at).toLocaleString('zh-CN') : '-';
+
+        let html = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">工单编号</div>
+              <div style="font-family:var(--font-mono);font-size:1rem;">#${wo.id}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">标题</div>
+              <div style="font-weight:600;">${wo.title}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">类型</div>
+              <div>${WO_TYPE_NAMES[wo.type] || wo.type}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">优先级</div>
+              <div><span class="badge ${priClass}"><span class="badge-dot"></span>${WO_PRIORITY_NAMES[wo.priority]}</span></div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">状态</div>
+              <div><span class="badge ${stClass}"><span class="badge-dot"></span>${WO_STATUS_NAMES[wo.status]}</span></div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">负责人</div>
+              <div>${wo.assignee || '未分配'}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">关联电站</div>
+              <div>${wo.station_name || '-'}</div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">关联告警</div>
+              <div>${wo.alert_message || '-'}</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:1rem;">
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.3rem;">描述</div>
+            <div style="padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6;">${wo.description || '无描述'}</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.25rem;font-size:0.8rem;">
+            <div>
+              <span style="color:var(--text-muted);">创建时间：</span>
+              <span style="font-family:var(--font-mono);">${time}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);">更新时间：</span>
+              <span style="font-family:var(--font-mono);">${updateTime}</span>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);">完成时间：</span>
+              <span style="font-family:var(--font-mono);">${completeTime}</span>
+            </div>
+          </div>
+        `;
+
+        // Status transition buttons
+        if (allowedTransitions.length > 0) {
+          html += `
+            <div style="margin-bottom:1.25rem;padding-top:1rem;border-top:1px solid var(--border);">
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">状态变更</div>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                ${allowedTransitions.map(s => `<button class="btn btn-sm btn-outline" onclick="changeWorkOrderStatus(${wo.id}, '${s}')">${WO_STATUS_NAMES[s]}</button>`).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        // Notes section
+        html += `
+          <div style="padding-top:1rem;border-top:1px solid var(--border);">
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;">备注记录 (${(wo.notes || []).length})</div>
+            <div id="woNotesList" style="max-height:200px;overflow-y:auto;margin-bottom:0.75rem;">
+              ${(wo.notes || []).length === 0 ? '<div style="color:var(--text-muted);font-size:0.82rem;padding:0.5rem;">暂无备注</div>' :
+                wo.notes.map(n => `
+                  <div style="padding:0.5rem;background:var(--bg-secondary);border-radius:var(--radius-sm);margin-bottom:0.4rem;">
+                    <div style="font-size:0.82rem;">${n.content}</div>
+                    <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem;">${n.created_by || '系统'} · ${new Date(n.created_at).toLocaleString('zh-CN')}</div>
+                  </div>
+                `).join('')
+              }
+            </div>
+            <div style="display:flex;gap:0.5rem;">
+              <input type="text" id="woNoteInput" placeholder="输入备注内容" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addWorkOrderNote(${wo.id});}">
+              <button class="btn btn-sm" onclick="addWorkOrderNote(${wo.id})">添加</button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('workorderDetailContent').innerHTML = html;
+        document.getElementById('workorderDetailSection').style.display = 'block';
+        document.getElementById('createWorkOrderSection').style.display = 'none';
+      } catch (e) {
+        showToast('加载工单详情失败: ' + e.message, 'error');
+      }
+    }
+
+    async function changeWorkOrderStatus(id, newStatus) {
+      try {
+        const res = await fetch(`${API}/workorders/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast(`工单状态已变更为「${WO_STATUS_NAMES[newStatus]}」`, 'success');
+          await loadWorkOrders();
+          viewWorkOrder(id);
+        } else {
+          showToast('状态变更失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    async function addWorkOrderNote(id) {
+      const input = document.getElementById('woNoteInput');
+      const content = input.value.trim();
+      if (!content) {
+        showToast('备注内容不能为空', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/workorders/${id}/notes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content, created_by: '操作员' })
+        });
+        const json = await res.json();
+        if (json.success) {
+          input.value = '';
+          showToast('备注添加成功', 'success');
+          viewWorkOrder(id);
+        } else {
+          showToast('添加失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteWorkOrder(id) {
+      if (!confirm(`确定要删除工单 #${id} 吗？`)) return;
+
+      try {
+        const res = await fetch(`${API}/workorders/${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+          showToast('工单已删除', 'success');
+          document.getElementById('workorderDetailSection').style.display = 'none';
+          await loadWorkOrders();
+        } else {
+          showToast('删除失败: ' + json.error, 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    function closeWorkOrderDetail() {
+      document.getElementById('workorderDetailSection').style.display = 'none';
+    }
+
   </script>
 </body>
 </html>

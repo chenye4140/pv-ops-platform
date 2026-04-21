@@ -77,6 +77,34 @@ function initDatabase() {
       FOREIGN KEY (station_id) REFERENCES stations(id)
     );
 
+    -- Work Orders table
+    CREATE TABLE IF NOT EXISTS work_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      type TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      status TEXT NOT NULL DEFAULT 'pending',
+      assignee TEXT,
+      station_id INTEGER,
+      alert_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      completed_at TEXT,
+      FOREIGN KEY (station_id) REFERENCES stations(id),
+      FOREIGN KEY (alert_id) REFERENCES alerts(id)
+    );
+
+    -- Work Order Notes table
+    CREATE TABLE IF NOT EXISTS work_order_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      work_order_id INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE
+    );
+
     -- Indexes for performance
     CREATE INDEX IF NOT EXISTS idx_power_data_string_id ON power_data(string_id);
     CREATE INDEX IF NOT EXISTS idx_power_data_timestamp ON power_data(timestamp);
@@ -86,6 +114,10 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_strings_inverter_id ON strings(inverter_id);
     CREATE INDEX IF NOT EXISTS idx_alerts_station_id ON alerts(station_id);
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
+    CREATE INDEX IF NOT EXISTS idx_work_orders_status ON work_orders(status);
+    CREATE INDEX IF NOT EXISTS idx_work_orders_station_id ON work_orders(station_id);
+    CREATE INDEX IF NOT EXISTS idx_work_orders_assignee ON work_orders(assignee);
+    CREATE INDEX IF NOT EXISTS idx_work_order_notes_work_order_id ON work_order_notes(work_order_id);
   `);
 }
 

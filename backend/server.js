@@ -25,6 +25,7 @@ const weatherRoutes = require('./src/routes/weatherRoutes');
 const analysisRoutes = require('./src/routes/analysisRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const stringRoutes = require('./src/routes/stringRoutes');
+const workorderRoutes = require('./src/routes/workorderRoutes');
 
 app.use('/api/stations', stationRoutes);
 app.use('/api/power-data', powerRoutes);
@@ -33,6 +34,7 @@ app.use('/api/weather', weatherRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/strings', stringRoutes);
+app.use('/api/workorders', workorderRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
