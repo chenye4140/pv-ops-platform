@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>光伏运维平台 - 日报</title>
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: #1a2236;
+      --bg-card-hover: #1f2b42;
+      --border: #2a3550;
+      --text-primary: #e5e7eb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent: #06b6d4;
+      --accent-glow: rgba(6, 182, 212, 0.15);
+      --green: #10b981;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .navbar-brand svg { width: 28px; height: 28px; }
+    .navbar-links {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: 3rem;
+    }
+    .navbar-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .navbar-links a:hover, .navbar-links a.active {
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+    .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+    .station-select {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      outline: none;
+      cursor: pointer;
+    }
+    .btn-print {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-print:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Main */
+    .main { max-width: 900px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+    /* Report Header */
+    .report-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .report-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.25rem;
+    }
+    .report-header .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .report-header .date {
+      margin-top: 0.75rem;
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    /* Section */
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title .icon { color: var(--accent); }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .stat-item {
+      text-align: center;
+      padding: 1rem;
+      background: var(--bg-secondary);
+      border-radius: 10px;
+    }
+    .stat-item .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .stat-item .unit {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .stat-item .label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Detail rows */
+    .detail-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.6rem 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 0.9rem;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .label { color: var(--text-muted); }
+    .detail-row .value { color: var(--text-primary); font-weight: 500; }
+
+    /* Alert summary */
+    .alert-summary {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .alert-stat {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.75rem;
+      border-radius: 10px;
+      text-align: center;
+      background: var(--bg-secondary);
+    }
+    .alert-stat .count {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .alert-stat .desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+    .alert-critical .count { color: var(--red); }
+    .alert-warning .count { color: var(--orange); }
+    .alert-info .count { color: var(--blue); }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--red);
+      font-size: 0.9rem;
+    }
+
+    /* Print styles */
+    @media print {
+      .navbar, .btn-print, .navbar-right { display: none !important; }
+      body {
+        background: #fff !important;
+        color: #111 !important;
+        font-size: 12pt;
+      }
+      .main { max-width: 100%; padding: 0; }
+      .section {
+        background: #fff !important;
+        border: 1px solid #ddd !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+      .section-title { border-bottom-color: #ddd !important; color: #111 !important; }
+      .report-header { border-bottom-color: #ddd !important; }
+      .report-header h1 { color: #111 !important; }
+      .report-header .subtitle, .report-header .date { color: #555 !important; }
+      .stat-item { background: #f5f5f5 !important; }
+      .stat-item .value { color: #111 !important; }
+      .stat-item .label { color: #555 !important; }
+      .detail-row { border-bottom-color: #eee !important; }
+      .detail-row .label { color: #555 !important; }
+      .detail-row .value { color: #111 !important; }
+      .alert-stat { background: #f5f5f5 !important; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main { padding: 1rem; }
+      .navbar { padding: 0 1rem; }
+      .navbar-links { margin-left: 1.5rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+        <line x1="7" y1="10" x2="17" y2="10" />
+        <line x1="12" y1="3" x2="12" y2="10" />
+      </svg>
+      PV运维平台
+    </a>
+    <div class="navbar-links">
+      <a href="index.html">Dashboard</a>
+      <a href="analysis.html">图像分析</a>
+      <a href="daily-report.html" class="active">日报</a>
+    </div>
+    <div class="navbar-right">
+      <select class="station-select" id="stationSelect">
+        <option value="1">电站 #1 - 示范电站</option>
+      </select>
+      <button class="btn-print" onclick="window.print()">🖨️ 打印</button>
+    </div>
+  </nav>
+
+  <main class="main" id="reportContent">
+    <div class="loading"><div class="spinner"></div>正在生成日报...</div>
+  </main>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+    let stationId = '1';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStations();
+      loadReport();
+      document.getElementById('stationSelect').addEventListener('change', (e) => {
+        stationId = e.target.value;
+        loadReport();
+      });
+    });
+
+    async function loadStations() {
+      try {
+        const res = await fetch(`${API}/stations`);
+        const json = await res.json();
+        if (json.success && json.data.length > 0) {
+          const select = document.getElementById('stationSelect');
+          select.innerHTML = json.data.map(s =>
+            `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`
+          ).join('');
+        }
+      } catch (e) {
+        console.warn('Failed to load stations:', e);
+      }
+    }
+
+    async function loadReport() {
+      const container = document.getElementById('reportContent');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>正在加载日报数据...</div>';
+
+      try {
+        const res = await fetch(`${API}/reports/daily?stationId=${stationId}`);
+        const json = await res.json();
+
+        if (!json.success) {
+          container.innerHTML = `<div class="error-msg">加载日报失败: ${json.error || '未知错误'}</div>`;
+          return;
+        }
+
+        const report = json.data;
+        renderReport(report);
+      } catch (e) {
+        container.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;
+      }
+    }
+
+    function renderReport(r) {
+      const container = document.getElementById('reportContent');
+
+      const dateObj = new Date(r.date + 'T00:00:00');
+      const dateStr = dateObj.toLocaleDateString('zh-CN', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+      });
+
+      // Build weather summary
+      const weatherSummary = [
+        r.weather.avg_irradiance_wm2 > 0 ? `平均辐照度: ${r.weather.avg_irradiance_wm2} W/m²` : '',
+        r.weather.peak_irradiance_wm2 > 0 ? `峰值辐照度: ${r.weather.peak_irradiance_wm2} W/m²` : '',
+        r.weather.avg_temperature_c ? `平均温度: ${r.weather.avg_temperature_c}°C` : '',
+        r.weather.avg_wind_speed_ms ? `平均风速: ${r.weather.avg_wind_speed_ms} m/s` : ''
+      ].filter(Boolean).join('，') || '暂无气象数据';
+
+      container.innerHTML = `
+        <!-- Report Header -->
+        <div class="report-header">
+          <h1>☀️ ${r.station.name} · 运维日报</h1>
+          <div class="subtitle">光伏运维AI智能分析平台自动生成</div>
+          <div class="date">📅 ${dateStr}</div>
+        </div>
+
+        <!-- Generation Summary -->
+        <div class="section">
+          <div class="section-title"><span class="icon">⚡</span> 发电概况</div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="value">${r.generation.total_energy_kwh.toFixed(1)}<span class="unit"> kWh</span></div>
+              <div class="label">总发电量</div>
+            </div>
+            <div class="stat-item">
+              <div class="value">${r.generation.peak_power_kw.toFixed(1)}<span class="unit"> kW</span></div>
+              <div class="label">峰值功率</div>
+            </div>
+            <div class="stat-item">
+              <div class="value">${r.generation.avg_power_kw.toFixed(1)}<span class="unit"> kW</span></div>
+              <div class="label">平均功率</div>
+            </div>
+            <div class="stat-item">
+              <div class="value">${r.performance.performance_ratio.toFixed(1)}<span class="unit"> %</span></div>
+              <div class="label">性能比 PR</div>
+            </div>
+          </div>
+          <div style="margin-top:1rem; font-size:0.8rem; color:var(--text-muted);">
+            电站装机容量: ${r.station.capacity_mw} MW · 有效读数: ${r.generation.reading_count} 条
+          </div>
+        </div>
+
+        <!-- Weather -->
+        <div class="section">
+          <div class="section-title"><span class="icon">🌤️</span> 气象数据</div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="value">${r.weather.avg_irradiance_wm2}<span class="unit"> W/m²</span></div>
+              <div class="label">平均辐照度</div>
+            </div>
+            <div class="stat-item">
+              <div class="value">${r.weather.peak_irradiance_wm2}<span class="unit"> W/m²</span></div>
+              <div class="label">峰值辐照度</div>
+            </div>
+            <div class="stat-item">
+              <div class="value">${r.weather.avg_temperature_c}<span class="unit"> °C</span></div>
+              <div class="label">平均温度</div>
+            </div>
+            <div class="stat-item">
+              <div class="value">${r.weather.avg_wind_speed_ms}<span class="unit"> m/s</span></div>
+              <div class="label">平均风速</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance -->
+        <div class="section">
+          <div class="section-title"><span class="icon">📊</span> 性能指标</div>
+          <div class="detail-list">
+            <div class="detail-row">
+              <span class="label">性能比 (PR)</span>
+              <span class="value" style="color: ${r.performance.performance_ratio >= 80 ? 'var(--green)' : r.performance.performance_ratio >= 60 ? 'var(--orange)' : 'var(--red)'}">${r.performance.performance_ratio.toFixed(1)}%</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">装机容量</span>
+              <span class="value">${r.station.capacity_mw} MW</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">等效满发小时</span>
+              <span class="value">${(r.generation.total_energy_kwh / (r.station.capacity_mw * 1000)).toFixed(2)} h</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">数据有效读数</span>
+              <span class="value">${r.generation.reading_count} 条</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alerts Summary -->
+        <div class="section">
+          <div class="section-title"><span class="icon">🔔</span> 告警统计</div>
+          <div class="alert-summary">
+            <div class="alert-stat alert-critical">
+              <div class="count">${r.performance.alerts_count}</div>
+              <div class="desc">今日告警总数</div>
+            </div>
+            <div class="alert-stat" style="background:var(--bg-secondary);">
+              <div class="count" style="color:var(--text-muted);">—</div>
+              <div class="desc">严重</div>
+            </div>
+            <div class="alert-stat" style="background:var(--bg-secondary);">
+              <div class="count" style="color:var(--text-muted);">—</div>
+              <div class="desc">警告</div>
+            </div>
+            <div class="alert-stat" style="background:var(--bg-secondary);">
+              <div class="count" style="color:var(--text-muted);">—</div>
+              <div class="desc">提示</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weather Summary Text -->
+        <div class="section">
+          <div class="section-title"><span class="icon">📝</span> 气象摘要</div>
+          <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.8;">
+            ${weatherSummary}。
+            ${r.weather.peak_irradiance_wm2 > 500 ? '今日辐照条件较好，有利于光伏发电。' :
+              r.weather.avg_irradiance_wm2 > 200 ? '今日辐照条件一般。' :
+              '今日辐照条件较弱，发电量可能受到影响。'}
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align:center; padding:1rem; color:var(--text-muted); font-size:0.8rem;">
+          <p>报表生成时间: ${new Date().toLocaleString('zh-CN')}</p>
+          <p>PV运维AI智能分析平台 · 自动生成</p>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

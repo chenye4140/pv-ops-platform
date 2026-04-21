@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>光伏运维平台 - 图像分析</title>
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: #1a2236;
+      --bg-card-hover: #1f2b42;
+      --border: #2a3550;
+      --text-primary: #e5e7eb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent: #06b6d4;
+      --accent-glow: rgba(6, 182, 212, 0.15);
+      --green: #10b981;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Navbar */
+    .navbar {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .navbar-brand svg { width: 28px; height: 28px; }
+    .navbar-links {
+      display: flex;
+      gap: 0.5rem;
+      margin-left: 3rem;
+    }
+    .navbar-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .navbar-links a:hover, .navbar-links a.active {
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    /* Main */
+    .main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+    /* Section */
+    .section {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .section-header .icon { color: var(--accent); }
+
+    /* Image Gallery */
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .gallery-item {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .gallery-item:hover { border-color: var(--accent); transform: scale(1.02); }
+    .gallery-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+    .gallery-item img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery-item .caption {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      background: var(--bg-secondary);
+    }
+
+    /* Upload area */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 1rem;
+    }
+    .upload-area:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .upload-area .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .upload-area p { color: var(--text-secondary); font-size: 0.9rem; }
+    .upload-area small { color: var(--text-muted); font-size: 0.8rem; }
+
+    /* Analysis Button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #000;
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Preview */
+    .preview-container {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+    .preview-image {
+      flex: 1;
+      min-width: 0;
+    }
+    .preview-image img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .preview-image .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+
+    /* Results */
+    .results-panel {
+      flex: 1;
+      min-width: 0;
+    }
+    .defect-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .defect-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .defect-type {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .confidence-bar {
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      margin: 0.5rem 0;
+      overflow: hidden;
+    }
+    .confidence-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      padding: 0.3rem 0;
+    }
+    .detail-row .label { color: var(--text-muted); }
+    .detail-row .value { color: var(--text-primary); font-weight: 500; }
+
+    /* Severity badges */
+    .severity-high { color: var(--red); }
+    .severity-medium { color: var(--orange); }
+    .severity-low { color: var(--green); }
+    .fill-high { background: var(--red); }
+    .fill-medium { background: var(--orange); }
+    .fill-low { background: var(--green); }
+
+    /* Overall health */
+    .health-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    .health-degraded { background: rgba(245,158,11,0.15); color: var(--orange); }
+    .health-good { background: rgba(16,185,129,0.15); color: var(--green); }
+    .health-critical { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* Recommendation */
+    .recommendation {
+      background: var(--bg-secondary);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .recommendation .title {
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .preview-container { flex-direction: column; }
+      .main { padding: 1rem; }
+      .navbar { padding: 0 1rem; }
+      .navbar-links { margin-left: 1.5rem; }
+      .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+      .gallery-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+        <line x1="7" y1="10" x2="17" y2="10" />
+        <line x1="12" y1="3" x2="12" y2="10" />
+      </svg>
+      PV运维平台
+    </a>
+    <div class="navbar-links">
+      <a href="index.html">Dashboard</a>
+      <a href="analysis.html" class="active">图像分析</a>
+      <a href="daily-report.html">日报</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Upload Section -->
+    <div class="section">
+      <div class="section-header"><span class="icon">📤</span> 上传缺陷图片</div>
+      <div class="upload-area" id="uploadArea">
+        <div class="icon">🖼️</div>
+        <p>点击或拖拽上传图片</p>
+        <small>支持 JPG/PNG 格式，最大 10MB</small>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+      </div>
+    </div>
+
+    <!-- Sample Images -->
+    <div class="section">
+      <div class="section-header"><span class="icon">📷</span> 模拟缺陷图片库</div>
+      <div class="gallery-grid" id="gallery"></div>
+    </div>
+
+    <!-- Preview & Analysis -->
+    <div class="section" id="analysisSection">
+      <div class="section-header"><span class="icon">🔬</span> AI 分析结果</div>
+      <div id="previewContainer" class="hidden">
+        <div class="preview-container">
+          <div class="preview-image">
+            <img id="previewImg" src="" alt="预览">
+            <div class="label" id="previewLabel">已选图片</div>
+          </div>
+          <div class="results-panel" id="resultsPanel">
+            <div class="loading"><div class="spinner"></div>AI 分析中...</div>
+          </div>
+        </div>
+        <div id="recommendationBox"></div>
+        <div style="margin-top:1rem;">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()">
+            🔍 开始 AI 分析
+          </button>
+        </div>
+      </div>
+      <div id="noSelection" style="text-align:center; padding:2rem; color:var(--text-muted);">
+        请从上方选择或上传一张图片进行分析
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+    let selectedImage = null;
+    let selectedLabel = '';
+
+    // Sample defect images (SVG generated placeholders)
+    const sampleImages = [
+      {
+        url: createDefectSVG('热斑缺陷', 'hot_spot', '#ef4444', '#991b1b'),
+        label: '热斑缺陷样本',
+        type: 'hot_spot'
+      },
+      {
+        url: createDefectSVG('隐裂缺陷', 'crack', '#f59e0b', '#92400e'),
+        label: '隐裂缺陷样本',
+        type: 'crack'
+      },
+      {
+        url: createDefectSVG('遮挡缺陷', 'shadow', '#3b82f6', '#1e3a5f'),
+        label: '遮挡缺陷样本',
+        type: 'shadow'
+      },
+      {
+        url: createDefectSVG('污秽缺陷', 'dirt', '#8b5cf6', '#4c1d95'),
+        label: '污秽缺陷样本',
+        type: 'dirt'
+      }
+    ];
+
+    function createDefectSVG(label, type, accent, bg) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">
+        <defs>
+          <linearGradient id="g${type}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="${bg}" />
+            <stop offset="100%" stop-color="#0a0e17" />
+          </linearGradient>
+        </defs>
+        <rect width="400" height="250" fill="url(#g${type})" />
+        <!-- Grid lines simulating solar panel cells -->
+        <line x1="100" y1="0" x2="100" y2="250" stroke="${accent}" stroke-width="0.5" opacity="0.3" />
+        <line x1="200" y1="0" x2="200" y2="250" stroke="${accent}" stroke-width="0.5" opacity="0.3" />
+        <line x1="300" y1="0" x2="300" y2="250" stroke="${accent}" stroke-width="0.5" opacity="0.3" />
+        <line x1="0" y1="83" x2="400" y2="83" stroke="${accent}" stroke-width="0.5" opacity="0.3" />
+        <line x1="0" y1="166" x2="400" y2="166" stroke="${accent}" stroke-width="0.5" opacity="0.3" />
+        <!-- Defect simulation -->
+        ${type === 'hot_spot' ? `
+          <circle cx="150" cy="120" r="35" fill="${accent}" opacity="0.6" />
+          <circle cx="150" cy="120" r="20" fill="${accent}" opacity="0.8" />
+          <circle cx="150" cy="120" r="8" fill="#fff" opacity="0.4" />
+        ` : type === 'crack' ? `
+          <path d="M120 60 L180 100 L220 90 L280 140 L260 160 L200 120 L160 140 Z" stroke="${accent}" stroke-width="2" fill="none" opacity="0.8" />
+          <path d="M180 100 L170 180" stroke="${accent}" stroke-width="1.5" fill="none" opacity="0.5" />
+        ` : type === 'shadow' ? `
+          <rect x="50" y="40" width="150" height="80" fill="#000" opacity="0.4" rx="4" />
+          <rect x="200" y="130" width="120" height="60" fill="#000" opacity="0.3" rx="4" />
+        ` : `
+          <circle cx="100" cy="80" r="15" fill="${accent}" opacity="0.3" />
+          <circle cx="200" cy="130" r="12" fill="${accent}" opacity="0.3" />
+          <circle cx="300" cy="70" r="18" fill="${accent}" opacity="0.3" />
+          <circle cx="150" cy="180" r="10" fill="${accent}" opacity="0.3" />
+          <circle cx="280" cy="190" r="14" fill="${accent}" opacity="0.3" />
+        `}
+        <!-- Label -->
+        <rect x="10" y="210" width="380" height="32" rx="4" fill="rgba(0,0,0,0.7)" />
+        <text x="200" y="232" fill="#e5e7eb" text-anchor="middle" font-size="13" font-family="sans-serif">🔍 ${label} · 模拟图像</text>
+      </svg>`;
+      return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+    }
+
+    // Initialize gallery
+    function initGallery() {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = sampleImages.map((img, i) => `
+        <div class="gallery-item" onclick="selectImage(${i})">
+          <img src="${img.url}" alt="${img.label}">
+          <div class="caption">${img.label}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectImage(index) {
+      document.querySelectorAll('.gallery-item').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+      });
+      selectedImage = sampleImages[index].url;
+      selectedLabel = sampleImages[index].label;
+      showPreview(selectedImage, selectedLabel);
+    }
+
+    function showPreview(url, label) {
+      document.getElementById('noSelection').classList.add('hidden');
+      document.getElementById('previewContainer').classList.remove('hidden');
+      document.getElementById('previewImg').src = url;
+      document.getElementById('previewLabel').textContent = label;
+      document.getElementById('resultsPanel').innerHTML =
+        '<div style="text-align:center; padding:2rem; color:var(--text-muted);">点击「开始 AI 分析」获取结果</div>';
+      document.getElementById('recommendationBox').innerHTML = '';
+    }
+
+    // Upload handler
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = 'var(--accent)'; });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = ''; });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '';
+      if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        selectedImage = e.target.result;
+        selectedLabel = file.name;
+        document.querySelectorAll('.gallery-item').forEach(el => el.classList.remove('selected'));
+        showPreview(selectedImage, file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Run analysis
+    async function runAnalysis() {
+      if (!selectedImage) return;
+
+      const btn = document.getElementById('analyzeBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 分析中...';
+
+      document.getElementById('resultsPanel').innerHTML =
+        '<div class="loading"><div class="spinner"></div>AI 正在分析图像...</div>';
+      document.getElementById('recommendationBox').innerHTML = '';
+
+      try {
+        const res = await fetch(`${API}/analysis/defect-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: selectedImage, label: selectedLabel })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          renderResults(json.data);
+        } else {
+          document.getElementById('resultsPanel').innerHTML =
+            '<div class="error-msg" style="color:var(--red)">分析失败: ' + (json.error || '未知错误') + '</div>';
+        }
+      } catch (e) {
+        document.getElementById('resultsPanel').innerHTML =
+          '<div class="error-msg" style="color:var(--red)">请求失败: ' + e.message + '</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 开始 AI 分析';
+      }
+    }
+
+    function renderResults(data) {
+      const panel = document.getElementById('resultsPanel');
+      const defectNames = {
+        hot_spot: '热斑缺陷',
+        crack: '隐裂/裂纹',
+        shadow: '遮挡',
+        dirt: '污秽',
+        unknown: '未知缺陷'
+      };
+
+      panel.innerHTML = data.defects.map((d, i) => {
+        const conf = Math.round(d.confidence * 100);
+        const sevClass = d.severity === 'high' ? 'severity-high' : d.severity === 'medium' ? 'severity-medium' : 'severity-low';
+        const fillClass = d.severity === 'high' ? 'fill-high' : d.severity === 'medium' ? 'fill-medium' : 'fill-low';
+        const sevText = d.severity === 'high' ? '高' : d.severity === 'medium' ? '中' : '低';
+        const bb = d.bounding_box;
+
+        return `<div class="defect-card">
+          <div class="defect-header">
+            <span class="defect-type">${defectNames[d.type] || d.type}</span>
+            <span class="${sevClass}" style="font-size:0.85rem; font-weight:700;">严重程度: ${sevText}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">置信度</span>
+            <span class="value">${conf}%</span>
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill ${fillClass}" style="width: ${conf}%"></div>
+          </div>
+          <div class="detail-row">
+            <span class="label">位置</span>
+            <span class="value">(${bb.x}, ${bb.y}) · ${bb.width}×${bb.height}px</span>
+          </div>
+        </div>`;
+      }).join('');
+
+      // Overall health
+      const healthClass = data.overall_health === 'critical' ? 'health-critical' :
+                          data.overall_health === 'degraded' ? 'health-degraded' : 'health-good';
+      const healthText = data.overall_health === 'critical' ? '严重' :
+                         data.overall_health === 'degraded' ? '退化' : '良好';
+      panel.innerHTML = `<div style="margin-bottom:1rem;">
+        <span class="health-badge ${healthClass}">组件健康状态: ${healthText}</span>
+      </div>` + panel.innerHTML;
+
+      // Recommendation
+      if (data.recommendation) {
+        document.getElementById('recommendationBox').innerHTML = `
+          <div class="recommendation">
+            <div class="title">💡 运维建议</div>
+            ${data.recommendation}
+          </div>`;
+      }
+    }
+
+    // Init
+    initGallery();
+  </script>
+</body>
+</html>
