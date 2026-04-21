@@ -8,6 +8,7 @@ const authService = require('./src/services/authService');
 const wsService = require('./src/services/websocketService');
 const forecastAutoGenerate = require('./src/services/forecastAutoGenerate');
 const alertEvaluationScheduler = require('./src/services/alertEvaluationScheduler');
+const autoBackupScheduler = require('./src/services/autoBackupScheduler');
 
 // Initialize database and seed default admin
 initDatabase();
@@ -28,6 +29,9 @@ setTimeout(() => {
 
 // Schedule daily forecast regeneration at 23:00 (3 days ahead)
 const dailyForecast = forecastAutoGenerate.scheduleDailyForecast(23, 0);
+
+// Schedule daily auto-backup at 02:00 AM (keeps last 10 backups)
+const dailyBackup = autoBackupScheduler.scheduleDailyBackup(2, 0);
 
 const app = express();
 const PORT = process.env.PORT || 3000;

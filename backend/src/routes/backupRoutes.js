@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const backupService = require('../services/backupService');
+const autoBackupScheduler = require('../services/autoBackupScheduler');
 
 // POST /api/backup/create
 router.post('/create', (req, res) => {
@@ -48,6 +49,26 @@ router.get('/stats', (req, res) => {
     const stats = backupService.getDatabaseStats();
     const backups = backupService.listBackups();
     res.json({ success: true, data: { ...stats, backupCount: backups.length, lastBackup: backups[0] || null } });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/backup/auto-backup/info
+router.get('/auto-backup/info', (req, res) => {
+  try {
+    const info = autoBackupScheduler.getScheduleInfo();
+    res.json({ success: true, data: info });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/backup/auto-backup/run
+router.post('/auto-backup/run', (req, res) => {
+  try {
+    const result = autoBackupScheduler.createAutoBackup();
+    res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
