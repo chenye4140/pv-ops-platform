@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const inspectionService = require('../services/inspectionService');
 const { authenticate } = require('../middleware/authMiddleware');
+const wsService = require('../services/websocketService');
 
 router.use(authenticate);
 
@@ -49,6 +50,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const inspection = inspectionService.create(req.body);
+    wsService.broadcast('created', inspection, 'inspections', inspection.station_id ? 'station_' + inspection.station_id : null);
     res.status(201).json({ success: true, data: inspection });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -59,6 +61,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   try {
     const inspection = inspectionService.update(req.params.id, req.body);
+    wsService.broadcast('updated', inspection, 'inspections', inspection.station_id ? 'station_' + inspection.station_id : null);
     res.json({ success: true, data: inspection });
   } catch (error) {
     if (error.message.includes('not found')) {

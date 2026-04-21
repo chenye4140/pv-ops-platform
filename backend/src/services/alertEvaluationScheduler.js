@@ -11,6 +11,7 @@ const { db } = require('../models/database');
 const alertService = require('./alertService');
 const workorderService = require('./workorderService');
 const stationService = require('./stationService');
+const wsService = require('./websocketService');
 
 // ---------------------------------------------------------------------------
 // Evaluation status tracker
@@ -436,6 +437,8 @@ function evaluateStation(stationId, ruleFilter = {}) {
           message,
           status: 'active',
         });
+
+        wsService.broadcast('created', { id: alert.id, station_id: stationId, type: rule.type, severity: rule.severity, message }, 'alerts', 'station_' + stationId);
 
         let workOrder = null;
         // Auto-create work order if configured
