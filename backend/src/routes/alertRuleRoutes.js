@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const alertRuleService = require('../services/alertRuleService');
+const auditService = require('../services/auditService');
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // GET /api/alert-rules?station_id=&type=&enabled=
 router.get('/', (req, res) => {
@@ -43,6 +48,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const rule = alertRuleService.create(req.body);
+    auditService.logAction(getUserId(req), 'create', 'alert_rule', rule.id, { name: rule.name, type: rule.type, station_id: rule.station_id }, req.ip);
     res.status(201).json({ success: true, data: rule });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -53,6 +59,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   try {
     const rule = alertRuleService.update(req.params.id, req.body);
+    auditService.logAction(getUserId(req), 'update', 'alert_rule', rule.id, { fields: Object.keys(req.body) }, req.ip);
     res.json({ success: true, data: rule });
   } catch (error) {
     if (error.message.includes('not found')) {
@@ -66,6 +73,7 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const result = alertRuleService.delete(req.params.id);
+    auditService.logAction(getUserId(req), 'delete', 'alert_rule', req.params.id, { name: result.name }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(404).json({ success: false, error: error.message });

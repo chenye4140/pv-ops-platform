@@ -2,11 +2,17 @@ const express = require('express');
 const router = express.Router();
 const backupService = require('../services/backupService');
 const autoBackupScheduler = require('../services/autoBackupScheduler');
+const auditService = require('../services/auditService');
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // POST /api/backup/create
 router.post('/create', (req, res) => {
   try {
     const result = backupService.createBackup();
+    auditService.logAction(getUserId(req), 'create', 'backup', null, { filename: result.filename, size: result.sizeHuman }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -27,6 +33,7 @@ router.get('/list', (req, res) => {
 router.post('/restore/:filename', (req, res) => {
   try {
     const result = backupService.restoreBackup(req.params.filename);
+    auditService.logAction(getUserId(req), 'restore', 'backup', null, { filename: result.restored, safetyBackup: result.safetyBackup }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(404).json({ success: false, error: error.message });
@@ -37,6 +44,7 @@ router.post('/restore/:filename', (req, res) => {
 router.delete('/delete/:filename', (req, res) => {
   try {
     const result = backupService.deleteBackup(req.params.filename);
+    auditService.logAction(getUserId(req), 'delete', 'backup', null, { filename: result.deleted }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(404).json({ success: false, error: error.message });

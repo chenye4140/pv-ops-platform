@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const workorderService = require('../services/workorderService');
 const wsService = require('../services/websocketService');
+const auditService = require('../services/auditService');
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // GET /api/workorders?status=&priority=&type=&assignee=&station_id=
 router.get('/', (req, res) => {
@@ -48,6 +53,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const wo = workorderService.create(req.body);
+    auditService.logAction(getUserId(req), 'create', 'work_order', wo.id, { title: wo.title, type: wo.type, priority: wo.priority }, req.ip);
     // Broadcast to "workorders" topic with optional room
     wsService.broadcast('created', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
     res.status(201).json({ success: true, data: wo });
@@ -65,6 +71,7 @@ router.put('/:id', (req, res) => {
     if (status) {
       // If status is provided, use updateStatus for validation
       wo = workorderService.updateStatus(req.params.id, status, assignee);
+      auditService.logAction(getUserId(req), 'status_change', 'work_order', wo.id, { from: wo.status, to: status, assignee }, req.ip);
       // If there are other fields to update
       if (Object.keys(otherData).length > 0) {
         wo = workorderService.update(req.params.id, otherData);
@@ -73,6 +80,7 @@ router.put('/:id', (req, res) => {
       wsService.broadcast('updated', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
     } else {
       wo = workorderService.update(req.params.id, req.body);
+      auditService.logAction(getUserId(req), 'update', 'work_order', wo.id, { fields: Object.keys(req.body) }, req.ip);
       // Broadcast update
       wsService.broadcast('updated', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
     }
@@ -90,6 +98,7 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const result = workorderService.delete(req.params.id);
+    auditService.logAction(getUserId(req), 'delete', 'work_order', req.params.id, { title: result.title }, req.ip);
     wsService.broadcast('deleted', result, 'workorders');
     res.json({ success: true, data: result });
   } catch (error) {
@@ -105,6 +114,7 @@ router.post('/:id/notes', (req, res) => {
   try {
     const { content, created_by } = req.body;
     const note = workorderService.addNote(req.params.id, content, created_by);
+    auditService.logAction(getUserId(req), 'add_note', 'work_order', req.params.id, { noteId: note.id }, req.ip);
     res.status(201).json({ success: true, data: note });
   } catch (error) {
     if (error.message.includes('not found')) {
