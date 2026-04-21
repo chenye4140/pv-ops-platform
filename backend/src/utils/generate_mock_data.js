@@ -17,7 +17,7 @@ const STRINGS_PER_INVERTER = 8;
 const INVERTER_MODELS = ['Huawei SUN2000-100KTL', 'Sungrow SG100CX', 'Huawei SUN2000-100KTL', 'TMEIC TMY-100'];
 const RATED_POWER_KW = 1000; // 1MW per inverter
 
-const PANEL_COUNT = 28;
+const PANEL_COUNT = 320; // 320 panels × 550W = 176kW per string, 80 strings ≈ 10MW station
 const RATED_POWER_W = 550; // per panel
 
 const DAYS = 7;
@@ -128,10 +128,11 @@ function calculateStringPower(irradiance, temperature, ratedPowerW, isAbnormal, 
 function calculateVI(power, ratedPowerW) {
   if (power < 1) return { voltage: 0, current: 0 };
 
-  // Typical string: ~28 panels in series, Vmp ~38V per panel
-  const vmp = 38 * (ratedPowerW / 550); // adjust for panel rating
-  // Voltage varies slightly with temperature and irradiance
-  const voltage = vmp * (0.92 + 0.08 * (power / ratedPowerW));
+  // Realistic string voltage: ~20-30 panels in series at Vmp ~38V
+  // String voltage typically 600-1000V for utility-scale installations
+  const vmpString = 850; // nominal string voltage at MPP
+  // Voltage varies slightly with temperature and irradiance (±8%)
+  const voltage = vmpString * (0.92 + 0.08 * (power / ratedPowerW));
 
   // Current from power
   const current = power / voltage;
@@ -298,14 +299,16 @@ function generateMockData() {
 
       // Power for each string
       for (const str of allStrings) {
-        const power = calculateStringPower(
+        const panelPower = calculateStringPower(
           Math.max(0, irradiance),
           temperature,
           RATED_POWER_W,
           str.isAbnormal,
           str.reduction
         );
-        const { voltage, current } = calculateVI(power, RATED_POWER_W);
+        // Scale up from per-panel to full string (PANEL_COUNT panels in series)
+        const power = panelPower * PANEL_COUNT;
+        const { voltage, current } = calculateVI(power, RATED_POWER_W * PANEL_COUNT);
 
         powerRecords.push({
           stringId: str.id,

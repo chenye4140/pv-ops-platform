@@ -2,15 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../models/database');
 
-// GET /api/reports/daily?stationId=
+// GET /api/reports/daily/:stationId
 // Generates a daily report preview for the specified station
-router.get('/daily', (req, res) => {
+router.get('/daily/:stationId', (req, res) => {
   try {
-    const { stationId } = req.query;
-
-    if (!stationId) {
-      return res.status(400).json({ success: false, error: 'stationId is required' });
-    }
+    const stationId = req.params.stationId;
 
     // Get station info
     const station = db.prepare('SELECT * FROM stations WHERE id = ?').get(stationId);
