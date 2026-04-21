@@ -7,7 +7,7 @@ const path = require('path');
 // ============================================================
 const STATION = {
   name: '西北光伏电站A',
-  capacity_mw: 10,
+  capacity_mw: 14.8,  // 80 strings × 336 panels × 550W = 14.78 MW DC
   location: '甘肃省酒泉市瓜州县',
   status: 'active'
 };
@@ -17,7 +17,7 @@ const STRINGS_PER_INVERTER = 8;
 const INVERTER_MODELS = ['Huawei SUN2000-100KTL', 'Sungrow SG100CX', 'Huawei SUN2000-100KTL', 'TMEIC TMY-100'];
 const RATED_POWER_KW = 1000; // 1MW per inverter
 
-const PANEL_COUNT = 320; // 320 panels × 550W = 176kW per string, 80 strings ≈ 10MW station
+const PANEL_COUNT = 336; // ~80% PR for 10MW station (80×336×550W ≈ 14.8MW DC installed)
 const RATED_POWER_W = 550; // per panel
 
 const DAYS = 7;

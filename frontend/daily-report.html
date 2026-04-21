@@ -339,7 +339,7 @@
       container.innerHTML = '<div class="loading"><div class="spinner"></div>正在加载日报数据...</div>';
 
       try {
-        const res = await fetch(`${API}/reports/daily?stationId=${stationId}`);
+        const res = await fetch(`${API}/reports/daily/${stationId}`);
         const json = await res.json();
 
         if (!json.success) {
