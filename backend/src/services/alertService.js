@@ -25,6 +25,20 @@ const alertService = {
       "SELECT COUNT(*) as count FROM alerts WHERE station_id = ? AND status = 'active'"
     );
     return stmt.get(stationId).count;
+  },
+
+  acknowledge(alertId) {
+    const result = db.prepare(
+      "UPDATE alerts SET status = 'acknowledged', acknowledged_at = datetime('now') WHERE id = ?"
+    ).run(alertId);
+    return { id: alertId, ...result };
+  },
+
+  getByType(stationId, type) {
+    const stmt = db.prepare(
+      "SELECT * FROM alerts WHERE station_id = ? AND type = ? ORDER BY created_at DESC"
+    );
+    return stmt.all(stationId, type);
   }
 };
 

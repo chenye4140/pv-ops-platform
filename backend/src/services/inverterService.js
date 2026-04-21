@@ -19,14 +19,40 @@ const inverterService = {
   },
 
   getStringsByInverterId(inverterId) {
+    // Get the latest available timestamp for this inverter's strings
+    const latestTs = db.prepare(`
+      SELECT MAX(pd.timestamp) as ts FROM power_data pd
+      JOIN strings s ON pd.string_id = s.id
+      WHERE s.inverter_id = ?
+    `).get(inverterId);
+
+    if (!latestTs || !latestTs.ts) {
+      // No power data yet, return strings without latest_power
+      const stmt = db.prepare(`
+        SELECT s.* FROM strings s
+        WHERE s.inverter_id = ?
+        ORDER BY s.id
+      `);
+      return stmt.all(inverterId).map(s => ({
+        ...s,
+        latest_power: 0,
+        latest_voltage: 0,
+        latest_current: 0,
+      }));
+    }
+
+    // Use the latest timestamp to get power readings
     const stmt = db.prepare(`
       SELECT s.*,
-        (SELECT MAX(pd.power_w) FROM power_data pd WHERE pd.string_id = s.id AND pd.timestamp >= datetime('now', '-1 hour')) as latest_power
+        COALESCE(pd.power_w, 0) as latest_power,
+        COALESCE(pd.voltage_v, 0) as latest_voltage,
+        COALESCE(pd.current_a, 0) as latest_current
       FROM strings s
+      LEFT JOIN power_data pd ON pd.string_id = s.id AND pd.timestamp = ?
       WHERE s.inverter_id = ?
       ORDER BY s.id
     `);
-    return stmt.all(inverterId);
+    return stmt.all(latestTs.ts, inverterId);
   }
 };
 

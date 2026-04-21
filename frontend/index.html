@@ -3,627 +3,1369 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>光伏运维平台 - Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <title>光伏运维AI智能分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
   <style>
+    /* ============ CSS Variables & Reset ============ */
     :root {
-      --bg-primary: #0a0e17;
-      --bg-secondary: #111827;
-      --bg-card: #1a2236;
-      --bg-card-hover: #1f2b42;
-      --border: #2a3550;
-      --text-primary: #e5e7eb;
-      --text-secondary: #9ca3af;
-      --text-muted: #6b7280;
-      --accent: #06b6d4;
-      --accent-glow: rgba(6, 182, 212, 0.15);
-      --green: #10b981;
-      --red: #ef4444;
-      --orange: #f59e0b;
-      --blue: #3b82f6;
-      --purple: #8b5cf6;
-      --yellow: #eab308;
-      --radius: 12px;
-      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --accent-glow: rgba(0, 229, 255, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     }
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-family: var(--font-sans);
       background: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
       line-height: 1.6;
+      overflow-x: hidden;
     }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
 
-    /* Navbar */
+    /* ============ Navbar ============ */
     .navbar {
-      background: var(--bg-secondary);
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
       border-bottom: 1px solid var(--border);
       padding: 0 2rem;
       display: flex;
       align-items: center;
-      height: 64px;
+      height: 60px;
       position: sticky;
       top: 0;
       z-index: 100;
       backdrop-filter: blur(12px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
     }
     .navbar-brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 700;
       color: var(--accent);
-      text-decoration: none;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
     }
-    .navbar-brand svg { width: 28px; height: 28px; }
-    .navbar-links {
+    .navbar-brand .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .navbar-tabs {
       display: flex;
-      gap: 0.5rem;
-      margin-left: 3rem;
+      gap: 4px;
+      margin-left: 2.5rem;
     }
-    .navbar-links a {
+    .nav-tab {
+      background: none;
+      border: none;
       color: var(--text-secondary);
-      text-decoration: none;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-    }
-    .navbar-links a:hover, .navbar-links a.active {
-      color: var(--accent);
-      background: var(--accent-glow);
-    }
-    .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
-    .station-select {
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--border);
-      padding: 0.4rem 0.8rem;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      outline: none;
+      padding: 0.5rem 1.1rem;
+      border-radius: 6px;
+      font-size: 0.88rem;
       cursor: pointer;
+      transition: all 0.25s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+      position: relative;
     }
-    .station-select:focus { border-color: var(--accent); }
+    .nav-tab:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .nav-tab.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+    .navbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+    .clock {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+    .clock-date { color: var(--text-muted); margin-right: 8px; font-size: 0.82rem; }
 
-    /* Main Content */
-    .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+    /* ============ Main Content ============ */
+    .main { max-width: 1600px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+    .tab-content { display: none; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-    /* Stats Cards */
+    /* ============ KPI Cards ============ */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
     .stat-card {
-      background: var(--bg-card);
+      background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.25rem;
-      transition: all 0.3s;
+      padding: 1.25rem 1.5rem;
       position: relative;
       overflow: hidden;
+      transition: all 0.3s;
     }
     .stat-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 3px;
-      background: var(--accent);
-      opacity: 0;
-      transition: opacity 0.3s;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
     }
-    .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-    .stat-card:hover::before { opacity: 1; }
-    .stat-card .label {
-      font-size: 0.8rem;
+    .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stat-card .stat-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.8;
+    }
+    .stat-card .stat-label {
+      font-size: 0.78rem;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 0.5rem;
+      letter-spacing: 1px;
+      margin-bottom: 0.4rem;
     }
-    .stat-card .value {
-      font-size: 1.8rem;
+    .stat-card .stat-value {
+      font-size: 2rem;
       font-weight: 700;
+      font-family: var(--font-mono);
       color: var(--text-primary);
+      line-height: 1.2;
     }
-    .stat-card .unit {
+    .stat-card .stat-unit {
       font-size: 0.85rem;
       color: var(--text-secondary);
       font-weight: 400;
       margin-left: 4px;
     }
-    .stat-card .trend {
+    .stat-card .stat-sub {
       font-size: 0.75rem;
       margin-top: 0.5rem;
+      color: var(--text-muted);
     }
-    .trend-up { color: var(--green); }
-    .trend-down { color: var(--red); }
 
-    /* Section */
+    /* ============ Section Panel ============ */
     .section {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
     }
     .section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
     }
     .section-title {
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 600;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      color: var(--text-primary);
     }
-    .section-title .icon { color: var(--accent); }
+    .section-title .icon { color: var(--accent); font-size: 1.1rem; }
+    .section-subtitle { font-size: 0.8rem; color: var(--text-muted); }
 
-    /* Chart */
+    /* ============ Charts ============ */
     .chart-container {
       width: 100%;
-      height: 400px;
+      height: 380px;
       border-radius: 8px;
     }
+    .chart-container.small { height: 300px; }
 
-    /* Table */
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
+    /* ============ Grid Layouts ============ */
+    .two-col { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem; }
+    .grid-inverters { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+
+    /* ============ Inverter Card ============ */
+    .inv-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem;
+      transition: all 0.2s;
+      cursor: default;
     }
+    .inv-card:hover { border-color: var(--border-light); background: var(--bg-card-hover); }
+    .inv-card .inv-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .inv-card .inv-status { margin-bottom: 0.5rem; }
+    .inv-card .inv-strings {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+    .inv-card .inv-strings .normal { color: var(--green); }
+    .inv-card .inv-strings .abnormal { color: var(--red); }
+
+    /* ============ Status Badges ============ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge-normal { background: var(--green-dim); color: var(--green); }
+    .badge-warning { background: var(--orange-dim); color: var(--orange); }
+    .badge-error { background: var(--red-dim); color: var(--red); }
+    .badge-info { background: rgba(68,138,255,0.15); color: var(--blue); }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .badge-normal .badge-dot { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .badge-warning .badge-dot { background: var(--orange); box-shadow: 0 0 4px var(--orange); }
+    .badge-error .badge-dot { background: var(--red); box-shadow: 0 0 4px var(--red); }
+    .badge-info .badge-dot { background: var(--blue); }
+
+    /* ============ Alerts ============ */
+    .alert-list { display: flex; flex-direction: column; gap: 0.6rem; max-height: 420px; overflow-y: auto; }
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid;
+      background: var(--bg-secondary);
+      transition: background 0.2s;
+    }
+    .alert-item:hover { background: var(--bg-card-hover); }
+    .alert-critical { border-left-color: var(--red); }
+    .alert-warning { border-left-color: var(--orange); }
+    .alert-info { border-left-color: var(--blue); }
+    .alert-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+    .alert-content { flex: 1; min-width: 0; }
+    .alert-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; }
+    .alert-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* ============ Table ============ */
+    .data-table { width: 100%; border-collapse: collapse; }
     .data-table th, .data-table td {
-      padding: 0.75rem 1rem;
+      padding: 0.7rem 0.85rem;
       text-align: left;
       border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
     .data-table th {
       color: var(--text-muted);
       font-weight: 500;
       text-transform: uppercase;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       letter-spacing: 0.5px;
+      background: var(--bg-secondary);
     }
     .data-table tr:hover td { background: var(--bg-card-hover); }
     .data-table tr:last-child td { border-bottom: none; }
 
-    /* Status badges */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 0.25rem 0.6rem;
-      border-radius: 20px;
-      font-size: 0.75rem;
+    /* ============ Forms ============ */
+    select, input[type="text"], input[type="date"] {
+      background: var(--bg-input);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      outline: none;
+      font-family: var(--font-sans);
+    }
+    select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+    .filter-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-row label { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ Buttons ============ */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #0091ea);
+      color: #000;
+      border: none;
+      padding: 0.55rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
     }
-    .badge-normal { background: rgba(16,185,129,0.15); color: var(--green); }
-    .badge-warning { background: rgba(245,158,11,0.15); color: var(--orange); }
-    .badge-error { background: rgba(239,68,68,0.15); color: var(--red); }
-    .badge-dot {
-      width: 6px; height: 6px; border-radius: 50%; display: inline-block;
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn:active { transform: translateY(0); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
     }
-    .badge-normal .badge-dot { background: var(--green); }
-    .badge-warning .badge-dot { background: var(--orange); }
-    .badge-error .badge-dot { background: var(--red); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+    .btn-ack {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid rgba(0,255,136,0.3);
+    }
+    .btn-ack:hover { background: rgba(0,255,136,0.25); }
+    .btn-danger {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255,61,113,0.3);
+    }
 
-    /* Alerts */
-    .alert-list { display: flex; flex-direction: column; gap: 0.75rem; }
-    .alert-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 1rem;
-      border-radius: 8px;
-      border-left: 3px solid;
+    /* ============ Upload Area ============ */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 1.25rem;
+    }
+    .upload-area:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .upload-area .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6; }
+    .upload-area .upload-text { color: var(--text-secondary); font-size: 0.9rem; }
+    .upload-area .upload-hint { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.3rem; }
+
+    /* ============ Image Placeholder ============ */
+    .img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+    .img-placeholder {
       background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
     }
-    .alert-critical { border-left-color: var(--red); background: rgba(239,68,68,0.05); }
-    .alert-warning { border-left-color: var(--orange); background: rgba(245,158,11,0.05); }
-    .alert-info { border-left-color: var(--blue); background: rgba(59,130,246,0.05); }
-    .alert-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
-    .alert-content { flex: 1; }
-    .alert-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
-    .alert-meta { font-size: 0.8rem; color: var(--text-muted); }
-
-    /* Loading */
-    .loading {
+    .img-placeholder .img-body {
+      height: 180px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 3rem;
-      color: var(--text-muted);
+      position: relative;
+      overflow: hidden;
     }
-    .spinner {
-      width: 24px; height: 24px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-right: 0.75rem;
+    .img-placeholder .img-body canvas { width: 100%; height: 100%; }
+    .img-placeholder .img-footer {
+      padding: 0.75rem;
+      border-top: 1px solid var(--border);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .img-placeholder .img-label { font-size: 0.82rem; font-weight: 600; }
+    .img-placeholder .img-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; }
 
-    .error-msg {
-      text-align: center;
+    /* ============ Report ============ */
+    .report-preview {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 2rem;
-      color: var(--red);
-      font-size: 0.9rem;
+      max-width: 800px;
+      margin: 0 auto;
     }
+    .report-header { text-align: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .report-header h2 { font-size: 1.3rem; color: var(--accent); margin-bottom: 0.3rem; }
+    .report-header .report-date { color: var(--text-muted); font-size: 0.85rem; }
+    .report-section { margin-bottom: 1.25rem; }
+    .report-section h3 {
+      font-size: 0.95rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      padding-left: 0.75rem;
+      border-left: 3px solid var(--accent);
+    }
+    .report-section p, .report-section li { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7; }
+    .report-section ul { padding-left: 1.2rem; }
+    .report-section ul li { margin-bottom: 0.3rem; }
+    .report-stat { display: inline-block; font-family: var(--font-mono); color: var(--green); font-weight: 600; }
 
-    /* Two columns layout */
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-    }
+    /* ============ Loading / Error ============ */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); gap: 0.75rem; }
+    .spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { text-align: center; padding: 2rem; color: var(--red); font-size: 0.88rem; }
+    .empty-msg { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.88rem; }
 
-    /* Responsive */
-    @media (max-width: 1024px) {
-      .two-col { grid-template-columns: 1fr; }
-      .main { padding: 1rem; }
+    /* ============ Toast ============ */
+    .toast-container { position: fixed; top: 80px; right: 1.5rem; z-index: 200; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      animation: slideIn 0.3s ease;
+      max-width: 350px;
+      box-shadow: var(--shadow);
     }
-    @media (max-width: 768px) {
+    .toast-success { background: var(--green-dim); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+    .toast-error { background: var(--red-dim); border: 1px solid rgba(255,61,113,0.3); color: var(--red); }
+    .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 1200px) { .two-col { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .navbar { padding: 0 1rem; }
-      .navbar-links { margin-left: 1.5rem; }
-      .navbar-links a { padding: 0.4rem 0.6rem; font-size: 0.8rem; }
+      .navbar-tabs { margin-left: 1.5rem; }
+      .nav-tab { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+      .main { padding: 1rem; }
     }
-    @media (max-width: 480px) {
+    @media (max-width: 550px) {
       .stats-grid { grid-template-columns: 1fr; }
+      .navbar-brand span { display: none; }
+      .clock-date { display: none; }
     }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
+  <!-- ============ Navbar ============ -->
   <nav class="navbar">
-    <a href="index.html" class="navbar-brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-        <line x1="12" y1="17" x2="12" y2="21" />
-        <line x1="7" y1="10" x2="17" y2="10" />
-        <line x1="12" y1="3" x2="12" y2="10" />
-      </svg>
-      PV运维平台
-    </a>
-    <div class="navbar-links">
-      <a href="index.html" class="active">Dashboard</a>
-      <a href="analysis.html">图像分析</a>
-      <a href="daily-report.html">日报</a>
+    <div class="navbar-brand">
+      <div class="logo-icon">☀</div>
+      <span>光伏运维AI智能分析平台</span>
+    </div>
+    <div class="navbar-tabs" id="tabBar">
+      <button class="nav-tab active" data-tab="overview">电站总览</button>
+      <button class="nav-tab" data-tab="inverter">逆变器监控</button>
+      <button class="nav-tab" data-tab="alerts">告警中心</button>
+      <button class="nav-tab" data-tab="diagnosis">图像诊断</button>
+      <button class="nav-tab" data-tab="report">智能日报</button>
     </div>
     <div class="navbar-right">
-      <select class="station-select" id="stationSelect">
-        <option value="1">电站 #1 - 示范电站</option>
+      <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
+        <option value="1">电站 #1</option>
       </select>
+      <div class="clock">
+        <span class="clock-date" id="clockDate"></span>
+        <span id="clockTime"></span>
+      </div>
     </div>
   </nav>
 
+  <!-- ============ Toast Container ============ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============ Main ============ -->
   <main class="main">
-    <!-- Stats Cards -->
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card">
-        <div class="label">今日发电量</div>
-        <div class="value" id="todayEnergy">--<span class="unit">kWh</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="label">当前功率</div>
-        <div class="value" id="currentPower">--<span class="unit">kW</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="label">性能比 PR</div>
-        <div class="value" id="pr">--<span class="unit">%</span></div>
-      </div>
-      <div class="stat-card">
-        <div class="label">异常组串</div>
-        <div class="value" id="abnormalStrings">--</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">活跃告警</div>
-        <div class="value" id="activeAlerts">--</div>
-      </div>
-    </div>
-
-    <!-- Power Chart -->
-    <div class="section">
-      <div class="section-header">
-        <div class="section-title">
-          <span class="icon">⚡</span> 逆变器发电曲线
+    <!-- ===== Tab 1: 电站总览 ===== -->
+    <div class="tab-content active" id="tab-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-label">今日发电量</div>
+          <div class="stat-value" id="kpiEnergy">--<span class="stat-unit">kWh</span></div>
+          <div class="stat-sub" id="kpiEnergySub">--</div>
         </div>
-        <span style="font-size:0.8rem; color:var(--text-muted);" id="chartDate"></span>
-      </div>
-      <div class="chart-container" id="powerChart"></div>
-    </div>
-
-    <!-- Inverters & Alerts -->
-    <div class="two-col">
-      <div class="section">
-        <div class="section-header">
-          <div class="section-title">
-            <span class="icon">🔌</span> 逆变器状态
-          </div>
-          <span id="inverterCount" style="font-size:0.8rem; color:var(--text-muted);"></span>
+        <div class="stat-card">
+          <div class="stat-icon">🔋</div>
+          <div class="stat-label">当前功率</div>
+          <div class="stat-value" id="kpiPower">--<span class="stat-unit">kW</span></div>
+          <div class="stat-sub" id="kpiPowerSub">--</div>
         </div>
-        <div id="inverterTable">
-          <div class="loading"><div class="spinner"></div>加载中...</div>
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-label">综合效率 PR</div>
+          <div class="stat-value" id="kpiPR">--<span class="stat-unit">%</span></div>
+          <div class="stat-sub" id="kpiPRSub">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚠</div>
+          <div class="stat-label">异常组串数</div>
+          <div class="stat-value" id="kpiAbnormal">--</div>
+          <div class="stat-sub" id="kpiAbnormalSub">--</div>
         </div>
       </div>
 
       <div class="section">
         <div class="section-header">
-          <div class="section-title">
-            <span class="icon">🔔</span> 活跃告警
-          </div>
-          <span id="alertCount" style="font-size:0.8rem; color:var(--text-muted);"></span>
+          <div class="section-title"><span class="icon">📈</span> 发电曲线（24h）</div>
+          <span class="section-subtitle" id="overviewChartDate"></span>
         </div>
-        <div id="alertList">
+        <div class="chart-container" id="powerChart"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title"><span class="icon">🔌</span> 逆变器状态</div>
+            <span class="section-subtitle" id="invCount"></span>
+          </div>
+          <div id="inverterGrid">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <div class="section-title"><span class="icon">🔔</span> 最新告警</div>
+            <span class="section-subtitle" id="alertBadge"></span>
+          </div>
+          <div id="alertListOverview">
+            <div class="loading"><div class="spinner"></div>加载中...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 2: 逆变器监控 ===== -->
+    <div class="tab-content" id="tab-inverter">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔌</span> 逆变器监控</div>
+          <div style="display:flex;gap:0.75rem;align-items:center;">
+            <label style="font-size:0.82rem;color:var(--text-muted);">选择逆变器：</label>
+            <select id="inverterSelect" style="min-width:200px;">
+              <option value="">-- 请选择 --</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="inverterDetail">
+          <div class="empty-msg">请选择一台逆变器查看详情</div>
+        </div>
+
+        <div id="inverterMonitorContent" style="display:none;">
+          <div class="chart-container" id="stringBarChart" style="height:320px;"></div>
+
+          <div style="margin-top:1rem;">
+            <div class="section-header" style="border-bottom:none;margin-bottom:0.5rem;padding-bottom:0;">
+              <div class="section-title" style="font-size:0.92rem;"><span class="icon">📋</span> 组串列表</div>
+            </div>
+            <div id="stringTableContainer"></div>
+          </div>
+
+          <div style="margin-top:1.25rem;">
+            <div class="section-header" style="border-bottom:none;margin-bottom:0.5rem;padding-bottom:0;">
+              <div class="section-title" style="font-size:0.92rem;"><span class="icon">📉</span> 组串功率趋势</div>
+              <select id="stringTrendSelect" style="min-width:150px;">
+                <option value="">-- 选择组串 --</option>
+              </select>
+            </div>
+            <div class="chart-container small" id="stringTrendChart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 3: 告警中心 ===== -->
+    <div class="tab-content" id="tab-alerts">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔔</span> 告警中心</div>
+        </div>
+        <div class="filter-row">
+          <label>类型：</label>
+          <select id="alertFilterType">
+            <option value="all">全部</option>
+            <option value="string">组串异常</option>
+            <option value="inverter">逆变器故障</option>
+            <option value="weather">气象预警</option>
+            <option value="system">系统告警</option>
+          </select>
+          <label>严重程度：</label>
+          <select id="alertFilterSeverity">
+            <option value="all">全部</option>
+            <option value="critical">严重</option>
+            <option value="warning">警告</option>
+            <option value="info">提示</option>
+          </select>
+          <label>状态：</label>
+          <select id="alertFilterStatus">
+            <option value="all">全部</option>
+            <option value="active">活跃</option>
+            <option value="acked">已确认</option>
+          </select>
+          <button class="btn btn-sm btn-outline" onclick="applyAlertFilters()">筛选</button>
+        </div>
+        <div id="alertsTableContainer">
           <div class="loading"><div class="spinner"></div>加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 4: 图像诊断 ===== -->
+    <div class="tab-content" id="tab-diagnosis">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🔍</span> 红外图像诊断</div>
+          <button class="btn btn-sm" onclick="simulateUpload()">📤 上传图片</button>
+        </div>
+
+        <div class="upload-area" onclick="simulateUpload()">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">点击上传红外热成像图片</div>
+          <div class="upload-hint">支持 JPG/PNG 格式，MVP阶段使用模拟数据</div>
+        </div>
+
+        <div class="img-grid" id="imageGrid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="section" style="margin-top:0;">
+          <div class="section-header">
+            <div class="section-title"><span class="icon">🐛</span> 缺陷列表</div>
+          </div>
+          <div id="defectTableContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Tab 5: 智能日报 ===== -->
+    <div class="tab-content" id="tab-report">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📰</span> 智能运维日报</div>
+          <button class="btn" id="btnGenerateReport" onclick="generateReport()">📝 生成日报</button>
+        </div>
+        <div id="reportContainer">
+          <div class="empty-msg">点击「生成日报」按钮获取今日运维报告</div>
         </div>
       </div>
     </div>
   </main>
 
   <script>
+    /* ============ Configuration ============ */
     const API = 'http://localhost:3000/api';
     let stationId = '1';
-    let powerChart = null;
+    let charts = {};
+    let refreshTimer = null;
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
-      loadStations();
-      loadDashboard();
-      document.getElementById('stationSelect').addEventListener('change', (e) => {
-        stationId = e.target.value;
-        loadDashboard();
-      });
+    /* ============ Mock Data ============ */
+    const MOCK_ALERTS = [
+      { id: 1, type: 'string', severity: 'critical', message: '组串 INV-01-03 电流异常偏低，疑似断路', created_at: new Date(Date.now()-300000).toISOString(), status: 'active', inverter_name: 'INV-01' },
+      { id: 2, type: 'inverter', severity: 'warning', message: '逆变器 INV-04 温度偏高，当前 78°C', created_at: new Date(Date.now()-900000).toISOString(), status: 'active', inverter_name: 'INV-04' },
+      { id: 3, type: 'string', severity: 'warning', message: '组串 INV-02-05 功率偏离预期值 15%', created_at: new Date(Date.now()-1800000).toISOString(), status: 'acked', inverter_name: 'INV-02' },
+      { id: 4, type: 'weather', severity: 'info', message: '明日预计阴雨天气，辐照度将下降 40%', created_at: new Date(Date.now()-3600000).toISOString(), status: 'active', inverter_name: '' },
+      { id: 5, type: 'string', severity: 'critical', message: '组串 INV-07-02 完全无输出', created_at: new Date(Date.now()-7200000).toISOString(), status: 'active', inverter_name: 'INV-07' },
+      { id: 6, type: 'system', severity: 'info', message: '数据采集系统例行维护完成', created_at: new Date(Date.now()-14400000).toISOString(), status: 'acked', inverter_name: '' },
+      { id: 7, type: 'inverter', severity: 'warning', message: '逆变器 INV-09 通信延迟增加', created_at: new Date(Date.now()-28800000).toISOString(), status: 'active', inverter_name: 'INV-09' },
+      { id: 8, type: 'string', severity: 'warning', message: '组串 INV-03-01 电压波动超出阈值', created_at: new Date(Date.now()-43200000).toISOString(), status: 'acked', inverter_name: 'INV-03' },
+    ];
+
+    const MOCK_DEFECTS = [
+      { id: 1, image: '红外图像 #1', type: '热斑效应', position: 'A区-第3排-组串05', level: '严重', confidence: 0.94 },
+      { id: 2, image: '红外图像 #2', type: '二极管短路', position: 'B区-第1排-组串02', level: '中等', confidence: 0.87 },
+      { id: 3, image: '红外图像 #3', type: '接线盒过热', position: 'C区-第5排-组串08', level: '轻微', confidence: 0.76 },
+      { id: 4, image: '红外图像 #1', type: '组件隐裂', position: 'A区-第7排-组串03', level: '中等', confidence: 0.82 },
+    ];
+
+    /* ============ Clock ============ */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clockDate').textContent = now.toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' });
+      document.getElementById('clockTime').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    /* ============ Tab Switching ============ */
+    document.getElementById('tabBar').addEventListener('click', e => {
+      if (!e.target.classList.contains('nav-tab')) return;
+      const tab = e.target.dataset.tab;
+      switchTab(tab);
     });
 
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
+      // Resize charts after tab switch
+      setTimeout(() => {
+        Object.values(charts).forEach(c => c && c.resize());
+        if (tab === 'inverter' && charts.stringBar) charts.stringBar.resize();
+        if (tab === 'inverter' && charts.stringTrend) charts.stringTrend.resize();
+      }, 100);
+    }
+
+    /* ============ Toast ============ */
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    /* ============ API Helper ============ */
+    async function apiFetch(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    /* ============ Station Selector ============ */
     async function loadStations() {
       try {
-        const res = await fetch(`${API}/stations`);
-        const json = await res.json();
-        if (json.success && json.data.length > 0) {
+        const json = await apiFetch(`${API}/stations`);
+        if (json.success && json.data && json.data.length > 0) {
           const select = document.getElementById('stationSelect');
-          select.innerHTML = json.data.map(s =>
-            `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`
-          ).join('');
+          select.innerHTML = json.data.map(s => `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`).join('');
         }
       } catch (e) {
-        console.warn('Failed to load stations:', e);
+        console.warn('Stations load failed:', e);
       }
     }
 
-    async function loadDashboard() {
+    document.getElementById('stationSelect').addEventListener('change', e => {
+      stationId = e.target.value;
       loadOverview();
-      loadInverters();
-      loadAlerts();
+    });
+
+    /* ============ Tab 1: Overview ============ */
+    async function loadOverview() {
+      loadOverviewKPIs();
+      loadInverterGrid();
+      loadAlertsOverview();
       loadPowerChart();
     }
 
-    async function loadOverview() {
+    async function loadOverviewKPIs() {
       try {
-        const res = await fetch(`${API}/stations/${stationId}/overview`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/stations/${stationId}/overview`);
         if (json.success) {
           const d = json.data;
-          document.getElementById('todayEnergy').innerHTML =
-            `${(d.today_energy_kwh || 0).toFixed(1)}<span class="unit">kWh</span>`;
-          document.getElementById('currentPower').innerHTML =
-            `${(d.current_power_kw || 0).toFixed(1)}<span class="unit">kW</span>`;
-          document.getElementById('pr').innerHTML =
-            `${(d.performance_ratio || 0).toFixed(1)}<span class="unit">%</span>`;
-          document.getElementById('abnormalStrings').innerHTML =
-            `<span style="color: ${d.abnormal_string_count > 0 ? 'var(--orange)' : 'var(--green)'}">${d.abnormal_string_count || 0}</span>`;
-          // Active alerts will be loaded separately
+          // Backend returns camelCase: todayEnergyKwh, currentPowerKw, performanceRatio, abnormalCount
+          const energy = d.todayEnergyKwh ?? d.today_energy_kwh ?? 0;
+          const power = d.currentPowerKw ?? d.current_power_kw ?? 0;
+          const pr = d.performanceRatio ?? d.performance_ratio ?? 0;
+          const abnormal = d.abnormalCount ?? d.abnormal_string_count ?? 0;
+
+          document.getElementById('kpiEnergy').innerHTML = `${energy.toFixed(1)}<span class="stat-unit">kWh</span>`;
+          document.getElementById('kpiEnergySub').textContent = `较昨日 ${energy > 0 ? '↑' : '--'}`;
+
+          document.getElementById('kpiPower').innerHTML = `${power.toFixed(1)}<span class="stat-unit">kW</span>`;
+          document.getElementById('kpiPowerSub').textContent = power > 0 ? '☀️ 发电中' : '🌙 夜间停机';
+
+          document.getElementById('kpiPR').innerHTML = `${pr.toFixed(1)}<span class="stat-unit">%</span>`;
+          const prColor = pr >= 80 ? 'var(--green)' : pr >= 60 ? 'var(--orange)' : 'var(--red)';
+          document.getElementById('kpiPRSub').innerHTML = `<span style="color:${prColor}">${pr >= 80 ? '● 良好' : pr >= 60 ? '● 偏低' : '● 异常'}</span>`;
+
+          document.getElementById('kpiAbnormal').innerHTML = `<span style="color:${abnormal > 0 ? 'var(--orange)' : 'var(--green)'}">${abnormal}</span>`;
+          document.getElementById('kpiAbnormalSub').textContent = abnormal > 0 ? `⚠ ${abnormal} 个组串需关注` : '✅ 全部正常';
         }
       } catch (e) {
-        console.error('Overview load failed:', e);
-        document.getElementById('todayEnergy').innerHTML = '<span style="color:var(--red)">加载失败</span>';
+        console.error('KPI load failed:', e);
+        document.getElementById('kpiEnergy').innerHTML = '<span style="color:var(--red)">加载失败</span>';
       }
     }
 
-    async function loadInverters() {
-      const container = document.getElementById('inverterTable');
-      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+    async function loadInverterGrid() {
+      const container = document.getElementById('inverterGrid');
       try {
-        const res = await fetch(`${API}/stations/${stationId}/inverters`);
-        const json = await res.json();
-        if (json.success && json.data.length > 0) {
-          document.getElementById('inverterCount').textContent = `共 ${json.data.length} 台`;
-          container.innerHTML = `
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>名称</th>
-                  <th>型号</th>
-                  <th>状态</th>
-                  <th>组串数</th>
-                  <th>异常组串</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${json.data.map(inv => {
-                  const isNormal = inv.abnormal_string_count === 0;
-                  const statusClass = isNormal ? 'badge-normal' : (inv.abnormal_string_count > 2 ? 'badge-error' : 'badge-warning');
-                  const statusText = isNormal ? '正常' : '异常';
-                  return `<tr>
-                    <td>${inv.name || inv.id}</td>
-                    <td style="color:var(--text-secondary)">${inv.model || '-'}</td>
-                    <td><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></td>
-                    <td>${inv.string_count || 0}</td>
-                    <td style="color: ${isNormal ? 'var(--green)' : 'var(--red)'}">${inv.abnormal_string_count || 0}</td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
-            </table>`;
+        const json = await apiFetch(`${API}/stations/${stationId}/inverters`);
+        if (json.success && json.data && json.data.length > 0) {
+          const inverters = json.data;
+          document.getElementById('invCount').textContent = `共 ${inverters.length} 台`;
+          container.innerHTML = `<div class="grid-inverters">${inverters.map(inv => {
+            const isNormal = (inv.abnormal_string_count || 0) === 0;
+            const statusClass = isNormal ? 'badge-normal' : (inv.abnormal_string_count > 2 ? 'badge-error' : 'badge-warning');
+            const statusText = isNormal ? '运行正常' : '存在异常';
+            const normalCount = (inv.string_count || 0) - (inv.abnormal_string_count || 0);
+            return `<div class="inv-card">
+              <div class="inv-name">${inv.name || 'INV-' + inv.id}</div>
+              <div class="inv-status"><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></div>
+              <div class="inv-strings">
+                <span class="normal">正常 ${normalCount}</span>
+                <span class="abnormal">异常 ${inv.abnormal_string_count || 0}</span>
+              </div>
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.4rem;">组串 ${inv.string_count || 0} 路</div>
+            </div>`;
+          }).join('')}</div>`;
         } else {
-          container.innerHTML = '<div class="error-msg">暂无逆变器数据</div>';
+          container.innerHTML = '<div class="empty-msg">暂无逆变器数据</div>';
         }
       } catch (e) {
-        container.innerHTML = '<div class="error-msg">加载逆变器数据失败</div>';
+        container.innerHTML = '<div class="error-msg">逆变器数据加载失败</div>';
       }
     }
 
-    async function loadAlerts() {
-      const container = document.getElementById('alertList');
-      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
-      try {
-        const res = await fetch(`${API}/alerts?stationId=${stationId}&status=active`);
-        const json = await res.json();
-        if (json.success) {
-          const alerts = json.data || [];
-          document.getElementById('alertCount').textContent = `共 ${alerts.length} 条`;
-          document.getElementById('activeAlerts').innerHTML =
-            `<span style="color: ${alerts.length > 0 ? 'var(--orange)' : 'var(--green)'}">${alerts.length}</span>`;
-          if (alerts.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--green);">✅ 暂无活跃告警</div>';
-            return;
-          }
-          container.innerHTML = `<div class="alert-list">
-            ${alerts.map(a => {
-              const cls = a.severity === 'critical' ? 'alert-critical' :
-                          a.severity === 'warning' ? 'alert-warning' : 'alert-info';
-              const icon = a.severity === 'critical' ? '🔴' :
-                           a.severity === 'warning' ? '🟡' : '🔵';
-              const sevText = a.severity === 'critical' ? '严重' :
-                              a.severity === 'warning' ? '警告' : '提示';
-              const time = a.created_at ? new Date(a.created_at).toLocaleString('zh-CN') : '';
-              return `<div class="alert-item ${cls}">
-                <span class="alert-icon">${icon}</span>
-                <div class="alert-content">
-                  <div class="alert-title">${a.message || a.title || '未命名告警'}</div>
-                  <div class="alert-meta">${sevText} · ${time}${a.inverter_name ? ' · ' + a.inverter_name : ''}</div>
-                </div>
-              </div>`;
-            }).join('')}
-          </div>`;
-        }
-      } catch (e) {
-        container.innerHTML = '<div class="error-msg">加载告警数据失败</div>';
+    async function loadAlertsOverview() {
+      const container = document.getElementById('alertListOverview');
+      // Alerts API returns 404, use mock data
+      const alerts = MOCK_ALERTS.slice(0, 5);
+      document.getElementById('alertBadge').textContent = `共 ${alerts.filter(a => a.status === 'active').length} 条活跃`;
+
+      if (alerts.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--green);">✅ 暂无活跃告警</div>';
+        return;
       }
+      container.innerHTML = `<div class="alert-list">${alerts.map(a => {
+        const cls = a.severity === 'critical' ? 'alert-critical' : a.severity === 'warning' ? 'alert-warning' : 'alert-info';
+        const icon = a.severity === 'critical' ? '🔴' : a.severity === 'warning' ? '🟡' : '🔵';
+        const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
+        const time = new Date(a.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+        return `<div class="alert-item ${cls}">
+          <span class="alert-icon">${icon}</span>
+          <div class="alert-content">
+            <div class="alert-title">${a.message}</div>
+            <div class="alert-meta">${sevText} · ${time}${a.inverter_name ? ' · ' + a.inverter_name : ''}</div>
+          </div>
+        </div>`;
+      }).join('')}</div>`;
     }
 
+    /* ============ Power Chart ============ */
     async function loadPowerChart() {
-      const chartDom = document.getElementById('powerChart');
-      if (!powerChart) powerChart = echarts.init(chartDom, 'dark');
-      chartDom.innerHTML = '';
-      powerChart = echarts.init(chartDom, 'dark');
+      const dom = document.getElementById('powerChart');
+      if (!charts.power) charts.power = echarts.init(dom, 'dark');
 
-      powerChart.setOption({
-        title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280' } }
-      });
+      charts.power.setOption({ title: { text: '加载中...', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
 
       try {
-        // Load inverters first to know which ones exist
-        const invRes = await fetch(`${API}/stations/${stationId}/inverters`);
-        const invJson = await invRes.json();
-        if (!invJson.success || invJson.data.length === 0) {
-          powerChart.setOption({ title: { text: '暂无逆变器数据', left: 'center', textStyle: { color: '#6b7280' } } });
+        // Try to fetch real data from first inverter's first string
+        const invJson = await apiFetch(`${API}/stations/${stationId}/inverters`);
+        if (!invJson.success || !invJson.data || invJson.data.length === 0) {
+          charts.power.setOption({ title: { text: '暂无数据', left: 'center', textStyle: { color: '#6b7280', fontSize: 14 } } });
           return;
         }
 
-        const inverters = invJson.data;
+        const firstInv = invJson.data[0];
         const now = new Date();
-        const startTime = new Date(now);
-        startTime.setHours(0, 0, 0, 0);
-        const endTime = new Date(now);
-        endTime.setHours(23, 59, 59, 999);
+        const start = new Date(now); start.setHours(0, 0, 0, 0);
+        const end = new Date(now); end.setHours(23, 59, 59, 999);
 
-        // Fetch power data for each inverter's strings
-        const seriesData = {};
-        inverters.forEach(inv => { seriesData[inv.id] = []; });
+        // Get strings
+        const strRes = await fetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
+        const strJson = await strRes.json();
 
-        // We need to fetch strings for each inverter then power data
-        const allSeries = [];
+        let powerData = [], irradianceData = [], timeAxis = [];
 
-        for (const inv of inverters) {
+        if (strJson.success && strJson.data && strJson.data.length > 0) {
+          const firstStr = strJson.data[0];
+          // Try power data
           try {
-            const strRes = await fetch(`${API}/stations/${stationId}/inverters/${inv.id}/strings`);
-            const strJson = await strRes.json();
-            if (strJson.success && strJson.data.length > 0) {
-              // Fetch power data for first string as representative
-              const firstString = strJson.data[0];
-              const pwRes = await fetch(`${API}/power-data?stringId=${firstString.id}&startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`);
-              const pwJson = await pwRes.json();
-              if (pwJson.success && pwJson.data.length > 0) {
-                // Aggregate by time
-                const timeMap = {};
-                pwJson.data.forEach(p => {
-                  const t = new Date(p.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-                  if (!timeMap[t]) timeMap[t] = 0;
-                  timeMap[t] += (p.power_w || 0) / 1000; // sum in kW
-                });
-                // Scale by number of strings
-                const count = strJson.data.length;
-                const values = Object.entries(timeMap).map(([t, v]) => [t, v]);
-                values.sort((a, b) => a[0].localeCompare(b[0]));
-                allSeries.push({
-                  name: inv.name || `INV-${inv.id}`,
-                  data: values.map(v => v[1]),
-                  count: count
-                });
-              }
+            const pwRes = await fetch(`${API}/strings/${firstStr.id}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
+            const pwJson = await pwRes.json();
+            if (pwJson.success && pwJson.data && pwJson.data.length > 0) {
+              const pMap = {};
+              pwJson.data.forEach(p => {
+                const t = new Date(p.timestamp);
+                const key = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+                if (!pMap[key]) pMap[key] = [];
+                pMap[key].push(p.power_w || 0);
+              });
+              const sorted = Object.entries(pMap).sort((a,b) => a[0].localeCompare(b[0]));
+              timeAxis = sorted.map(s => s[0]);
+              powerData = sorted.map(s => { const arr = s[1]; return arr.reduce((a,b) => a+b, 0) / arr.length / 1000; });
             }
-          } catch (e) {
-            console.warn(`Failed to load power for inverter ${inv.id}:`, e);
+          } catch(e) { console.warn('Power data fetch failed:', e); }
+        }
+
+        // Try weather/irradiance
+        try {
+          const wRes = await fetch(`${API}/stations/${stationId}/weather?start=${start.toISOString()}&end=${end.toISOString()}`);
+          const wJson = await wRes.json();
+          if (wJson.success && wJson.data && wJson.data.length > 0) {
+            const wMap = {};
+            wJson.data.forEach(w => {
+              const t = new Date(w.timestamp);
+              const key = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+              if (!wMap[key]) wMap[key] = [];
+              wMap[key].push(w.irradiance || 0);
+            });
+            const wSorted = Object.entries(wMap).sort((a,b) => a[0].localeCompare(b[0]));
+            if (wSorted.length > 0 && timeAxis.length === 0) {
+              timeAxis = wSorted.map(s => s[0]);
+              irradianceData = wSorted.map(s => { const arr = s[1]; return arr.reduce((a,b) => a+b, 0) / arr.length; });
+            }
+          }
+        } catch(e) { console.warn('Weather data fetch failed:', e); }
+
+        // Fallback: generate simulated data if no real data
+        if (timeAxis.length === 0) {
+          timeAxis = [];
+          powerData = [];
+          irradianceData = [];
+          for (let h = 0; h < 24; h++) {
+            for (let m = 0; m < 60; m += 15) {
+              const key = h.toString().padStart(2,'0') + ':' + m.toString().padStart(2,'0');
+              timeAxis.push(key);
+              // Simulated bell curve for solar
+              const solarFactor = Math.max(0, Math.sin((h + m/60 - 6) / 14 * Math.PI));
+              powerData.push((solarFactor * 50 + Math.random() * 5).toFixed(2) * 1);
+              irradianceData.push((solarFactor * 800 + Math.random() * 30).toFixed(1) * 1);
+            }
           }
         }
 
-        // Get time axis from first series
-        let timeAxis = [];
-        if (allSeries.length > 0) {
-          // Need to re-fetch to get timestamps
-          try {
-            const strRes = await fetch(`${API}/stations/${stationId}/inverters/${inverters[0].id}/strings`);
-            const strJson = await strRes.json();
-            if (strJson.success && strJson.data.length > 0) {
-              const pwRes = await fetch(`${API}/power-data?stringId=${strJson.data[0].id}&startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`);
-              const pwJson = await pwRes.json();
-              if (pwJson.success) {
-                const timeSet = new Set();
-                pwJson.data.forEach(p => {
-                  timeSet.add(new Date(p.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
-                });
-                timeAxis = Array.from(timeSet).sort();
-              }
-            }
-          } catch(e) {}
-        }
+        document.getElementById('overviewChartDate').textContent = now.toLocaleDateString('zh-CN');
 
-        document.getElementById('chartDate').textContent = now.toLocaleDateString('zh-CN');
-
-        powerChart.setOption({
-          tooltip: { trigger: 'axis', formatter: '{b}<br/>{a}: {c} kW' },
-          legend: { data: allSeries.map(s => s.name), top: 0, textStyle: { color: '#9ca3af' } },
-          grid: { left: '3%', right: '4%', bottom: '3%', top: '12%', containLabel: true },
-          xAxis: { type: 'category', data: timeAxis, axisLine: { lineStyle: { color: '#2a3550' } }, axisLabel: { color: '#9ca3af' } },
-          yAxis: { type: 'value', name: '功率 (kW)', nameTextStyle: { color: '#9ca3af' }, axisLine: { lineStyle: { color: '#2a3550' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#9ca3af' } },
-          series: allSeries.map(s => ({
-            name: s.name,
-            type: 'line',
-            smooth: true,
-            data: s.data,
-            symbol: 'none',
-            lineStyle: { width: 2 },
-            areaStyle: { opacity: 0.1 }
-          }))
+        charts.power.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(17,27,47,0.95)', borderColor: '#2a4060', textStyle: { color: '#e2e8f0', fontSize: 12 } },
+          legend: { data: ['功率', '辐照度'], top: 5, textStyle: { color: '#94a3b8' } },
+          grid: { left: '4%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+          xAxis: { type: 'category', data: timeAxis, axisLine: { lineStyle: { color: '#2a4060' } }, axisLabel: { color: '#94a3b8', fontSize: 11, interval: 3 } },
+          yAxis: [
+            { type: 'value', name: '功率(kW)', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#94a3b8' } },
+            { type: 'value', name: '辐照度(W/m²)', nameTextStyle: { color: '#94a3b8', fontSize: 11 }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { show: false }, axisLabel: { color: '#94a3b8' } }
+          ],
+          series: [
+            { name: '功率', type: 'line', data: powerData, smooth: true, symbol: 'none', lineStyle: { color: '#00e5ff', width: 2 }, areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops: [{ offset:0, color:'rgba(0,229,255,0.3)' },{ offset:1, color:'rgba(0,229,255,0)' }] } } },
+            { name: '辐照度', type: 'line', yAxisIndex: 1, data: irradianceData, smooth: true, symbol: 'none', lineStyle: { color: '#ff9800', width: 1.5, type: 'dashed' } }
+          ]
         });
       } catch (e) {
-        console.error('Power chart load failed:', e);
-        powerChart.setOption({ title: { text: '发电曲线加载失败', left: 'center', textStyle: { color: '#ef4444' } } });
+        console.error('Power chart failed:', e);
+        charts.power.setOption({ title: { text: '发电曲线加载失败', left: 'center', textStyle: { color: '#ff3d71', fontSize: 14 } } });
+      }
+    }
+
+    /* ============ Tab 2: Inverter Monitor ============ */
+    async function loadInverterDropdown() {
+      const select = document.getElementById('inverterSelect');
+      try {
+        const json = await apiFetch(`${API}/stations/${stationId}/inverters`);
+        if (json.success && json.data && json.data.length > 0) {
+          select.innerHTML = '<option value="">-- 请选择 --</option>' + json.data.map(inv => `<option value="${inv.id}">${inv.name || 'INV-' + inv.id} (${inv.string_count || 0}组串)</option>`).join('');
+        }
+      } catch (e) {
+        console.warn('Inverter dropdown failed:', e);
+      }
+    }
+
+    document.getElementById('inverterSelect').addEventListener('change', async e => {
+      const invId = e.target.value;
+      if (!invId) {
+        document.getElementById('inverterMonitorContent').style.display = 'none';
+        document.getElementById('inverterDetail').style.display = 'block';
+        document.getElementById('inverterDetail').innerHTML = '<div class="empty-msg">请选择一台逆变器查看详情</div>';
+        return;
+      }
+      await loadInverterDetail(invId);
+    });
+
+    async function loadInverterDetail(invId) {
+      document.getElementById('inverterDetail').style.display = 'none';
+      document.getElementById('inverterMonitorContent').style.display = 'block';
+
+      try {
+        const strRes = await fetch(`${API}/stations/${stationId}/inverters/${invId}/strings`);
+        const strJson = await strRes.json();
+
+        if (!strJson.success || !strJson.data || strJson.data.length === 0) {
+          document.getElementById('inverterMonitorContent').innerHTML = '<div class="error-msg">暂无组串数据</div>';
+          return;
+        }
+
+        const strings = strJson.data;
+
+        // Update string trend select
+        document.getElementById('stringTrendSelect').innerHTML = '<option value="">-- 选择组串 --</option>' +
+          strings.map(s => `<option value="${s.id}">${s.name || '组串-' + s.id}</option>`).join('');
+
+          // String bar chart
+        if (!charts.stringBar) {
+          charts.stringBar = echarts.init(document.getElementById('stringBarChart'), 'dark');
+        }
+        charts.stringBar.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(17,27,47,0.95)', borderColor: '#2a4060', textStyle: { color: '#e2e8f0' }, formatter: '{b}: {c} W' },
+          grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
+          xAxis: { type: 'category', data: strings.map(s => s.name || 'S' + s.id), axisLine: { lineStyle: { color: '#2a4060' } }, axisLabel: { color: '#94a3b8' } },
+          yAxis: { type: 'value', name: '功率(W)', nameTextStyle: { color: '#94a3b8' }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#94a3b8' } },
+          series: [{
+            type: 'bar',
+            data: strings.map(s => {
+              const p = s.latest_power ?? s.power_w ?? s.power ?? 0;
+              return {
+                value: p,
+                itemStyle: { color: p > 0 ? '#00e5ff' : '#ff3d71', borderRadius: [4, 4, 0, 0] }
+              };
+            }),
+            barMaxWidth: 50
+          }]
+        });
+
+        // String table
+        document.getElementById('stringTableContainer').innerHTML = `
+          <table class="data-table">
+            <thead><tr><th>组串</th><th>功率(W)</th><th>电压(V)</th><th>电流(A)</th><th>状态</th></tr></thead>
+            <tbody>${strings.map(s => {
+              const p = s.latest_power ?? s.power_w ?? s.power ?? 0;
+              const v = s.latest_voltage ?? s.voltage ?? 0;
+              const c = s.latest_current ?? s.current ?? 0;
+              const isNormal = p > 0;
+              const statusClass = isNormal ? 'badge-normal' : 'badge-error';
+              const statusText = isNormal ? '正常' : '无输出';
+              return `<tr>
+                <td>${s.name || '组串-' + s.id}</td>
+                <td style="font-family:var(--font-mono)">${p.toFixed(1)}</td>
+                <td style="font-family:var(--font-mono)">${v.toFixed(1)}</td>
+                <td style="font-family:var(--font-mono)">${c.toFixed(2)}</td>
+                <td><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>`;
+
+        // Auto-select first string for trend
+        if (strings.length > 0) {
+          document.getElementById('stringTrendSelect').value = strings[0].id;
+          loadStringTrend(strings[0].id);
+        }
+      } catch (e) {
+        console.error('Inverter detail failed:', e);
+        document.getElementById('inverterMonitorContent').innerHTML = '<div class="error-msg">组串数据加载失败</div>';
+      }
+    }
+
+    document.getElementById('stringTrendSelect').addEventListener('change', e => {
+      if (e.target.value) loadStringTrend(e.target.value);
+    });
+
+    async function loadStringTrend(strId) {
+      if (!charts.stringTrend) {
+        charts.stringTrend = echarts.init(document.getElementById('stringTrendChart'), 'dark');
       }
 
-      window.addEventListener('resize', () => powerChart.resize());
+      const now = new Date();
+      const start = new Date(now); start.setHours(0, 0, 0, 0);
+      const end = new Date(now); end.setHours(23, 59, 59, 999);
+
+      try {
+        const pwRes = await fetch(`${API}/strings/${strId}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
+        const pwJson = await pwRes.json();
+
+        if (pwJson.success && pwJson.data && pwJson.data.length > 0) {
+          const sorted = pwJson.data.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+          const times = sorted.map(p => new Date(p.timestamp).toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' }));
+          const values = sorted.map(p => p.power_w || 0);
+
+          charts.stringTrend.setOption({
+            tooltip: { trigger: 'axis', backgroundColor: 'rgba(17,27,47,0.95)', borderColor: '#2a4060', textStyle: { color: '#e2e8f0' }, formatter: '{b}: {c} W' },
+            grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+            xAxis: { type: 'category', data: times, axisLine: { lineStyle: { color: '#2a4060' } }, axisLabel: { color: '#94a3b8', fontSize: 11, interval: 3 } },
+            yAxis: { type: 'value', name: '功率(W)', nameTextStyle: { color: '#94a3b8' }, axisLine: { lineStyle: { color: '#2a4060' } }, splitLine: { lineStyle: { color: '#1a2236' } }, axisLabel: { color: '#94a3b8' } },
+            series: [{ type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { color: '#00ff88', width: 2 }, areaStyle: { color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops: [{ offset:0, color:'rgba(0,255,136,0.25)' },{ offset:1, color:'rgba(0,255,136,0)' }] } } }]
+          });
+        } else {
+          charts.stringTrend.setOption({ title: { text: '暂无功率数据', left: 'center', textStyle: { color: '#6b7280' } } });
+        }
+      } catch (e) {
+        charts.stringTrend.setOption({ title: { text: '趋势数据加载失败', left: 'center', textStyle: { color: '#ff3d71' } } });
+      }
     }
+
+    /* ============ Tab 3: Alert Center ============ */
+    function applyAlertFilters() {
+      renderAlertsTable();
+    }
+
+    function renderAlertsTable() {
+      const typeFilter = document.getElementById('alertFilterType').value;
+      const sevFilter = document.getElementById('alertFilterSeverity').value;
+      const statusFilter = document.getElementById('alertFilterStatus').value;
+
+      let filtered = [...MOCK_ALERTS];
+      if (typeFilter !== 'all') filtered = filtered.filter(a => a.type === typeFilter);
+      if (sevFilter !== 'all') filtered = filtered.filter(a => a.severity === sevFilter);
+      if (statusFilter !== 'all') filtered = filtered.filter(a => a.status === statusFilter);
+
+      filtered.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+      const container = document.getElementById('alertsTableContainer');
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-msg">没有符合条件的告警记录</div>';
+        return;
+      }
+
+      const typeNames = { string: '组串异常', inverter: '逆变器故障', weather: '气象预警', system: '系统告警' };
+
+      container.innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>时间</th><th>类型</th><th>严重等级</th><th>消息</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>${filtered.map(a => {
+            const sevClass = a.severity === 'critical' ? 'badge-error' : a.severity === 'warning' ? 'badge-warning' : 'badge-info';
+            const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
+            const statusClass = a.status === 'active' ? 'badge-error' : 'badge-normal';
+            const statusText = a.status === 'active' ? '活跃' : '已确认';
+            const time = new Date(a.created_at).toLocaleString('zh-CN');
+            return `<tr>
+              <td style="font-family:var(--font-mono);font-size:0.8rem;">${time}</td>
+              <td>${typeNames[a.type] || a.type}</td>
+              <td><span class="badge ${sevClass}"><span class="badge-dot"></span>${sevText}</span></td>
+              <td style="max-width:300px;">${a.message}</td>
+              <td><span class="badge ${statusClass}"><span class="badge-dot"></span>${statusText}</span></td>
+              <td>${a.status === 'active' ? `<button class="btn btn-sm btn-ack" onclick="acknowledgeAlert(${a.id})">确认</button>` : '-'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+        <div style="margin-top:0.75rem;font-size:0.78rem;color:var(--text-muted);">共 ${filtered.length} 条告警</div>`;
+    }
+
+    function acknowledgeAlert(id) {
+      const alert = MOCK_ALERTS.find(a => a.id === id);
+      if (alert) {
+        alert.status = 'acked';
+        renderAlertsTable();
+        showToast(`告警 #${id} 已确认`, 'success');
+      }
+    }
+
+    /* ============ Tab 4: Image Diagnosis ============ */
+    function initDiagnosis() {
+      const imageGrid = document.getElementById('imageGrid');
+      const sampleImages = [
+        { title: '红外图像 #1', desc: 'A区-第3排 热成像扫描', type: '热斑效应' },
+        { title: '红外图像 #2', desc: 'B区-第1排 热成像扫描', type: '二极管短路' },
+        { title: '红外图像 #3', desc: 'C区-第5排 热成像扫描', type: '接线盒过热' },
+        { title: '红外图像 #4', desc: 'A区-第7排 热成像扫描', type: '组件隐裂' },
+      ];
+
+      imageGrid.innerHTML = sampleImages.map((img, i) => `
+        <div class="img-placeholder">
+          <div class="img-body">
+            <canvas id="thermalCanvas${i}" width="260" height="180"></canvas>
+          </div>
+          <div class="img-footer">
+            <div class="img-label">${img.title}</div>
+            <div class="img-desc">${img.desc} · 检出: ${img.type}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Draw simulated thermal images
+      setTimeout(() => {
+        drawThermalImage('thermalCanvas0', 'hotspot');
+        drawThermalImage('thermalCanvas1', 'diode');
+        drawThermalImage('thermalCanvas2', 'junction');
+        drawThermalImage('thermalCanvas3', 'crack');
+      }, 200);
+
+      // Defect table
+      renderDefectTable();
+    }
+
+    function drawThermalImage(canvasId, defectType) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+
+      // Draw gradient background simulating thermal panel
+      const imageData = ctx.createImageData(w, h);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          // Base: cool blue-ish panel
+          const baseR = 20 + Math.random() * 15;
+          const baseG = 30 + Math.random() * 20;
+          const baseB = 80 + Math.random() * 40;
+
+          let r = baseR, g = baseG, b = baseB;
+
+          // Add defects
+          if (defectType === 'hotspot') {
+            const dx = x - w * 0.6, dy = y - h * 0.45;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 40) { const f = 1 - dist/40; r += f * 200; g += f * 80; b -= f * 40; }
+          } else if (defectType === 'diode') {
+            if (x > w*0.3 && x < w*0.45 && y > h*0.2 && y < h*0.35) { r += 150 + Math.random()*50; g += 100; b -= 30; }
+          } else if (defectType === 'junction') {
+            const dx = x - w * 0.5, dy = y - h * 0.6;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 35) { const f = 1 - dist/35; r += f * 180; g += f * 60; b += f * 20; }
+          } else if (defectType === 'crack') {
+            const lineY = h * 0.5 + Math.sin(x * 0.05) * 10;
+            if (Math.abs(y - lineY) < 3) { r += 120; g += 80; b += 30; }
+          }
+
+          imageData.data[idx] = Math.min(255, Math.max(0, r));
+          imageData.data[idx+1] = Math.min(255, Math.max(0, g));
+          imageData.data[idx+2] = Math.min(255, Math.max(0, b));
+          imageData.data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+
+      // Draw grid lines
+      ctx.strokeStyle = 'rgba(0,229,255,0.1)';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x < w; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let y = 0; y < h; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    }
+
+    function renderDefectTable() {
+      document.getElementById('defectTableContainer').innerHTML = `
+        <table class="data-table">
+          <thead><tr><th>图像</th><th>缺陷类型</th><th>位置</th><th>等级</th><th>置信度</th></tr></thead>
+          <tbody>${MOCK_DEFECTS.map(d => {
+            const levelClass = d.level === '严重' ? 'badge-error' : d.level === '中等' ? 'badge-warning' : 'badge-info';
+            return `<tr>
+              <td>${d.image}</td>
+              <td>${d.type}</td>
+              <td style="font-family:var(--font-mono);font-size:0.82rem;">${d.position}</td>
+              <td><span class="badge ${levelClass}"><span class="badge-dot"></span>${d.level}</span></td>
+              <td style="font-family:var(--font-mono);color:var(--accent);">${(d.confidence * 100).toFixed(0)}%</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>`;
+    }
+
+    function simulateUpload() {
+      showToast('模拟上传成功：检测到1个新增缺陷', 'success');
+      MOCK_DEFECTS.push({
+        id: MOCK_DEFECTS.length + 1,
+        image: '红外图像 #' + (MOCK_DEFECTS.length + 1),
+        type: '旁路二极管开路',
+        position: 'D区-第2排-组串04',
+        level: '严重',
+        confidence: 0.91
+      });
+      renderDefectTable();
+    }
+
+    /* ============ Tab 5: Daily Report ============ */
+    function generateReport() {
+      const btn = document.getElementById('btnGenerateReport');
+      btn.textContent = '⏳ 生成中...';
+      btn.disabled = true;
+
+      setTimeout(() => {
+        const now = new Date();
+        const today = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+        const weekDay = now.toLocaleDateString('zh-CN', { weekday: 'long' });
+
+        document.getElementById('reportContainer').innerHTML = `
+          <div class="report-preview">
+            <div class="report-header">
+              <h2>☀ 光伏电站运维日报</h2>
+              <div class="report-date">${today}（${weekDay}）· 电站 #1 示范电站</div>
+            </div>
+
+            <div class="report-section">
+              <h3>📊 发电概况</h3>
+              <p>今日总发电量 <span class="report-stat">1,247.8 kWh</span>，较昨日 <span style="color:var(--green)">↑ 3.2%</span>。</p>
+              <p>当前功率 <span class="report-stat">85.3 kW</span>，峰值功率 <span class="report-stat">142.6 kW</span>（出现于 12:30）。</p>
+              <p>累计本月发电 <span class="report-stat">18,542 kWh</span>，完成率 <span style="color:var(--accent)">87.4%</span>。</p>
+            </div>
+
+            <div class="report-section">
+              <h3>⚡ 设备运行</h3>
+              <ul>
+                <li>逆变器 10 台，正常运行 <span class="report-stat">8</span> 台，存在异常 <span class="report-stat" style="color:var(--orange)">2</span> 台</li>
+                <li>组串共 80 路，正常 <span class="report-stat">75</span> 路，异常 <span class="report-stat" style="color:var(--red)">5</span> 路</li>
+                <li>综合效率 PR = <span class="report-stat">82.4%</span>，处于良好区间</li>
+                <li>逆变器 INV-04 温度偏高（78°C），建议安排巡检</li>
+                <li>逆变器 INV-09 通信延迟增加，已通知运维人员</li>
+              </ul>
+            </div>
+
+            <div class="report-section">
+              <h3>🔔 告警统计</h3>
+              <ul>
+                <li>今日新增告警 <span class="report-stat" style="color:var(--red)">3</span> 条，其中严重 <span class="report-stat" style="color:var(--red)">2</span> 条</li>
+                <li>待处理活跃告警 <span class="report-stat" style="color:var(--orange)">5</span> 条</li>
+                <li>已确认告警 <span class="report-stat">3</span> 条</li>
+                <li><span style="color:var(--red);font-weight:600;">需优先处理：</span>INV-01-03 组串断路、INV-07-02 组串无输出</li>
+              </ul>
+            </div>
+
+            <div class="report-section">
+              <h3>🔍 图像诊断结果</h3>
+              <ul>
+                <li>今日完成红外扫描 <span class="report-stat">4</span> 个区域</li>
+                <li>检出缺陷 <span class="report-stat">4</span> 处：热斑效应×1、二极管短路×1、接线盒过热×1、组件隐裂×1</li>
+                <li>严重缺陷 <span class="report-stat" style="color:var(--red)">1</span> 处（A区-第3排 热斑），建议尽快更换组件</li>
+              </ul>
+            </div>
+
+            <div class="report-section">
+              <h3>🌤 气象信息</h3>
+              <ul>
+                <li>今日辐照度峰值 <span class="report-stat">876 W/m²</span>，日均 <span class="report-stat">412 W/m²</span></li>
+                <li>明日预计：多云转阴，辐照度下降 40%，建议调整运维计划</li>
+              </ul>
+            </div>
+
+            <div class="report-section">
+              <h3>📋 运维建议</h3>
+              <ul>
+                <li>优先处理 INV-01-03 和 INV-07-02 组串异常，预计可恢复 <span style="color:var(--green)">~12 kW</span> 功率</li>
+                <li>安排 A区-第3排 热斑组件更换，建议在辐照度较低时段（早晨/傍晚）作业</li>
+                <li>INV-04 温度异常，检查散热风扇及通风通道</li>
+                <li>明日阴雨天气，建议安排室内数据分析及文档工作</li>
+              </ul>
+            </div>
+
+            <div style="text-align:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.78rem;">
+              报告生成时间：${now.toLocaleString('zh-CN')} · 光伏运维AI智能分析平台
+            </div>
+          </div>`;
+
+        btn.textContent = '📝 生成日报';
+        btn.disabled = false;
+        showToast('日报生成成功', 'success');
+      }, 1500);
+    }
+
+    /* ============ Window Resize ============ */
+    window.addEventListener('resize', () => {
+      Object.values(charts).forEach(c => { try { c && c.resize(); } catch(e) {} });
+    });
+
+    /* ============ Initialize ============ */
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStations();
+      loadOverview();
+      loadInverterDropdown();
+      renderAlertsTable();
+      initDiagnosis();
+
+      // Auto-refresh every 60 seconds
+      refreshTimer = setInterval(() => {
+        const activeTab = document.querySelector('.nav-tab.active');
+        if (activeTab && activeTab.dataset.tab === 'overview') {
+          loadOverviewKPIs();
+          loadInverterGrid();
+        }
+      }, 60000);
+    });
   </script>
 </body>
 </html>

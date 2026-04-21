@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const stationService = require('../services/stationService');
 const inverterService = require('../services/inverterService');
+const alertService = require('../services/alertService');
 
 // GET /api/stations
 router.get('/', (req, res) => {
@@ -54,6 +55,39 @@ router.get('/:id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Station not found' });
     }
     res.json({ success: true, data: station });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/stations/:id/alerts  (MUST be before /:id)
+router.get('/:id/alerts', (req, res) => {
+  try {
+    const { status } = req.query;
+    const alerts = alertService.getAll(req.params.id, status);
+    res.json({ success: true, data: alerts });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/stations/:id/alerts/:aid/ack  (MUST be before /:id)
+router.post('/:id/alerts/:aid/ack', (req, res) => {
+  try {
+    const result = alertService.acknowledge(req.params.aid);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/stations/:id/weather  (MUST be before /:id)
+router.get('/:id/weather', (req, res) => {
+  try {
+    const { start, startTime, end, endTime } = req.query;
+    const weatherService = require('../services/weatherService');
+    const data = weatherService.getByStationId(req.params.id, startTime || start, endTime || end);
+    res.json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
