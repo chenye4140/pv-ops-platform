@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const forecastService = require('../services/forecastService');
+const forecastAutoGenerate = require('../services/forecastAutoGenerate');
 
 // POST /api/forecast/generate/:stationId?date=YYYY-MM-DD
 router.post('/generate/:stationId', (req, res) => {
@@ -10,6 +11,31 @@ router.post('/generate/:stationId', (req, res) => {
     const weatherForecast = req.body.weather || null;
 
     const result = forecastService.generateForecast(stationId, forecastDate, weatherForecast);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/forecast/all — generates forecasts for all active stations for tomorrow, returns combined results
+router.get('/all', async (req, res) => {
+  try {
+    const forecastDate = req.query.date || null;
+    const result = await forecastAutoGenerate.generateForecastsForAllStations(forecastDate);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/forecast/:stationId/compare — forecast-vs-actual accuracy analysis
+router.get('/:stationId/compare', (req, res) => {
+  try {
+    const stationId = parseInt(req.params.stationId);
+    const forecastDate = req.query.date || new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+    const result = forecastService.getForecastAccuracy(stationId, forecastDate);
+    if (result.error) return res.status(404).json({ success: false, error: result.error });
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

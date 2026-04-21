@@ -6,12 +6,23 @@ const path = require('path');
 const { initDatabase } = require('./src/models/database');
 const authService = require('./src/services/authService');
 const wsService = require('./src/services/websocketService');
+const forecastAutoGenerate = require('./src/services/forecastAutoGenerate');
 
 // Initialize database and seed default admin
 initDatabase();
 authService.seedDefaultAdmin().catch((err) => {
   console.error('Error seeding default admin:', err.message);
 });
+
+// Auto-generate forecasts for all active stations on startup (with 5s delay after DB init)
+setTimeout(() => {
+  forecastAutoGenerate.generateForecastsForAllStations().catch((err) => {
+    console.error('[Startup] Forecast auto-generation failed:', err.message);
+  });
+}, 5000);
+
+// Schedule daily forecast regeneration at 23:00
+const dailyForecast = forecastAutoGenerate.scheduleDailyForecast(23, 0);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
