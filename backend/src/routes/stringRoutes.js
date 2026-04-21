@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const powerDataService = require('../services/powerDataService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/strings/:id/power?start=&end=
 // Convenience route matching frontend calls

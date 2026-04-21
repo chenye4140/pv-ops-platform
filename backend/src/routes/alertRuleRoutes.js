@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const alertRuleService = require('../services/alertRuleService');
 const auditService = require('../services/auditService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 function getUserId(req) {
   return req.user ? req.user.id : null;

@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const alertService = require('../services/alertService');
 const wsService = require('../services/websocketService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/alerts?stationId=&status=
 router.get('/', (req, res) => {

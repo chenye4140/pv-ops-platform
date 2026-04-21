@@ -10,6 +10,9 @@ const express = require('express');
 const router = express.Router();
 const forecastEnhancedService = require('../services/forecastEnhancedService');
 const forecastService = require('../services/forecastService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/forecast/enhanced/:stationId — Enhanced forecast with confidence intervals
 router.get('/enhanced/:stationId', (req, res) => {

@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const inspectionService = require('../services/inspectionService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // ===== Inspection Plans =====
 

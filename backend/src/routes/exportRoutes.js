@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const exportService = require('../services/exportService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/export/power-data?station_id=&start_time=&end_time=&string_id=
 router.get('/power-data', (req, res) => {

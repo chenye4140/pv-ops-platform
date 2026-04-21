@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../models/database');
 const { generateDailyReportSummary, isConfigured } = require('../services/aiService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/reports/daily/:stationId
 // Generates a daily report preview for the specified station

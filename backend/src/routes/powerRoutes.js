@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const powerDataService = require('../services/powerDataService');
 const wsService = require('../services/websocketService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/power-data?stringId=&startTime=&endTime=
 router.get('/', (req, res) => {

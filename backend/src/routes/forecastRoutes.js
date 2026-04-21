@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const forecastService = require('../services/forecastService');
 const forecastAutoGenerate = require('../services/forecastAutoGenerate');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // POST /api/forecast/generate/:stationId?date=YYYY-MM-DD
 router.post('/generate/:stationId', (req, res) => {

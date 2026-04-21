@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../models/database');
 const { analyzeDefectImage, isConfigured } = require('../services/aiService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/analysis/station/:id/anomaly
 // Returns anomaly analysis results for a station

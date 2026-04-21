@@ -3,6 +3,9 @@ const router = express.Router();
 const backupService = require('../services/backupService');
 const autoBackupScheduler = require('../services/autoBackupScheduler');
 const auditService = require('../services/auditService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 function getUserId(req) {
   return req.user ? req.user.id : null;

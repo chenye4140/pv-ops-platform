@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const kpiService = require('../services/kpiService');
+const { authenticate } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
 
 // GET /api/kpi/dashboard/:stationId — combined KPI data for a station
 router.get('/dashboard/:stationId', (req, res) => {
