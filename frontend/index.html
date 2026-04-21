@@ -762,7 +762,6 @@
         const json = await apiFetch(`${API}/stations/${stationId}/overview`);
         if (json.success) {
           const d = json.data;
-          // Backend returns camelCase: todayEnergyKwh, currentPowerKw, performanceRatio, abnormalCount
           const energy = d.todayEnergyKwh ?? d.today_energy_kwh ?? 0;
           const power = d.currentPowerKw ?? d.current_power_kw ?? 0;
           const pr = d.performanceRatio ?? d.performance_ratio ?? 0;
@@ -783,7 +782,7 @@
         }
       } catch (e) {
         console.error('KPI load failed:', e);
-        document.getElementById('kpiEnergy').innerHTML = '<span style="color:var(--red)">加载失败</span>';
+        document.getElementById('kpiEnergy').innerHTML = '<span style="color:var(--red)">--</span>';
       }
     }
 
@@ -1416,14 +1415,19 @@
       loadAlerts();
       initDiagnosis();
 
-      // Auto-refresh every 60 seconds
+      // Auto-refresh every 30 seconds
       refreshTimer = setInterval(() => {
         const activeTab = document.querySelector('.nav-tab.active');
-        if (activeTab && activeTab.dataset.tab === 'overview') {
+        if (!activeTab) return;
+        const tab = activeTab.dataset.tab;
+        if (tab === 'overview') {
           loadOverviewKPIs();
           loadInverterGrid();
+          loadAlertsOverview();
+        } else if (tab === 'alerts') {
+          loadAlerts();
         }
-      }, 60000);
+      }, 30000);
     });
   </script>
 </body>
