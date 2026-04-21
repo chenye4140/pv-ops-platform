@@ -11,7 +11,7 @@ router.get('/station/:id/anomaly', (req, res) => {
 
     // Get abnormal strings with their power data
     const abnormalStrings = db.prepare(`
-      SELECT s.id, s.name, s.status, s.rated_power_w,
+      SELECT s.id, s.name, s.status, s.rated_power_w, s.panel_count,
              pd.power_w as latest_power, pd.voltage_v, pd.current_a,
              pd.timestamp
       FROM strings s
@@ -37,14 +37,19 @@ router.get('/station/:id/anomaly', (req, res) => {
         station_id: stationId,
         total_strings: stats.total_strings,
         abnormal_count: stats.abnormal_count,
-        abnormal_strings: abnormalStrings.map(s => ({
-          id: s.id,
-          name: s.name,
-          status: s.status,
-          rated_power_w: s.rated_power_w,
-          latest_power_w: s.latest_power || 0,
-          efficiency_loss: s.rated_power_w > 0 ? Math.round((1 - (s.latest_power || 0) / s.rated_power_w) * 100) : 0
-        })),
+        abnormal_strings: abnormalStrings.map(s => {
+          const stringRatedPower = s.rated_power_w * (s.panel_count || 1);
+          const power = s.latest_power || 0;
+          const loss = stringRatedPower > 0 ? Math.max(0, Math.round((1 - power / stringRatedPower) * 100)) : 0;
+          return {
+            id: s.id,
+            name: s.name,
+            status: s.status,
+            rated_power_w: stringRatedPower,
+            latest_power_w: power,
+            efficiency_loss: loss
+          };
+        }),
         recommendations: [
           '建议对异常组串进行现场巡检',
           '检查接线盒和连接器是否有松动或腐蚀',
