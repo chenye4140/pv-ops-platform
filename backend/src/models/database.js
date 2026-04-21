@@ -228,6 +228,47 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
     CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
     CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource);
+
+    -- Spare Parts Inventory table
+    CREATE TABLE IF NOT EXISTS spare_parts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      part_name TEXT NOT NULL,
+      part_code TEXT UNIQUE,
+      category TEXT NOT NULL DEFAULT 'general',  -- 'module', 'inverter', 'cable', 'connector', 'sensor', 'other'
+      specification TEXT,
+      unit TEXT NOT NULL DEFAULT 'pcs',
+      quantity INTEGER NOT NULL DEFAULT 0,
+      min_quantity INTEGER NOT NULL DEFAULT 5,    -- minimum stock level for alerts
+      unit_price REAL,
+      supplier TEXT,
+      station_id INTEGER,                         -- NULL = global/shared inventory
+      location TEXT,                              -- warehouse location
+      status TEXT NOT NULL DEFAULT 'active',     -- 'active', 'low_stock', 'out_of_stock', 'discontinued'
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (station_id) REFERENCES stations(id)
+    );
+
+    -- Spare Parts Transactions table (inventory movement log)
+    CREATE TABLE IF NOT EXISTS spare_parts_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      part_id INTEGER NOT NULL,
+      transaction_type TEXT NOT NULL,   -- 'in', 'out', 'adjustment'
+      quantity INTEGER NOT NULL,
+      reference_type TEXT,              -- 'workorder', 'purchase', 'inspection', 'manual'
+      reference_id INTEGER,
+      performed_by TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (part_id) REFERENCES spare_parts(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_spare_parts_station_id ON spare_parts(station_id);
+    CREATE INDEX IF NOT EXISTS idx_spare_parts_category ON spare_parts(category);
+    CREATE INDEX IF NOT EXISTS idx_spare_parts_status ON spare_parts(status);
+    CREATE INDEX IF NOT EXISTS idx_spare_parts_transactions_part_id ON spare_parts_transactions(part_id);
+    CREATE INDEX IF NOT EXISTS idx_spare_parts_transactions_type ON spare_parts_transactions(transaction_type);
   `);
 }
 
