@@ -15,13 +15,29 @@ const stationService = {
     const station = this.getById(id);
     if (!station) return null;
 
-    // Today's date range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString();
+    // Use the latest available date with data (not necessarily "today")
+    const latestTs = db.prepare(`
+      SELECT MAX(pd.timestamp) as ts FROM power_data pd
+      JOIN strings s ON pd.string_id = s.id
+      JOIN inverters i ON s.inverter_id = i.id
+      WHERE i.station_id = ?
+    `).get(id);
+
+    if (!latestTs || !latestTs.ts) {
+      // No data yet, return zeroed overview
+      return {
+        station,
+        todayEnergyKwh: 0, currentPowerKw: 0, abnormalCount: 0,
+        activeAlerts: 0, performanceRatio: 0, inverterCount: 0, stringCount: 0,
+      };
+    }
+
+    const latestDate = new Date(latestTs.ts);
+    latestDate.setHours(0, 0, 0, 0);
+    const latestStr = latestDate.toISOString();
+    const nextDate = new Date(latestDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextStr = nextDate.toISOString();
 
     // Today's total energy (kWh) - integrate power over 15-min intervals
     const todayEnergy = db.prepare(`
@@ -30,7 +46,7 @@ const stationService = {
       JOIN strings s ON pd.string_id = s.id
       JOIN inverters i ON s.inverter_id = i.id
       WHERE i.station_id = ? AND pd.timestamp >= ? AND pd.timestamp < ?
-    `).get(id, todayStr, tomorrowStr);
+    `).get(id, latestStr, nextStr);
 
     // Current power (latest reading)
     const currentPower = db.prepare(`

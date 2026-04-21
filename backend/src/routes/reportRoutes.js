@@ -18,16 +18,23 @@ router.get('/daily', (req, res) => {
       return res.status(404).json({ success: false, error: 'Station not found' });
     }
 
-    // Today's date range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString();
-    const dateStr = today.toISOString().split('T')[0];
+    // Use the latest available date with data
+    const latestTs = db.prepare(`
+      SELECT MAX(pd.timestamp) as ts FROM power_data pd
+      JOIN strings s ON pd.string_id = s.id
+      JOIN inverters i ON s.inverter_id = i.id
+      WHERE i.station_id = ?
+    `).get(stationId);
 
-    // Today's energy summary
+    const refDate = latestTs && latestTs.ts ? new Date(latestTs.ts) : new Date();
+    refDate.setHours(0, 0, 0, 0);
+    const refStr = refDate.toISOString();
+    const nextDate = new Date(refDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextStr = nextDate.toISOString();
+    const dateStr = refDate.toISOString().split('T')[0];
+
+    // Day's energy summary
     const energyData = db.prepare(`
       SELECT
         SUM(pd.power_w) * 0.25 / 1000 as total_energy_kwh,
@@ -38,7 +45,7 @@ router.get('/daily', (req, res) => {
       JOIN strings s ON pd.string_id = s.id
       JOIN inverters i ON s.inverter_id = i.id
       WHERE i.station_id = ? AND pd.timestamp >= ? AND pd.timestamp < ?
-    `).get(stationId, todayStr, tomorrowStr);
+    `).get(stationId, refStr, nextStr);
 
     // Weather summary
     const weatherData = db.prepare(`
@@ -49,13 +56,13 @@ router.get('/daily', (req, res) => {
         AVG(wind_speed_ms) as avg_wind_speed
       FROM weather_data
       WHERE station_id = ? AND timestamp >= ? AND timestamp < ?
-    `).get(stationId, todayStr, tomorrowStr);
+    `).get(stationId, refStr, nextStr);
 
-    // Alerts today
+    // Active alerts
     const alertsToday = db.prepare(`
       SELECT COUNT(*) as count FROM alerts
-      WHERE station_id = ? AND created_at >= ? AND created_at < ?
-    `).get(stationId, todayStr, tomorrowStr);
+      WHERE station_id = ? AND status = 'active'
+    `).get(stationId);
 
     // Performance ratio
     const capacityKW = station.capacity_mw * 1000;

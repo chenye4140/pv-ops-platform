@@ -13,20 +13,7 @@ router.get('/', (req, res) => {
   }
 });
 
-// GET /api/stations/:id
-router.get('/:id', (req, res) => {
-  try {
-    const station = stationService.getById(req.params.id);
-    if (!station) {
-      return res.status(404).json({ success: false, error: 'Station not found' });
-    }
-    res.json({ success: true, data: station });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/stations/:id/overview
+// GET /api/stations/:id/overview  (MUST be before /:id)
 router.get('/:id/overview', (req, res) => {
   try {
     const overview = stationService.getOverview(req.params.id);
@@ -39,7 +26,17 @@ router.get('/:id/overview', (req, res) => {
   }
 });
 
-// GET /api/stations/:id/inverters
+// GET /api/stations/:id/inverters/:invId/strings  (MUST be before /:id/inverters)
+router.get('/:id/inverters/:invId/strings', (req, res) => {
+  try {
+    const strings = inverterService.getStringsByInverterId(req.params.invId);
+    res.json({ success: true, data: strings });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/stations/:id/inverters  (MUST be before /:id)
 router.get('/:id/inverters', (req, res) => {
   try {
     const inverters = inverterService.getByStationId(req.params.id);
@@ -49,11 +46,14 @@ router.get('/:id/inverters', (req, res) => {
   }
 });
 
-// GET /api/stations/:id/inverters/:invId/strings
-router.get('/:id/inverters/:invId/strings', (req, res) => {
+// GET /api/stations/:id
+router.get('/:id', (req, res) => {
   try {
-    const strings = inverterService.getStringsByInverterId(req.params.invId);
-    res.json({ success: true, data: strings });
+    const station = stationService.getById(req.params.id);
+    if (!station) {
+      return res.status(404).json({ success: false, error: 'Station not found' });
+    }
+    res.json({ success: true, data: station });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
