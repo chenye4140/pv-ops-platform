@@ -94,6 +94,7 @@ router.delete('/:id', (req, res) => {
 router.post('/process-due', (req, res) => {
   try {
     const results = inspectionService.processDueInspections();
+    auditService.logAction(getUserId(req), 'process_due', 'inspection', null, { processed_count: results.length }, req.ip);
     res.json({ success: true, data: results, count: results.length });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

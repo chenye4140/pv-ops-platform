@@ -167,6 +167,7 @@ router.post('/seed/:stationId', requireRole('admin', 'manager'), (req, res) => {
   try {
     const stationId = parseInt(req.params.stationId);
     const rules = alertRuleService.seedDefaults(stationId);
+    auditService.logAction(getUserId(req), 'seed', 'alert_rule', null, { station_id: stationId, count: rules.length }, req.ip);
     res.json({ success: true, data: rules, count: rules.length });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

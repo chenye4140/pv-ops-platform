@@ -80,6 +80,7 @@ router.get('/auto-backup/info', (req, res) => {
 router.post('/auto-backup/run', (req, res) => {
   try {
     const result = autoBackupScheduler.createAutoBackup();
+    auditService.logAction(getUserId(req), 'auto_backup', 'backup', null, { filename: result.filename, size: result.sizeHuman }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
