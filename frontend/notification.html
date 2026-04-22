@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>通知中心 - 光伏运维AI智能分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+
+    .navbar { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; height: 60px; }
+    .navbar-brand { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; font-weight: 700; color: var(--accent); }
+    .navbar-brand .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--blue)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .back-link { margin-left: auto; color: var(--text-secondary); text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; transition: all 0.2s; }
+    .back-link:hover { color: var(--accent); border-color: var(--accent); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+    .page-title { font-size: 1.5rem; font-weight: 700; }
+    .page-title .badge { display: inline-flex; align-items: center; justify-content: center; background: var(--red); color: #fff; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px; min-width: 20px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; }
+    .stat-card .stat-value { font-size: 1.8rem; font-weight: 700; font-family: monospace; }
+    .stat-card .stat-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+    .stat-card.critical .stat-value { color: var(--red); }
+    .stat-card.warning .stat-value { color: var(--orange); }
+    .stat-card.info .stat-value { color: var(--blue); }
+    .stat-card.success .stat-value { color: var(--green); }
+
+    .toolbar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .toolbar button { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+    .toolbar button:hover { border-color: var(--accent); color: var(--text-primary); }
+    .toolbar button.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .toolbar .btn-primary { background: var(--accent); color: var(--bg-primary); border-color: var(--accent); font-weight: 600; }
+    .toolbar .btn-primary:hover { background: #00c8e0; }
+
+    .notification-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .notification-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; display: flex; gap: 1rem; align-items: flex-start; transition: all 0.2s; cursor: pointer; }
+    .notification-item:hover { background: var(--bg-card-hover); }
+    .notification-item.unread { border-left: 3px solid var(--accent); }
+    .notification-item.unread.critical { border-left-color: var(--red); }
+    .notification-item.unread.warning { border-left-color: var(--orange); }
+
+    .notif-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+    .notif-icon.alert { background: var(--red-dim); }
+    .notif-icon.workorder { background: var(--orange-dim); }
+    .notif-icon.inspection { background: var(--accent-dim); }
+    .notif-icon.system { background: rgba(179, 136, 255, 0.15); }
+    .notif-icon.info { background: var(--green-dim); }
+
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .notif-message { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .notif-meta { display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-muted); }
+    .notif-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .notif-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .notif-actions button { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: all 0.2s; }
+    .notif-actions button:hover { border-color: var(--accent); color: var(--accent); }
+    .notif-actions button.delete:hover { border-color: var(--red); color: var(--red); }
+
+    .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.5rem; color: var(--text-primary); z-index: 1000; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 768px) {
+      .container { padding: 1rem; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .notification-item { flex-direction: column; }
+      .notif-actions { align-self: flex-end; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="logo-icon">⚡</span>
+      <span>通知中心</span>
+    </div>
+    <a href="index.html" class="back-link">← 返回仪表盘</a>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">通知中心 <span class="badge" id="unread-badge" style="display:none;">0</span></h1>
+    </div>
+
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card critical">
+        <div class="stat-value" id="stat-critical">0</div>
+        <div class="stat-label">🔴 严重</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-value" id="stat-warning">0</div>
+        <div class="stat-label">🟡 警告</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-value" id="stat-info">0</div>
+        <div class="stat-label">🔵 信息</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-value" id="stat-24h">0</div>
+        <div class="stat-label">📊 24h 新增</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="active" data-filter="all">全部</button>
+      <button data-filter="unread">未读</button>
+      <button data-filter="alert">告警</button>
+      <button data-filter="workorder">工单</button>
+      <button data-filter="inspection">巡检</button>
+      <button class="btn-primary" id="btn-mark-all">✓ 全部已读</button>
+      <button id="btn-refresh">🔄 刷新</button>
+    </div>
+
+    <div class="notification-list" id="notification-list">
+      <div class="empty-state" id="empty-state">
+        <div class="icon">🔔</div>
+        <p>暂无通知</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let currentFilter = 'all';
+    let notifications = [];
+
+    // Auth token management
+    function getToken() { return localStorage.getItem('pv_token'); }
+    function authHeaders() { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+
+    async function apiCall(path, options = {}) {
+      const res = await fetch(`${API_BASE}/api${path}`, { ...options, headers: { ...authHeaders(), ...options.headers } });
+      if (res.status === 401) { window.location.href = 'login.html'; throw new Error('Unauthorized'); }
+      return res.json();
+    }
+
+    async function loadNotifications() {
+      try {
+        const params = new URLSearchParams({ limit: 100 });
+        if (currentFilter === 'unread') params.set('is_read', 'false');
+        else if (['alert', 'workorder', 'inspection'].includes(currentFilter)) params.set('type', currentFilter);
+
+        const res = await apiCall(`/notifications?${params}`);
+        if (res.success) {
+          notifications = res.data.notifications;
+          renderList();
+          updateStats();
+          document.getElementById('unread-badge').textContent = res.data.unread_count;
+          document.getElementById('unread-badge').style.display = res.data.unread_count > 0 ? 'inline-flex' : 'none';
+        }
+      } catch (e) {
+        console.error('Failed to load notifications:', e);
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await apiCall('/notifications/stats');
+        if (res.success) {
+          document.getElementById('stat-critical').textContent = res.data.by_severity.critical || 0;
+          document.getElementById('stat-warning').textContent = res.data.by_severity.warning || 0;
+          document.getElementById('stat-info').textContent = res.data.by_severity.info || 0;
+          document.getElementById('stat-24h').textContent = res.data.last_24h || 0;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    function renderList() {
+      const list = document.getElementById('notification-list');
+      const empty = document.getElementById('empty-state');
+
+      if (notifications.length === 0) {
+        list.innerHTML = '';
+        list.appendChild(empty);
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      list.innerHTML = notifications.map(n => {
+        const iconMap = { alert: '🔔', workorder: '📋', inspection: '🔍', system: '⚙️', info: 'ℹ️' };
+        const timeStr = formatTime(n.created_at);
+        return `
+          <div class="notification-item ${n.is_read ? '' : 'unread'} ${n.severity}" data-id="${n.id}" onclick="markRead(${n.id})">
+            <div class="notif-icon ${n.type}">${iconMap[n.type] || 'ℹ️'}</div>
+            <div class="notif-content">
+              <div class="notif-title">${escHtml(n.title)}</div>
+              <div class="notif-message">${escHtml(n.message || '')}</div>
+              <div class="notif-meta">
+                <span>🕐 ${timeStr}</span>
+                ${n.station_name ? `<span>📍 ${escHtml(n.station_name)}</span>` : ''}
+                <span>${n.severity === 'critical' ? '🔴' : n.severity === 'warning' ? '🟡' : '🔵'} ${n.severity}</span>
+              </div>
+            </div>
+            <div class="notif-actions">
+              <button class="delete" onclick="event.stopPropagation(); deleteNotif(${n.id})">删除</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function updateStats() {
+      loadStats();
+    }
+
+    async function markRead(id) {
+      try {
+        await apiCall(`/notifications/${id}/read`, { method: 'PUT' });
+        const item = notifications.find(n => n.id === id);
+        if (item) item.is_read = 1;
+        renderList();
+        loadNotifications();
+      } catch (e) { showToast('标记已读失败'); }
+    }
+
+    async function markAllRead() {
+      try {
+        const res = await apiCall('/notifications/read-all', { method: 'PUT' });
+        if (res.success) {
+          notifications.forEach(n => n.is_read = 1);
+          renderList();
+          loadNotifications();
+          showToast(`已标记 ${res.data.marked} 条通知为已读`);
+        }
+      } catch (e) { showToast('操作失败'); }
+    }
+
+    async function deleteNotif(id) {
+      try {
+        await apiCall(`/notifications/${id}`, { method: 'DELETE' });
+        notifications = notifications.filter(n => n.id !== id);
+        renderList();
+        loadNotifications();
+        showToast('通知已删除');
+      } catch (e) { showToast('删除失败'); }
+    }
+
+    function formatTime(iso) {
+      const d = new Date(iso + 'Z');
+      const now = new Date();
+      const diff = (now - d) / 1000;
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+      return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // Filter buttons
+    document.querySelectorAll('.toolbar button[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.toolbar button[data-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        loadNotifications();
+      });
+    });
+
+    document.getElementById('btn-mark-all').addEventListener('click', markAllRead);
+    document.getElementById('btn-refresh').addEventListener('click', () => { loadNotifications(); showToast('已刷新'); });
+
+    // Init
+    if (!getToken()) { window.location.href = 'login.html'; }
+    else { loadNotifications(); }
+  </script>
+</body>
+</html>

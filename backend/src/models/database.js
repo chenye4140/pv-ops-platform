@@ -288,6 +288,28 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_defect_analyses_station_id ON defect_analyses(station_id);
     CREATE INDEX IF NOT EXISTS idx_defect_analyses_health ON defect_analyses(overall_health);
     CREATE INDEX IF NOT EXISTS idx_defect_analyses_created_at ON defect_analyses(created_at);
+
+    -- Notifications table (system notifications for all users)
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,                   -- NULL = broadcast to all users
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'info', -- 'alert', 'workorder', 'inspection', 'system', 'info'
+      severity TEXT NOT NULL DEFAULT 'info', -- 'critical', 'warning', 'info', 'success'
+      is_read INTEGER NOT NULL DEFAULT 0,
+      resource_type TEXT,                -- 'alert', 'workorder', 'inspection', etc.
+      resource_id INTEGER,
+      station_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (station_id) REFERENCES stations(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+    CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+    CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
   `);
 }
 

@@ -74,6 +74,7 @@ const forecastRoutes = require('./src/routes/forecastRoutes');
 const forecastEnhancedRoutes = require('./src/routes/forecastEnhancedRoutes');
 const kpiRoutes = require('./src/routes/kpiRoutes');
 const backupRoutes = require('./src/routes/backupRoutes');
+const notificationRoutes = require('./src/routes/notificationRoutes');
 
 app.use('/api/stations', stationRoutes);
 app.use('/api/power-data', powerRoutes);
@@ -103,6 +104,7 @@ app.use('/api/forecast', forecastRoutes);
 app.use('/api/forecast', forecastEnhancedRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
