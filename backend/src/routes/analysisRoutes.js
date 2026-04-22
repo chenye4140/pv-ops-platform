@@ -1,10 +1,92 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { db } = require('../models/database');
 const { analyzeDefectImage, isConfigured } = require('../services/aiService');
 const { authenticate } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+
+// Multer storage config
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `defect_${timestamp}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    cb(null, ext);
+  },
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/analysis/upload — Upload image file for AI defect analysis
+// ---------------------------------------------------------------------------
+
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: '缺少图像文件 (支持 JPG/PNG/WebP)' });
+    }
+
+    // Convert uploaded file to base64 data URL
+    const mimeType = req.file.mimetype || 'image/jpeg';
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const base64 = `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
+
+    const label = req.body.label || req.file.originalname;
+    const stationId = req.body.station_id ? parseInt(req.body.station_id) : null;
+
+    // Run AI analysis
+    const result = await analyzeDefectImage(base64, label);
+
+    // Persist result
+    const userId = req.user ? req.user.id : null;
+    const relPath = `uploads/${req.file.filename}`;
+    db.prepare(`
+      INSERT INTO defect_analyses (station_id, image_label, image_path, defects, overall_health, recommendation, model_used, analyzed_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      stationId,
+      label,
+      relPath,
+      JSON.stringify(result.defects),
+      result.overall_health,
+      result.recommendation,
+      result.model_used,
+      userId,
+    );
+
+    res.json({
+      success: true,
+      data: {
+        image_path: relPath,
+        defects: result.defects,
+        overall_health: result.overall_health,
+        recommendation: result.recommendation,
+        model_used: result.model_used,
+      },
+    });
+  } catch (error) {
+    console.error('[Analysis] Upload error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // GET /api/analysis/station/:id/anomaly
 // Returns anomaly analysis results for a station

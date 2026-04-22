@@ -114,6 +114,9 @@ app.get('/api/ws/stats', (req, res) => {
   res.json({ success: true, data: wsService.getStats() });
 });
 
+// Serve uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend')));
 
