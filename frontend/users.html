@@ -285,6 +285,7 @@
     <div class="navbar-right">
       <div id="userInfo">
         <span id="userDisplayName">--</span>
+        <button class="btn btn-sm btn-outline" onclick="openPasswordModal()">修改密码</button>
         <button class="btn btn-sm btn-outline" onclick="handleLogout()">退出</button>
       </div>
       <div class="clock"><span id="clockTime"></span></div>
@@ -364,6 +365,34 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" onclick="closeModal()">取消</button>
           <button type="submit" class="btn" id="saveBtn">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Change Password Modal ============ -->
+  <div class="modal-overlay" id="passwordModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>修改密码</h3>
+        <button class="modal-close" onclick="closePasswordModal()">&times;</button>
+      </div>
+      <form id="passwordForm" onsubmit="return handleChangePassword(event)">
+        <div class="form-group">
+          <label for="currentPassword">当前密码 *</label>
+          <input type="password" id="currentPassword" placeholder="请输入当前密码" required>
+        </div>
+        <div class="form-group">
+          <label for="newPassword">新密码 *</label>
+          <input type="password" id="newPassword" placeholder="至少6位字符" required>
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword">确认新密码 *</label>
+          <input type="password" id="confirmPassword" placeholder="请再次输入新密码" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closePasswordModal()">取消</button>
+          <button type="submit" class="btn" id="changePasswordBtn">确认修改</button>
         </div>
       </form>
     </div>
@@ -668,6 +697,66 @@
       window.location.href = 'login.html';
     }
 
+    /* ============ Change Password ============ */
+    function openPasswordModal() {
+      document.getElementById('passwordModal').classList.add('active');
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+      document.getElementById('currentPassword').focus();
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').classList.remove('active');
+    }
+
+    async function handleChangePassword(e) {
+      e.preventDefault();
+      var btn = document.getElementById('changePasswordBtn');
+      var currentPassword = document.getElementById('currentPassword').value;
+      var newPassword = document.getElementById('newPassword').value;
+      var confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (!currentPassword) {
+        showToast('请输入当前密码', 'error');
+        return false;
+      }
+      if (!newPassword || newPassword.length < 6) {
+        showToast('新密码至少需要6位字符', 'error');
+        return false;
+      }
+      if (newPassword !== confirmPassword) {
+        showToast('两次输入的新密码不一致', 'error');
+        return false;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '修改中...';
+
+      try {
+        var token = localStorage.getItem('authToken');
+        var res = await fetch(API + '/auth/change-password', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword })
+        });
+        var json = await res.json();
+
+        if (!res.ok || !json.success) {
+          showToast('修改失败：' + (json.error || '未知错误'), 'error');
+        } else {
+          showToast('密码修改成功 ✅', 'success');
+          closePasswordModal();
+        }
+      } catch (err) {
+        showToast('网络错误：' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '确认修改';
+      }
+      return false;
+    }
+
     /* ============ Initialize ============ */
     document.addEventListener('DOMContentLoaded', function() {
       loadUsers();
@@ -677,10 +766,16 @@
     document.getElementById('userModal').addEventListener('click', function(e) {
       if (e.target === this) closeModal();
     });
+    document.getElementById('passwordModal').addEventListener('click', function(e) {
+      if (e.target === this) closePasswordModal();
+    });
 
     // Close modal on Escape
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Escape') {
+        closeModal();
+        closePasswordModal();
+      }
     });
   </script>
 </body>
