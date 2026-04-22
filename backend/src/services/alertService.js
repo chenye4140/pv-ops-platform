@@ -46,6 +46,24 @@ const alertService = {
       throw new Error('message, type, and station_id are required');
     }
 
+    // Check for recent duplicate alerts (cooldown/deduplication)
+    const existing = db.prepare(
+      `SELECT * FROM alerts
+       WHERE station_id = ? AND type = ? AND severity = ?
+         AND status = 'active'
+         AND created_at >= datetime('now', '-30 minutes')
+       ORDER BY created_at DESC
+       LIMIT 1`
+    ).get(
+      data.station_id,
+      data.type,
+      data.severity || 'warning'
+    );
+
+    if (existing) {
+      return { ...existing, deduplicated: true };
+    }
+
     const result = db.prepare(
       `INSERT INTO alerts (station_id, type, message, severity, status)
        VALUES (?, ?, ?, ?, ?)`

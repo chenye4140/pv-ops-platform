@@ -129,6 +129,20 @@
     }
     .clock-date { color: var(--text-muted); margin-right: 8px; font-size: 0.82rem; }
 
+    /* ============ Refresh Indicator ============ */
+    .refresh-indicator {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+    .refresh-indicator .refresh-time { color: var(--text-secondary); }
+
     /* ============ Main Content ============ */
     .main { max-width: 1600px; margin: 0 auto; padding: 1.25rem 1.5rem; }
     .tab-content { display: none; animation: fadeIn 0.3s ease; }
@@ -466,6 +480,87 @@
     .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
 
+    /* ============ Modal ============ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: var(--shadow);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { font-size: 1rem; color: var(--accent); }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .modal-close:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .modal-body .form-group { margin-bottom: 0.85rem; }
+    .modal-body label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .modal-body input, .modal-body select { width: 100%; }
+    .modal-body .readonly-field {
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+    }
+    .modal-footer {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      margin-top: 1.25rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .btn-convert {
+      background: var(--orange-dim);
+      color: var(--orange);
+      border: 1px solid rgba(255,152,0,0.3);
+    }
+    .btn-convert:hover { background: rgba(255,152,0,0.25); }
+
+    /* ============ Alert Convert Button ============ */
+    .btn-wo {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid rgba(255,61,113,0.3);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-wo:hover { background: rgba(255,61,113,0.25); }
+
     /* ============ Alert Nav Badge ============ */
     #alertBadgeCount.has-count { display: flex !important; }
 
@@ -616,6 +711,10 @@
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
         <option value="all">全部电站</option>
       </select>
+      <div id="refreshIndicator" class="refresh-indicator" title="数据自动刷新状态">
+        <span class="refresh-time" id="refreshLastTime">--</span>
+        <span id="refreshCountdown">--</span>
+      </div>
       <div id="alertNavBadge" class="alert-nav-badge" style="position:relative;cursor:pointer;font-size:1.1rem;padding:0.2rem 0.4rem;" title="活跃告警" onclick="switchTab('alerts')">🔔<span id="alertBadgeCount" style="position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:0.65rem;border-radius:50%;min-width:16px;height:16px;display:none;align-items:center;justify-content:center;font-weight:600;">0</span></div>
       <div id="wsStatus" class="ws-status" style="font-size:0.85rem;cursor:default;user-select:none;" title="WebSocket连接状态">🔴</div>
       <div id="userInfo" style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.6rem;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;cursor:default;">
@@ -631,6 +730,55 @@
 
   <!-- ============ Toast Container ============ -->
   <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ============ Convert to Work Order Modal ============ -->
+  <div class="modal-overlay" id="convertWoModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📋 一键转工单</h3>
+        <button class="modal-close" onclick="closeConvertWoModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>告警信息</label>
+          <div class="readonly-field" id="convertWoAlertMsg">--</div>
+        </div>
+        <div class="form-group">
+          <label>电站ID</label>
+          <div class="readonly-field" id="convertWoStationId">--</div>
+        </div>
+        <div class="form-group">
+          <label>告警ID</label>
+          <div class="readonly-field" id="convertWoAlertId">--</div>
+        </div>
+        <div class="form-group">
+          <label>工单类型</label>
+          <select id="convertWoType">
+            <option value="defect_repair">缺陷修复</option>
+            <option value="inspection">巡检工单</option>
+            <option value="routine_maintenance">定期维护</option>
+            <option value="emergency">紧急工单</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>优先级</label>
+          <select id="convertWoPriority">
+            <option value="high">高</option>
+            <option value="medium" selected>中</option>
+            <option value="low">低</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input type="text" id="convertWoNote" placeholder="可选备注信息">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-outline" onclick="closeConvertWoModal()">取消</button>
+        <button class="btn btn-sm btn-convert" onclick="submitConvertToWorkorder()">确认创建</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ Main ============ -->
   <main class="main">
@@ -1248,6 +1396,9 @@
     let stationId = localStorage.getItem('selectedStation') || 'all';
     let charts = {};
     let refreshTimer = null;
+    let refreshCountdownTimer = null;
+    let lastRefreshTime = null;
+    const REFRESH_INTERVAL = 30; // seconds
     let currentUser = null;
 
     /* ============ Cached Alert Data ============ */
@@ -1302,6 +1453,24 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
+
+    /* ============ Refresh Indicator ============ */
+    function updateRefreshIndicator() {
+      const lastEl = document.getElementById('refreshLastTime');
+      const countdownEl = document.getElementById('refreshCountdown');
+      if (!lastEl || !countdownEl) return;
+
+      if (lastRefreshTime) {
+        lastEl.textContent = '最后更新: ' + lastRefreshTime.toLocaleTimeString('zh-CN', { hour12: false });
+        const elapsed = Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000);
+        const remaining = Math.max(0, REFRESH_INTERVAL - elapsed);
+        countdownEl.textContent = '下次刷新: ' + remaining + 's';
+      } else {
+        lastEl.textContent = '最后更新: --';
+        countdownEl.textContent = '下次刷新: --';
+      }
+    }
+    refreshCountdownTimer = setInterval(updateRefreshIndicator, 1000);
 
     /* ============ User Info ============ */
     function displayUserInfo() {
@@ -1711,12 +1880,16 @@
           const icon = a.severity === 'critical' ? '🔴' : a.severity === 'warning' ? '🟡' : '🔵';
           const sevText = a.severity === 'critical' ? '严重' : a.severity === 'warning' ? '警告' : '提示';
           const time = new Date(a.created_at).toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+          const woBtn = (a.severity === 'critical' || a.severity === 'warning')
+            ? `<button class="btn-wo" onclick='showConvertToWorkorder(${JSON.stringify(a).replace(/'/g,"&#39;")})'>转工单</button>`
+            : '';
           return `<div class="alert-item ${cls}">
             <span class="alert-icon">${icon}</span>
             <div class="alert-content">
               <div class="alert-title">${a.message}</div>
               <div class="alert-meta">${sevText} · ${time}</div>
             </div>
+            ${woBtn}
           </div>`;
         }).join('')}</div>`;
       } catch (e) {
@@ -2682,6 +2855,7 @@
 
       // Auto-refresh every 30 seconds
       refreshTimer = setInterval(() => {
+        lastRefreshTime = new Date();
         const activeTab = document.querySelector('.nav-tab.active');
         if (!activeTab) return;
         const tab = activeTab.dataset.tab;
@@ -3428,6 +3602,70 @@
         }
       } catch(e) {
         showToast('删除请求失败: ' + e.message, 'error');
+      }
+    }
+
+    /* ============ Convert Alert to Work Order ============ */
+    function showConvertToWorkorder(alert) {
+      document.getElementById('convertWoAlertMsg').textContent = alert.message || '--';
+      document.getElementById('convertWoStationId').textContent = alert.station_id || '--';
+      document.getElementById('convertWoAlertId').textContent = alert.id || alert.alert_id || '--';
+      document.getElementById('convertWoType').value = 'defect_repair';
+      document.getElementById('convertWoPriority').value = alert.severity === 'critical' ? 'high' : 'medium';
+      document.getElementById('convertWoNote').value = '';
+      document.getElementById('convertWoModal').classList.add('active');
+    }
+
+    function closeConvertWoModal() {
+      document.getElementById('convertWoModal').classList.remove('active');
+    }
+
+    document.getElementById('convertWoModal').addEventListener('click', function(e) {
+      if (e.target === this) closeConvertWoModal();
+    });
+
+    async function submitConvertToWorkorder() {
+      const alertMsg = document.getElementById('convertWoAlertMsg').textContent;
+      const stationId = parseInt(document.getElementById('convertWoStationId').textContent) || null;
+      const alertId = parseInt(document.getElementById('convertWoAlertId').textContent) || null;
+      const woType = document.getElementById('convertWoType').value;
+      const woPriority = document.getElementById('convertWoPriority').value;
+      const woNote = document.getElementById('convertWoNote').value;
+
+      const btn = document.querySelector('#convertWoModal .btn-convert');
+      btn.textContent = '提交中...';
+      btn.disabled = true;
+
+      try {
+        const token = localStorage.getItem('authToken');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        const res = await fetch(`${API}/workorders`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            title: alertMsg,
+            station_id: stationId,
+            alert_id: alertId,
+            type: woType,
+            priority: woPriority,
+            description: woNote
+          })
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast('工单创建成功 #' + json.data.id, 'success');
+          closeConvertWoModal();
+          loadAlerts();
+        } else {
+          showToast('创建失败: ' + (json.error || '未知错误'), 'error');
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error');
+      } finally {
+        btn.textContent = '确认创建';
+        btn.disabled = false;
       }
     }
 
