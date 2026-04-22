@@ -383,6 +383,7 @@
         <div style="display:flex;gap:0.5rem;">
           <button class="btn btn-sm" id="btn-seed-rules" onclick="seedAlertRules()">🌱 初始化默认规则</button>
           <button class="btn btn-sm" id="btn-add-rule" onclick="showCreateRule()">➕ 创建规则</button>
+          <button class="btn btn-sm btn-outline" id="btn-eval-history" onclick="toggleEvalHistory()">📈 评估历史</button>
         </div>
       </div>
 
@@ -494,6 +495,24 @@
           <button type="submit" class="btn btn-green">创建规则</button>
         </div>
       </form>
+    </div>
+
+    <!-- Evaluation History Section -->
+    <div class="section" id="evalHistorySection" style="display:none;">
+      <div class="section-header">
+        <div class="section-title"><span class="icon">📈</span> 规则评估历史</div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <label style="font-size:0.85rem;color:var(--text-secondary);">电站：</label>
+          <select id="evalHistoryStation" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);padding:4px 8px;border-radius:var(--radius-sm);font-size:0.85rem;">
+            <option value="all">全部</option>
+          </select>
+          <button class="btn btn-sm btn-outline" onclick="loadEvalHistory()">🔄 刷新</button>
+          <button class="btn btn-sm btn-outline" onclick="toggleEvalHistory()">✕ 关闭</button>
+        </div>
+      </div>
+      <div id="evalHistoryContent">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
     </div>
   </main>
 
@@ -793,8 +812,81 @@
       if (!hasPermission("manager")) hideElement("nav-audit");
       if (!hasPermission("manager")) hideElement("btn-add-rule");
       if (!hasPermission("admin")) hideElement("btn-seed-rules");
+      if (!hasPermission("viewer")) hideElement("btn-eval-history");
     }
     applyRoleControls();
+
+    /* ============ Evaluation History ============ */
+    var evalHistoryVisible = false;
+    function toggleEvalHistory() {
+      evalHistoryVisible = !evalHistoryVisible;
+      document.getElementById('evalHistorySection').style.display = evalHistoryVisible ? 'block' : 'none';
+      if (evalHistoryVisible) loadEvalHistory();
+    }
+
+    async function loadEvalHistory() {
+      var container = document.getElementById('evalHistoryContent');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+      try {
+        var stationId = document.getElementById('evalHistoryStation').value;
+        var url = API + '/alert-rules/evaluations/recent?limit=200';
+        if (stationId !== 'all') url += '&station_id=' + stationId;
+        var res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var json = await res.json();
+        if (!json.success) throw new Error(json.error);
+        renderEvalHistory(json.data);
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state">❌ 加载失败: ' + e.message + '</div>';
+      }
+    }
+
+    function renderEvalHistory(data) {
+      var container = document.getElementById('evalHistoryContent');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div class="empty-state">📭 暂无评估记录</div>';
+        return;
+      }
+      var sel = document.getElementById('evalHistoryStation');
+      var sts = {};
+      data.forEach(function(d) { if (d.station_name) sts[d.station_id] = d.station_name; });
+      Object.keys(sts).forEach(function(id) {
+        if (!sel.querySelector('option[value="' + id + '"]')) {
+          var opt = document.createElement('option');
+          opt.value = id; opt.textContent = sts[id];
+          sel.appendChild(opt);
+        }
+      });
+      var rows = data.slice(0, 100).map(function(d) {
+        var tb = d.triggered
+          ? '<span style="color:var(--red);font-weight:600;">⚠ 触发</span>'
+          : '<span style="color:var(--green);">✓ 正常</span>';
+        var ab = d.alert_created
+          ? '<span style="color:var(--orange);font-weight:600;">🔔 已建告警</span>'
+          : '<span style="color:var(--text-muted);">—</span>';
+        var t = d.evaluated_at ? new Date(d.evaluated_at).toLocaleString('zh-CN') : '';
+        return '<tr><td style="padding:8px;">' + t + '</td>' +
+          '<td style="padding:8px;">' + (d.station_name || '—') + '</td>' +
+          '<td style="padding:8px;">' + (d.rule_name || '#' + d.rule_id) + '</td>' +
+          '<td style="padding:8px;">' + (d.current_value != null ? d.current_value.toFixed(2) : '—') + '</td>' +
+          '<td style="padding:8px;">' + (d.rule_threshold != null ? parseFloat(d.rule_threshold).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:8px;">' + tb + '</td>' +
+          '<td style="padding:8px;">' + ab + '</td></tr>';
+      }).join('');
+      container.innerHTML =
+        '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">' +
+        '<thead><tr style="border-bottom:1px solid var(--border);color:var(--text-secondary);text-align:left;">' +
+        '<th style="padding:8px;">时间</th><th style="padding:8px;">电站</th>' +
+        '<th style="padding:8px;">规则</th><th style="padding:8px;">当前值</th>' +
+        '<th style="padding:8px;">阈值</th><th style="padding:8px;">状态</th>' +
+        '<th style="padding:8px;">告警</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>' +
+        '<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">最近 ' + Math.min(data.length, 100) + ' / ' + data.length + ' 条</div>';
+    }
+
+    setInterval(function() {
+      if (evalHistoryVisible) loadEvalHistory();
+    }, 60000);
 
   </script>
 </body>
