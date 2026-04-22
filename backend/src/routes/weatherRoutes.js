@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const weatherService = require('../services/weatherService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+router.use(requireStationAccess);
 
 // GET /api/weather?stationId=&start=&startTime=&end=&endTime=
 router.get('/', (req, res) => {

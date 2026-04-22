@@ -791,6 +791,25 @@
       // Auto-run analysis
       setTimeout(() => runAnalysis(), 500);
     }
+  
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem("currentUser");
+      if (!userStr) { window.location.href = "login.html"; return "viewer"; }
+      try { return JSON.parse(userStr).role || "viewer"; } catch(e) { return "viewer"; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = "none"; }
+    function showElement(id) { var el = document.getElementById(id); if (el) el.style.display = ""; }
+
+    function applyRoleControls() {
+      if (!hasPermission("admin")) hideElement("nav-users");
+      if (!hasPermission("manager")) hideElement("nav-audit");
+      if (!hasPermission("operator")) hideElement("uploadArea");
+    }
+    applyRoleControls();
+
   </script>
 </body>
 </html>

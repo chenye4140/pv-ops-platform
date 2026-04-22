@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const alertRuleService = require('../services/alertRuleService');
 const auditService = require('../services/auditService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireRole, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+router.use(requireStationAccess);
 
 function getUserId(req) {
   return req.user ? req.user.id : null;
@@ -48,7 +49,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/alert-rules
-router.post('/', (req, res) => {
+router.post('/', requireRole('admin', 'manager'), (req, res) => {
   try {
     const rule = alertRuleService.create(req.body);
     auditService.logAction(getUserId(req), 'create', 'alert_rule', rule.id, { name: rule.name, type: rule.type, station_id: rule.station_id }, req.ip);
@@ -59,7 +60,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/alert-rules/:id
-router.put('/:id', (req, res) => {
+router.put('/:id', requireRole('admin', 'manager'), (req, res) => {
   try {
     const rule = alertRuleService.update(req.params.id, req.body);
     auditService.logAction(getUserId(req), 'update', 'alert_rule', rule.id, { fields: Object.keys(req.body) }, req.ip);
@@ -73,7 +74,7 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/alert-rules/:id
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireRole('admin', 'manager'), (req, res) => {
   try {
     const result = alertRuleService.delete(req.params.id);
     auditService.logAction(getUserId(req), 'delete', 'alert_rule', req.params.id, { name: result.name }, req.ip);
@@ -84,7 +85,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // POST /api/alert-rules/:id/evaluate
-router.post('/:id/evaluate', (req, res) => {
+router.post('/:id/evaluate', requireRole('admin', 'manager'), (req, res) => {
   try {
     const rule = alertRuleService.getById(req.params.id);
     if (!rule) return res.status(404).json({ success: false, error: '规则不存在' });
@@ -100,7 +101,7 @@ router.post('/:id/evaluate', (req, res) => {
 });
 
 // POST /api/alert-rules/evaluate-all/:stationId
-router.post('/evaluate-all/:stationId', (req, res) => {
+router.post('/evaluate-all/:stationId', requireRole('admin', 'manager'), (req, res) => {
   try {
     const stationId = parseInt(req.params.stationId);
     const result = alertRuleService.runEvaluation(stationId);
@@ -111,7 +112,7 @@ router.post('/evaluate-all/:stationId', (req, res) => {
 });
 
 // POST /api/alert-rules/seed/:stationId
-router.post('/seed/:stationId', (req, res) => {
+router.post('/seed/:stationId', requireRole('admin', 'manager'), (req, res) => {
   try {
     const stationId = parseInt(req.params.stationId);
     const rules = alertRuleService.seedDefaults(stationId);

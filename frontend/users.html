@@ -279,8 +279,8 @@
       <a class="nav-tab" href="alert-rules.html">🔔 告警规则</a>
       <a class="nav-tab" href="inspection.html">📋 巡检管理</a>
       <a class="nav-tab" href="workorder.html">📝 工单管理</a>
-      <a class="nav-tab" href="audit.html">🛡️ 审计日志</a>
-      <a class="nav-tab active" href="users.html">👥 账号管理</a>
+      <a class="nav-tab" id="nav-audit" href="audit.html">🛡️ 审计日志</a>
+      <a class="nav-tab active" id="nav-users" href="users.html">👥 账号管理</a>
     </div>
     <div class="navbar-right">
       <div id="userInfo">
@@ -777,6 +777,23 @@
         closePasswordModal();
       }
     });
+  
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem("currentUser");
+      if (!userStr) { window.location.href = "login.html"; return "viewer"; }
+      try { return JSON.parse(userStr).role || "viewer"; } catch(e) { return "viewer"; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = "none"; }
+    function showElement(id) { var el = document.getElementById(id); if (el) el.style.display = ""; }
+
+    // Admin-only page: redirect non-admin users
+    if (!hasPermission("admin")) {
+      window.location.href = "index.html";
+    }
+
   </script>
 </body>
 </html>

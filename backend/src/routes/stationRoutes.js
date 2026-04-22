@@ -3,9 +3,10 @@ const router = express.Router();
 const stationService = require('../services/stationService');
 const inverterService = require('../services/inverterService');
 const alertService = require('../services/alertService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+router.use(requireStationAccess);
 
 // GET /api/stations
 router.get('/', (req, res) => {

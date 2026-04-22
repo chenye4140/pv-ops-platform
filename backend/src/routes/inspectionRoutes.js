@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const inspectionService = require('../services/inspectionService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
 const wsService = require('../services/websocketService');
+const auditService = require('../services/auditService');
 
 router.use(authenticate);
+router.use(requireStationAccess);
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // ===== Inspection Plans =====
 
@@ -50,6 +56,7 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const inspection = inspectionService.create(req.body);
+    auditService.logAction(getUserId(req), 'create', 'inspection', inspection.id, { title: inspection.title, type: inspection.type, station_id: inspection.station_id }, req.ip);
     wsService.broadcast('created', inspection, 'inspections', inspection.station_id ? 'station_' + inspection.station_id : null);
     res.status(201).json({ success: true, data: inspection });
   } catch (error) {
@@ -61,6 +68,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   try {
     const inspection = inspectionService.update(req.params.id, req.body);
+    auditService.logAction(getUserId(req), 'update', 'inspection', req.params.id, { fields: Object.keys(req.body) }, req.ip);
     wsService.broadcast('updated', inspection, 'inspections', inspection.station_id ? 'station_' + inspection.station_id : null);
     res.json({ success: true, data: inspection });
   } catch (error) {
@@ -75,6 +83,7 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const result = inspectionService.delete(req.params.id);
+    auditService.logAction(getUserId(req), 'delete', 'inspection', req.params.id, { title: result.title }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(404).json({ success: false, error: error.message });
@@ -111,6 +120,7 @@ router.get('/:id/tasks', (req, res) => {
 router.post('/:id/tasks', (req, res) => {
   try {
     const task = inspectionService.addTask(parseInt(req.params.id), req.body);
+    auditService.logAction(getUserId(req), 'create', 'inspection_task', task.id, { inspection_id: req.params.id, title: task.title }, req.ip);
     res.status(201).json({ success: true, data: task });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -135,6 +145,7 @@ router.put('/tasks/:taskId/status', (req, res) => {
     if (!status) return res.status(400).json({ success: false, error: 'status is required' });
 
     const task = inspectionService.updateTaskStatus(req.params.taskId, status, findings);
+    auditService.logAction(getUserId(req), 'status_change', 'inspection_task', req.params.taskId, { status, findings }, req.ip);
     res.json({ success: true, data: task });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -145,6 +156,7 @@ router.put('/tasks/:taskId/status', (req, res) => {
 router.delete('/tasks/:taskId', (req, res) => {
   try {
     const result = inspectionService.deleteTask(req.params.taskId);
+    auditService.logAction(getUserId(req), 'delete', 'inspection_task', req.params.taskId, { title: result.title }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(404).json({ success: false, error: error.message });

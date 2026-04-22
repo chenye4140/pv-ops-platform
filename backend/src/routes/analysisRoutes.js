@@ -5,9 +5,14 @@ const path = require('path');
 const fs = require('fs');
 const { db } = require('../models/database');
 const { analyzeDefectImage, isConfigured } = require('../services/aiService');
+const auditService = require('../services/auditService');
 const { authenticate } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // Multer storage config
 const uploadDir = path.join(__dirname, '../../uploads');
@@ -56,9 +61,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const result = await analyzeDefectImage(base64, label);
 
     // Persist result
-    const userId = req.user ? req.user.id : null;
+    const userId = getUserId(req);
     const relPath = `uploads/${req.file.filename}`;
-    db.prepare(`
+    const insertResult = db.prepare(`
       INSERT INTO defect_analyses (station_id, image_label, image_path, defects, overall_health, recommendation, model_used, analyzed_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
@@ -71,6 +76,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       result.model_used,
       userId,
     );
+
+    auditService.logAction(userId, 'upload', 'analysis', insertResult.lastInsertRowid, { label, station_id: stationId, model_used: result.model_used }, req.ip);
 
     res.json({
       success: true,
@@ -160,10 +167,10 @@ router.post('/defect-image', async (req, res) => {
     const result = await analyzeDefectImage(image, label || '未知图片');
 
     // Persist analysis result to defect_analyses table
-    const userId = req.user ? req.user.id : null;
+    const userId = getUserId(req);
     const stationId = req.body.station_id || null;
 
-    db.prepare(`
+    const insertResult = db.prepare(`
       INSERT INTO defect_analyses (station_id, image_label, defects, overall_health, recommendation, model_used, analyzed_by)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
@@ -175,6 +182,8 @@ router.post('/defect-image', async (req, res) => {
       result.model_used,
       userId
     );
+
+    auditService.logAction(userId, 'upload', 'analysis', insertResult.lastInsertRowid, { label, station_id: stationId, model_used: result.model_used }, req.ip);
 
     // Map the AI service result to the expected frontend format
     const response = {

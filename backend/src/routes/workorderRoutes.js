@@ -3,9 +3,10 @@ const router = express.Router();
 const workorderService = require('../services/workorderService');
 const wsService = require('../services/websocketService');
 const auditService = require('../services/auditService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+router.use(requireStationAccess);
 
 function getUserId(req) {
   return req.user ? req.user.id : null;

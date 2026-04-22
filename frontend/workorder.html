@@ -531,7 +531,7 @@
         <option value="all">全部</option>
       </select>
       <button class="btn btn-sm btn-outline" onclick="clearFilters()">清除筛选</button>
-      <button class="btn create-btn" onclick="openCreateModal()">➕ 创建工单</button>
+      <button class="btn create-btn" id="btn-create-wo" onclick="openCreateModal()">➕ 创建工单</button>
     </div>
 
     <!-- Kanban Board -->
@@ -1200,7 +1200,7 @@
           <div style="margin-bottom:1rem;padding-top:0.75rem;border-top:1px solid var(--border);">
             <div class="field-label" style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.5rem;">状态变更操作</div>
             <div class="action-buttons">
-              ${allowedTransitions.map(s => `<button class="btn btn-sm btn-outline" onclick="changeStatusFromDetail(${wo.id}, '${s}')">${WO_STATUS_NAMES[s]}</button>`).join('')}
+              <div style="display:${hasPermission("operator")?"":"none"}">${allowedTransitions.map(s => `<button class="btn btn-sm btn-outline" onclick="changeStatusFromDetail(${wo.id}, '${s}')">${WO_STATUS_NAMES[s]}</button>`).join('')}</div><span style="display:${hasPermission("operator")?"none":""};color:var(--text-muted);font-size:0.75rem;">无操作权限</span>
             </div>
           </div>
         ` : ''}
@@ -1216,13 +1216,13 @@
           <div class="note-input-row">
             <input type="text" id="detailNoteInput" placeholder="输入备注内容..."
                    onkeydown="if(event.key==='Enter'){event.preventDefault();addNoteFromDetail(${wo.id});}">
-            <button class="btn btn-sm" onclick="addNoteFromDetail(${wo.id})">添加</button>
+            <button class="btn btn-sm" onclick="addNoteFromDetail(${wo.id})" style="display:${hasPermission("operator")?"":"none"}">添加</button>
           </div>
         </div>
       `;
 
       document.getElementById('detailFooter').innerHTML = `
-        <button class="btn btn-sm btn-danger" onclick="deleteWorkOrder(${wo.id})">🗑️ 删除</button>
+        ${hasPermission("operator") ? '<button class="btn btn-sm btn-danger" onclick="deleteWorkOrder(${wo.id})"> : '</span>'}<button class="btn btn-sm btn-danger" style="display:${hasPermission("operator")?"":"none"}" onclick="deleteWorkOrder(${wo.id})">🗑️ 删除</button>
         <button class="btn btn-sm btn-outline" onclick="closeDetailModal()">关闭</button>
       `;
 
@@ -1315,6 +1315,25 @@
         closeDetailModal();
       }
     });
+  
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem("currentUser");
+      if (!userStr) { window.location.href = "login.html"; return "viewer"; }
+      try { return JSON.parse(userStr).role || "viewer"; } catch(e) { return "viewer"; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = "none"; }
+    function showElement(id) { var el = document.getElementById(id); if (el) el.style.display = ""; }
+
+    function applyRoleControls() {
+      if (!hasPermission("admin")) hideElement("nav-users");
+      if (!hasPermission("manager")) hideElement("nav-audit");
+      if (!hasPermission("operator")) hideElement("btn-create-wo");
+    }
+    applyRoleControls();
+
   </script>
 </body>
 </html>

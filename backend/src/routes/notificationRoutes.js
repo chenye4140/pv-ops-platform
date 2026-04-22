@@ -2,9 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../models/database');
 const notificationService = require('../services/notificationService');
+const auditService = require('../services/auditService');
 const { authenticate } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // GET /api/notifications — Get user's notifications
 router.get('/', (req, res) => {
@@ -55,6 +60,7 @@ router.put('/:id/read', (req, res) => {
     if (changed === 0) {
       return res.status(404).json({ success: false, error: 'Notification not found' });
     }
+    auditService.logAction(getUserId(req), 'update', 'notification', id, { action: 'mark_read' }, req.ip);
     res.json({ success: true, data: { marked: changed } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -65,6 +71,7 @@ router.put('/:id/read', (req, res) => {
 router.put('/read-all', (req, res) => {
   try {
     const changed = notificationService.markAllAsRead(req.user.id);
+    auditService.logAction(getUserId(req), 'update', 'notification', null, { action: 'mark_all_read', count: changed }, req.ip);
     res.json({ success: true, data: { marked: changed } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -79,6 +86,7 @@ router.delete('/:id', (req, res) => {
     if (!deleted) {
       return res.status(404).json({ success: false, error: 'Notification not found' });
     }
+    auditService.logAction(getUserId(req), 'delete', 'notification', id, { action: 'delete_notification' }, req.ip);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

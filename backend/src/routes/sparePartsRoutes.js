@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const sparePartsService = require('../services/sparePartsService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireRole, requireStationAccess } = require('../middleware/authMiddleware');
 const auditService = require('../services/auditService');
 
 router.use(authenticate);
+router.use(requireStationAccess);
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // GET /api/spare-parts — List all spare parts with filters
 router.get('/', (req, res) => {
@@ -56,16 +61,10 @@ router.get('/:id/transactions', (req, res) => {
 });
 
 // POST /api/spare-parts — Create new part
-router.post('/', (req, res) => {
+router.post('/', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const part = sparePartsService.create(req.body);
-    auditService.log({
-      userId: req.user?.id,
-      action: 'spare_part.created',
-      resource: 'spare_parts',
-      resource_id: part.id,
-      details: `创建备件: ${part.part_name}`,
-    });
+    auditService.logAction(getUserId(req), 'create', 'spare_part', part.id, { part_name: part.part_name, category: part.category }, req.ip);
     res.status(201).json({ success: true, data: part });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -73,17 +72,11 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/spare-parts/:id — Update part
-router.put('/:id', (req, res) => {
+router.put('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const part = sparePartsService.update(req.params.id, req.body);
     if (!part) return res.status(404).json({ success: false, error: '备件不存在' });
-    auditService.log({
-      userId: req.user?.id,
-      action: 'spare_part.updated',
-      resource: 'spare_parts',
-      resource_id: part.id,
-      details: `更新备件: ${part.part_name}`,
-    });
+    auditService.logAction(getUserId(req), 'update', 'spare_part', part.id, { part_name: part.part_name, fields: Object.keys(req.body) }, req.ip);
     res.json({ success: true, data: part });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -91,18 +84,12 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/spare-parts/:id — Delete part
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const part = sparePartsService.getById(req.params.id);
     sparePartsService.delete(req.params.id);
     if (part) {
-      auditService.log({
-        userId: req.user?.id,
-        action: 'spare_part.deleted',
-        resource: 'spare_parts',
-        resource_id: req.params.id,
-        details: `删除备件: ${part.part_name}`,
-      });
+      auditService.logAction(getUserId(req), 'delete', 'spare_part', req.params.id, { part_name: part.part_name }, req.ip);
     }
     res.json({ success: true });
   } catch (error) {
@@ -126,13 +113,7 @@ router.post('/:id/transaction', (req, res) => {
       performed_by: req.user?.username,
       notes,
     });
-    auditService.log({
-      userId: req.user?.id,
-      action: `spare_part.${transaction_type}`,
-      resource: 'spare_parts',
-      resource_id: part.id,
-      details: `${transaction_type} 备件 ${part.part_name} 数量 ${quantity}`,
-    });
+    auditService.logAction(getUserId(req), transaction_type, 'spare_part', part.id, { part_name: part.part_name, quantity, transaction_type }, req.ip);
     res.json({ success: true, data: part });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

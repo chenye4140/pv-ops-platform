@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const healthScoreService = require('../services/healthScoreService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+router.use(requireStationAccess);
 
 // GET /api/health-score/all — health scores for all stations
 // NOTE: must be before /:stationId so Express doesn't match "all" as a param

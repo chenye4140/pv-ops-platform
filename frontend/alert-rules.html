@@ -353,10 +353,10 @@
       <a class="nav-tab" href="index.html">📊 监控大屏</a>
       <a class="nav-tab" href="analysis.html">🔍 智能分析</a>
       <a class="nav-tab" href="alert-rules.html">🔔 告警规则</a>
-      <a class="nav-tab" href="users.html">👥 账号管理</a>
+      <a class="nav-tab" id="nav-users" href="users.html">👥 账号管理</a>
       <a class="nav-tab" href="inspection.html">📋 巡检管理</a>
       <a class="nav-tab" href="daily-report.html">📝 智能日报</a>
-      <a class="nav-tab" href="audit.html">🛡️ 审计日志</a>
+      <a class="nav-tab" id="nav-audit" href="audit.html">🛡️ 审计日志</a>
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select">
@@ -381,8 +381,8 @@
       <div class="section-header">
         <div class="section-title"><span class="icon">⚙️</span> 告警规则管理</div>
         <div style="display:flex;gap:0.5rem;">
-          <button class="btn btn-sm" onclick="seedAlertRules()">🌱 初始化默认规则</button>
-          <button class="btn btn-sm" onclick="showCreateRule()">➕ 创建规则</button>
+          <button class="btn btn-sm" id="btn-seed-rules" onclick="seedAlertRules()">🌱 初始化默认规则</button>
+          <button class="btn btn-sm" id="btn-add-rule" onclick="showCreateRule()">➕ 创建规则</button>
         </div>
       </div>
 
@@ -776,6 +776,26 @@
       await loadStations();
       await loadAlertRules();
     })();
+  
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem("currentUser");
+      if (!userStr) { window.location.href = "login.html"; return "viewer"; }
+      try { return JSON.parse(userStr).role || "viewer"; } catch(e) { return "viewer"; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = "none"; }
+    function showElement(id) { var el = document.getElementById(id); if (el) el.style.display = ""; }
+
+    function applyRoleControls() {
+      if (!hasPermission("admin")) hideElement("nav-users");
+      if (!hasPermission("manager")) hideElement("nav-audit");
+      if (!hasPermission("manager")) hideElement("btn-add-rule");
+      if (!hasPermission("admin")) hideElement("btn-seed-rules");
+    }
+    applyRoleControls();
+
   </script>
 </body>
 </html>

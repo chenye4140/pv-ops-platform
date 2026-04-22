@@ -605,12 +605,12 @@
       <button class="nav-tab" data-tab="diagnosis">图像诊断</button>
       <button class="nav-tab" data-tab="report">智能日报</button>
       <a class="nav-tab" href="workorder.html" style="text-decoration:none;">工单管理</a>
-      <button class="nav-tab" data-tab="alertrules">告警规则</button>
+      <button class="nav-tab" id="nav-alertrules" data-tab="alertrules">告警规则</button>
       <a class="nav-tab" href="inspection.html" style="text-decoration:none;">巡检管理</a>
       <a class="nav-tab" href="notification.html" style="text-decoration:none;">🔔 通知中心</a>
-      <a class="nav-tab" href="audit.html" style="text-decoration:none;">🛡️ 审计日志</a>
-      <a class="nav-tab" href="users.html" style="text-decoration:none;">👥 账号管理</a>
-      <button class="nav-tab" data-tab="system">🖥️ 系统状态</button>
+      <a class="nav-tab" id="nav-audit" href="audit.html" style="text-decoration:none;">🛡️ 审计日志</a>
+      <a class="nav-tab" id="nav-users" href="users.html" style="text-decoration:none;">👥 账号管理</a>
+      <button class="nav-tab" id="nav-system" data-tab="system">🖥️ 系统状态</button>
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
@@ -636,7 +636,7 @@
   <main class="main">
     <!-- ===== Tab 1: 电站总览 ===== -->
     <div class="tab-content active" id="tab-overview">
-      <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:1rem;">
+      <div id="exportButtons" style="display:flex;justify-content:flex-end;gap:0.5rem;margin-bottom:1rem;">
         <button class="btn btn-sm" onclick="exportData('station')">📊 导出电站概览</button>
         <button class="btn btn-sm" onclick="exportData('power')">⚡ 导出发电数据</button>
         <button class="btn btn-sm" onclick="exportData('alerts')">🔔 导出告警</button>
@@ -1050,8 +1050,8 @@
       <div class="section">
         <div class="section-header">
           <div class="section-title"><span class="icon">⚙️</span> 告警规则配置</div>
-          <div style="display:flex;gap:0.5rem;">
-            <button class="btn btn-sm" onclick="seedAlertRules()">🌱 初始化默认规则</button>
+          <div id="alertRuleActions" style="display:flex;gap:0.5rem;">
+            <button class="btn btn-sm" id="btn-seed-rules" onclick="seedAlertRules()">🌱 初始化默认规则</button>
             <button class="btn btn-sm btn-green" onclick="runAlertEvaluation()">⚡ 执行规则评估</button>
             <button class="btn btn-sm" onclick="showCreateRule()">➕ 创建规则</button>
           </div>
@@ -1190,6 +1190,37 @@
   </main>
 
   <script src="assets/ws-client.js"></script>
+  <script>
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem('currentUser');
+      if (!userStr) { window.location.href = 'login.html'; return 'viewer'; }
+      try { return JSON.parse(userStr).role || 'viewer'; } catch(e) { return 'viewer'; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+    function showElement(id) { var el = document.getElementById(id); if (el) el.style.display = ''; }
+
+    function applyRoleControls() {
+      var role = getUserRole();
+      // Nav: 账号管理 - only admin
+      if (!hasPermission('admin')) hideElement('nav-users');
+      // Nav: 审计日志 - only admin/manager
+      if (!hasPermission('manager')) hideElement('nav-audit');
+      // Export buttons - only manager+
+      if (!hasPermission('manager')) hideElement('exportButtons');
+      // System status tab - only admin
+      if (!hasPermission('admin')) hideElement('nav-system');
+      // Alert rules config entry - only admin/manager
+      if (!hasPermission('manager')) hideElement('nav-alertrules');
+      // Alert rule action buttons (seed/evaluate/create) - only admin/manager
+      if (!hasPermission('manager')) hideElement('alertRuleActions');
+      // Seed button - only admin
+      if (!hasPermission('admin')) hideElement('btn-seed-rules');
+    }
+  </script>
+
   <script>
     /* ============ Authentication Check ============ */
     (function() {
@@ -2639,6 +2670,7 @@
     /* ============ Initialize ============ */
     document.addEventListener('DOMContentLoaded', () => {
       displayUserInfo();
+      applyRoleControls();
       loadStations();
       loadOverview();
       loadInverterDropdown();

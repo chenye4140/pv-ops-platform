@@ -2,9 +2,14 @@ const express = require('express');
 const router = express.Router();
 const forecastService = require('../services/forecastService');
 const forecastAutoGenerate = require('../services/forecastAutoGenerate');
+const auditService = require('../services/auditService');
 const { authenticate } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 // POST /api/forecast/generate/:stationId?date=YYYY-MM-DD
 router.post('/generate/:stationId', (req, res) => {
@@ -14,6 +19,7 @@ router.post('/generate/:stationId', (req, res) => {
     const weatherForecast = req.body.weather || null;
 
     const result = forecastService.generateForecast(stationId, forecastDate, weatherForecast);
+    auditService.logAction(getUserId(req), 'generate', 'forecast', stationId, { date: forecastDate, weather_provided: !!weatherForecast }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
