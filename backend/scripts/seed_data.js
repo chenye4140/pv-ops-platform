@@ -5,6 +5,7 @@
  */
 const { db, initDatabase } = require('../src/models/database');
 const path = require('path');
+const solarCalc = require('../src/utils/solarCalc');
 
 // ============================================================
 // Configuration
@@ -73,73 +74,20 @@ const INSPECTION_TEMPLATES = [
 ];
 
 // ============================================================
-// Solar irradiance simulation
+// NOTE: Calculation functions are in ../src/utils/solarCalc.js
+// Destructure locally for convenient use in the seed loop
 // ============================================================
+const { getIrradiance: calcIrradiance, getTemperature: calcTemperature, getWindSpeed: calcWindSpeed, randomNoise, calculateStringPower, calculateVI } = solarCalc;
+
+// Seed-specific wrappers with tuned parameters for the 3-station demo
 function getIrradiance(hour, minute, dayOfYear) {
-  const solarNoon = 12.5;
-  const sunrise = 6.0;
-  const sunset = 18.5;
-  const time = hour + minute / 60;
-
-  if (time < sunrise || time > sunset) return 0;
-
-  const dayVariation = 0.85 + 0.15 * Math.sin(dayOfYear * 0.7 + 1.3);
-  const peakIrradiance = 1000 * dayVariation;
-
-  const sigma = (sunset - sunrise) / 4.5;
-  const t = (time - solarNoon) / sigma;
-  const irradiance = peakIrradiance * Math.exp(-0.5 * t * t);
-
-  return Math.max(0, irradiance);
+  return calcIrradiance(hour, minute, dayOfYear, { sunrise: 6.0, sunset: 18.5, solarNoon: 12.5 });
 }
-
 function getTemperature(hour, minute, irradiance) {
-  const time = hour + minute / 60;
-  const baseTemp = 18 + 10 * Math.sin((time - 6) * Math.PI / 24);
-  const irradianceEffect = (irradiance / 1000) * 6;
-  return baseTemp + irradianceEffect;
+  return calcTemperature(hour, minute, irradiance, { baseMin: 18, baseAmplitude: 10, irradianceEffect: 6 });
 }
-
 function getWindSpeed(hour, minute) {
-  const time = hour + minute / 60;
-  const baseWind = 2.5 + 1.2 * Math.sin(time * Math.PI / 12);
-  return Math.max(0.3, baseWind);
-}
-
-function randomNoise(mean = 0, std = 1) {
-  const u1 = Math.random();
-  const u2 = Math.random();
-  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-  return mean + std * z;
-}
-
-function calculateStringPower(irradiance, temperature, ratedPowerW, isAbnormal, reduction) {
-  if (irradiance < 10) return 0;
-
-  const tempCoeff = -0.0035;
-  const tempFactor = 1 + tempCoeff * (temperature - 25);
-  const irrFactor = irradiance / 1000;
-  const systemLoss = 0.85;
-  const mismatch = 0.98;
-
-  let power = ratedPowerW * irrFactor * tempFactor * systemLoss * mismatch;
-
-  if (isAbnormal) {
-    power *= (1 - reduction);
-  }
-
-  const noise = randomNoise(0, ratedPowerW * 0.02);
-  power = Math.max(0, power + noise);
-
-  return power;
-}
-
-function calculateVI(power, ratedPowerW) {
-  if (power < 1) return { voltage: 0, current: 0 };
-  const vmpString = 850;
-  const voltage = vmpString * (0.92 + 0.08 * (power / ratedPowerW));
-  const current = power / voltage;
-  return { voltage: Math.round(voltage * 100) / 100, current: Math.round(current * 1000) / 1000 };
+  return calcWindSpeed(hour, minute, { baseWind: 2.5, amplitude: 1.2, minWind: 0.3 });
 }
 
 // ============================================================

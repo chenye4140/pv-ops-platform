@@ -9,6 +9,7 @@ const wsService = require('./src/services/websocketService');
 const forecastAutoGenerate = require('./src/services/forecastAutoGenerate');
 const alertEvaluationScheduler = require('./src/services/alertEvaluationScheduler');
 const autoBackupScheduler = require('./src/services/autoBackupScheduler');
+const liveDataSimulator = require('./src/services/liveDataSimulator');
 const { apiLimiter, authLimiter, backupLimiter } = require('./src/middleware/rateLimiter');
 
 // Initialize database and seed default admin
@@ -113,6 +114,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Live simulator status endpoint
+app.get('/api/live-simulator/status', (req, res) => {
+  res.json({ success: true, data: liveDataSimulator.getStatus() });
+});
+
 // WebSocket stats endpoint (requires auth - handled in routes)
 app.get('/api/ws/stats', (req, res) => {
   res.json({ success: true, data: wsService.getStats() });
@@ -139,6 +145,11 @@ const server = app.listen(PORT, () => {
 
   // Start the alert evaluation scheduler after the server is ready
   alertEvaluationScheduler.startScheduler(5);
+
+  // Start live data simulator if enabled
+  if (process.env.ENABLE_LIVE_SIMULATOR === 'true') {
+    liveDataSimulator.start(60);
+  }
 });
 
 // Start WebSocket server (non-blocking)

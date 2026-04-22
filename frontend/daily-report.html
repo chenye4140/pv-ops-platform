@@ -342,7 +342,7 @@
 
   <script>
     const API = 'http://localhost:3000/api';
-    let stationId = '1';
+    let stationId = localStorage.getItem('selectedStation') || null;
 
     /* ============ Hamburger Menu ============ */
     function toggleHamburger() {
@@ -367,6 +367,7 @@
       loadReport();
       document.getElementById('stationSelect').addEventListener('change', (e) => {
         stationId = e.target.value;
+        localStorage.setItem('selectedStation', stationId);
         loadReport();
       });
     });
@@ -380,6 +381,18 @@
           select.innerHTML = json.data.map(s =>
             `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`
           ).join('');
+          // If no station was selected, default to first active station
+          if (!stationId) {
+            stationId = json.data[0].id;
+            select.value = stationId;
+            localStorage.setItem('selectedStation', stationId);
+          } else {
+            select.value = stationId;
+          }
+        } else {
+          // No stations available — show friendly message
+          const container = document.getElementById('reportContent');
+          container.innerHTML = '<div class="error-msg">暂无电站数据，请先运行 seed_data.js 初始化数据</div>';
         }
       } catch (e) {
         console.warn('Failed to load stations:', e);
@@ -387,6 +400,12 @@
     }
 
     async function loadReport() {
+      if (!stationId) {
+        // Wait briefly for loadStations to finish
+        await new Promise(r => setTimeout(r, 200));
+        if (!stationId) return; // loadStations will show error message
+      }
+
       const container = document.getElementById('reportContent');
       container.innerHTML = '<div class="loading"><div class="spinner"></div>正在加载日报数据...</div>';
 

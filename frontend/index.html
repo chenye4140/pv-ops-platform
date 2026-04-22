@@ -1574,6 +1574,11 @@
           if (stationId && stationId !== 'all') {
             select.value = stationId;
           }
+        } else {
+          // No stations — show empty state hint
+          const select = document.getElementById('stationSelect');
+          select.innerHTML = '<option value="all">暂无电站数据</option>';
+          console.warn('[Stations] No stations found. Run: cd backend && node scripts/seed_data.js');
         }
       } catch (e) {
         console.warn('Stations load failed:', e);
