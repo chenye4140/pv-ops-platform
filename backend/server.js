@@ -105,6 +105,8 @@ app.use('/api/forecast', forecastEnhancedRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/notifications', notificationRoutes);
+const healthScoreRoutes = require('./src/routes/healthScoreRoutes');
+app.use('/api/health-score', healthScoreRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
