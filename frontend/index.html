@@ -1555,7 +1555,7 @@
       if (stationId === 'all') {
         const select = document.getElementById('stationSelect');
         const firstOption = select.querySelector('option:not([value="all"])');
-        return firstOption ? firstOption.value : '1';
+        return firstOption ? firstOption.value : null;
       }
       return stationId;
     }
