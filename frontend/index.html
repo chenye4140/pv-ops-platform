@@ -1418,7 +1418,8 @@
           const abnormal = d.abnormalCount ?? d.abnormal_string_count ?? 0;
 
           document.getElementById('kpiEnergy').innerHTML = `${energy.toFixed(1)}<span class="stat-unit">kWh</span>`;
-          document.getElementById('kpiEnergySub').textContent = `较昨日 ${energy > 0 ? '↑' : '--'}`;
+          // Will be enhanced with day-over-day % after KPI data loads
+          document.getElementById('kpiEnergySub').textContent = `较昨日 --`;
 
           document.getElementById('kpiPower').innerHTML = `${power.toFixed(1)}<span class="stat-unit">kW</span>`;
           document.getElementById('kpiPowerSub').textContent = power > 0 ? '☀️ 发电中' : '🌙 夜间停机';
@@ -1438,22 +1439,41 @@
           if (kpiJson.success) {
             const kpi = kpiJson.data;
 
-            // Equipment availability
+            // Equipment availability with day-over-day trend
             const avail = kpi.availability;
             const availRate = avail.availabilityRate || 0;
             const availColor = availRate >= 95 ? 'var(--green)' : availRate >= 80 ? 'var(--orange)' : 'var(--red)';
             document.getElementById('kpiAvailability').innerHTML = `${availRate.toFixed(1)}<span class="stat-unit">%</span>`;
+            const availDod = kpi.dayOverDay.availability;
+            const availArrow = availDod.change >= 0 ? '↑' : '↓';
+            const availTrendColor = availDod.change >= 0 ? 'var(--green)' : 'var(--red)';
             document.getElementById('kpiAvailabilitySub').innerHTML =
-              `<span style="color:${availColor}">组串 ${avail.activeStrings}/${avail.totalStrings} · 逆变器 ${avail.inverterOnline}/${avail.inverterTotal}</span>`;
+              `<span style="color:${availColor}">组串 ${avail.activeStrings}/${avail.totalStrings} · 逆变器 ${avail.inverterOnline}/${avail.inverterTotal}</span> · <span style="color:${availTrendColor}">较昨日 ${availArrow}${Math.abs(availDod.changePercent).toFixed(1)}%</span>`;
 
-            // Revenue estimate
+            // Revenue estimate with day-over-day trend
             const rev = kpi.revenue;
             document.getElementById('kpiRevenue').innerHTML = `¥${rev.revenue.toFixed(1)}<span class="stat-unit">元</span>`;
             const revDod = kpi.dayOverDay.revenue;
             const revArrow = revDod.change >= 0 ? '↑' : '↓';
             const revColor = revDod.change >= 0 ? 'var(--green)' : 'var(--red)';
             document.getElementById('kpiRevenueSub').innerHTML =
-              `${rev.energy.toFixed(1)} kWh × ¥${rev.price} <span style="color:${revColor}">${revArrow}${Math.abs(revDod.changePercent)}%</span>`;
+              `${rev.energy.toFixed(1)} kWh × ¥${rev.price} · <span style="color:${revColor}">较昨日 ${revArrow}${Math.abs(revDod.changePercent).toFixed(1)}%</span>`;
+
+            // Day-over-day: Energy card
+            const energyDod = kpi.dayOverDay.energy;
+            const energyArrow = energyDod.change >= 0 ? '↑' : '↓';
+            const energyTrendColor = energyDod.change >= 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('kpiEnergySub').innerHTML =
+              `<span style="color:${energyTrendColor}">较昨日 ${energyArrow}${Math.abs(energyDod.changePercent).toFixed(1)}%</span>`;
+
+            // Day-over-day: PR card
+            const prDod = kpi.dayOverDay.pr;
+            const prArrow = prDod.change >= 0 ? '↑' : '↓';
+            const prTrendColor = prDod.change >= 0 ? 'var(--green)' : 'var(--red)';
+            const prStatusText = pr >= 80 ? '良好' : pr >= 60 ? '偏低' : '异常';
+            const prStatusColor = pr >= 80 ? 'var(--green)' : pr >= 60 ? 'var(--orange)' : 'var(--red)';
+            document.getElementById('kpiPRSub').innerHTML =
+              `<span style="color:${prStatusColor}">● ${prStatusText}</span> · <span style="color:${prTrendColor}">较昨日 ${prArrow}${Math.abs(prDod.changePercent).toFixed(1)}%</span>`;
 
             // Utilization hours
             const eff = kpi.efficiency;
