@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>备品备件 - 光伏运维AI智能分析平台</title>
+  <style>
+    :root {
+      --bg-primary: #0b1120; --bg-secondary: #111b2f; --bg-card: #152035; --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525; --border: #1e3050; --border-light: #2a4060;
+      --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #475569;
+      --accent: #00e5ff; --accent-dim: rgba(0,229,255,0.15); --green: #00ff88; --green-dim: rgba(0,255,136,0.15);
+      --orange: #ff9800; --orange-dim: rgba(255,152,0,0.15); --red: #ff3d71; --red-dim: rgba(255,61,113,0.15);
+      --blue: #448aff; --purple: #b388ff; --yellow: #ffd740;
+      --radius: 10px; --radius-sm: 6px; --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; line-height: 1.6; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .navbar { background: linear-gradient(180deg, var(--bg-secondary), rgba(17,27,47,0.95)); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; height: 60px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); box-shadow: 0 2px 16px rgba(0,0,0,0.3); }
+    .navbar-brand { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; }
+    .navbar-brand .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--blue)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .navbar-tabs { display: flex; gap: 4px; margin-left: 2.5rem; }
+    .nav-tab { background: none; border: none; color: var(--text-secondary); padding: 0.5rem 1.1rem; border-radius: 6px; font-size: 0.88rem; cursor: pointer; transition: all 0.25s; font-family: var(--font-sans); text-decoration: none; }
+    .nav-tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+    .nav-tab.active { color: var(--accent); background: var(--accent-dim); font-weight: 600; }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+    .section { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .section-title { font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; text-align: center; position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card.total::before { background: var(--accent); }
+    .stat-card.value::before { background: var(--yellow); }
+    .stat-card.low-stock::before { background: var(--red); }
+    .stat-card.categories::before { background: var(--green); }
+    .stat-value { font-size: 2rem; font-weight: 700; font-family: var(--font-mono); }
+    .stat-label { font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+    .btn { padding: 0.5rem 1.2rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--accent-dim); color: var(--accent); font-size: 0.85rem; cursor: pointer; transition: all 0.25s; font-family: var(--font-sans); }
+    .btn:hover { background: var(--accent); color: var(--bg-primary); }
+    .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.78rem; }
+    .btn-green { background: var(--green-dim); color: var(--green); border-color: rgba(0,255,136,0.3); }
+    .btn-green:hover { background: var(--green); color: var(--bg-primary); }
+    .btn-red { background: var(--red-dim); color: var(--red); border-color: rgba(255,61,113,0.3); }
+    .btn-red:hover { background: var(--red); color: #fff; }
+    .btn-orange { background: var(--orange-dim); color: var(--orange); border-color: rgba(255,152,0,0.3); }
+    .btn-orange:hover { background: var(--orange); color: var(--bg-primary); }
+    .btn-blue { background: rgba(68,138,255,0.15); color: var(--blue); border-color: rgba(68,138,255,0.3); }
+    .btn-blue:hover { background: var(--blue); color: #fff; }
+
+    .filter-bar { display: flex; gap: 0.8rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .filter-bar input, .filter-bar select {
+      padding: 0.45rem 0.8rem; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; font-family: var(--font-sans);
+    }
+    .filter-bar input { min-width: 200px; }
+    .filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: var(--accent); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.7rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    th { color: var(--text-secondary); font-weight: 500; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(0,0,0,0.2); position: sticky; top: 0; }
+    tr:hover td { background: var(--bg-card-hover); }
+    .table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+    .badge-active { background: var(--green-dim); color: var(--green); }
+    .badge-low { background: var(--red-dim); color: var(--red); }
+    .badge-out { background: rgba(148,163,184,0.15); color: var(--text-muted); }
+    .badge-electrical { background: rgba(68,138,255,0.15); color: var(--blue); }
+    .badge-mechanical { background: var(--orange-dim); color: var(--orange); }
+    .badge-module { background: var(--accent-dim); color: var(--accent); }
+    .badge-consumable { background: var(--green-dim); color: var(--green); }
+    .badge-other { background: rgba(148,163,184,0.15); color: var(--text-secondary); }
+
+    .actions-cell { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; max-width: 550px; width: 90%; max-height: 85vh; overflow-y: auto; }
+    .modal h3 { margin-bottom: 1.2rem; color: var(--accent); font-size: 1.1rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 0.5rem 0.8rem; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.88rem; font-family: var(--font-sans);
+    }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .stock-btns { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .stock-btn { flex: 1; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; text-align: center; transition: all 0.25s; background: var(--bg-input); }
+    .stock-btn:hover { border-color: var(--accent); }
+    .stock-btn .icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+    .stock-btn.in .icon { color: var(--green); }
+    .stock-btn.out .icon { color: var(--orange); }
+
+    .transaction-list { max-height: 300px; overflow-y: auto; }
+    .transaction-item { padding: 0.6rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .transaction-item:last-child { border-bottom: none; }
+    .tx-in { color: var(--green); }
+    .tx-out { color: var(--orange); }
+    .tx-date { font-size: 0.78rem; color: var(--text-muted); }
+
+    .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    .hamburger { display: none; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.4rem; margin-left: 0.5rem; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s; }
+    .hamburger:hover { color: var(--accent); background: var(--accent-dim); }
+
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 1.5rem; z-index: 300; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+
+    @media (max-width: 900px) {
+      .container { padding: 1rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .navbar { padding: 0 1rem; }
+      .navbar-tabs { margin-left: 1rem; }
+      table { font-size: 0.8rem; }
+      th, td { padding: 0.5rem; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .navbar-tabs {
+        position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
+        background: var(--bg-secondary); flex-direction: column; padding: 1rem;
+        gap: 0; margin-left: 0; overflow-y: auto; transform: translateX(-100%);
+        transition: transform 0.3s ease; z-index: 99; border-top: 1px solid var(--border);
+      }
+      .navbar-tabs.open { transform: translateX(0); }
+      .nav-tab { padding: 0.85rem 1rem; font-size: 0.95rem; border-radius: 8px; margin-bottom: 0.25rem; min-height: 44px; display: flex; align-items: center; }
+      .btn { padding: 0.7rem 1rem; font-size: 0.88rem; min-height: 44px; }
+      .btn-sm { padding: 0.5rem 0.8rem; font-size: 0.82rem; min-height: 38px; }
+      .section { padding: 1rem; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .stat-card { padding: 1rem; }
+      .stat-value { font-size: 1.5rem; }
+      .filter-bar { flex-direction: column; }
+      .filter-bar input, .filter-bar select { width: 100%; min-width: unset; }
+      .actions-cell { flex-direction: column; }
+      .modal { width: 95%; padding: 1.25rem; }
+    }
+    @media (max-width: 550px) {
+      .stats-grid { grid-template-columns: 1fr !important; }
+      .navbar-brand > span:last-child { display: none; }
+      .container { padding: 0.75rem; }
+      .section { padding: 0.85rem; border-radius: 8px; }
+      .stat-value { font-size: 1.35rem; }
+      .modal { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="logo-icon">☀️</span>
+      <span>光伏运维AI平台</span>
+    </div>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
+    <div class="navbar-tabs" id="navbarTabs">
+      <a class="nav-tab" href="index.html">Dashboard</a>
+      <a class="nav-tab" href="workorder.html">工单管理</a>
+      <a class="nav-tab" href="inspection.html">巡检管理</a>
+      <a class="nav-tab active" href="spare-parts.html">📦 备品备件</a>
+      <a class="nav-tab" href="notification.html">🔔 通知中心</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-value" id="statTotal" style="color:var(--accent)">0</div>
+        <div class="stat-label">备件总数</div>
+      </div>
+      <div class="stat-card value">
+        <div class="stat-value" id="statValue" style="color:var(--yellow)">¥0</div>
+        <div class="stat-label">库存总价值</div>
+      </div>
+      <div class="stat-card low-stock">
+        <div class="stat-value" id="statLowStock" style="color:var(--red)">0</div>
+        <div class="stat-label">低库存预警</div>
+      </div>
+      <div class="stat-card categories">
+        <div class="stat-value" id="statCategories" style="color:var(--green)">0</div>
+        <div class="stat-label">分类数</div>
+      </div>
+    </div>
+
+    <!-- Parts List -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">📦 备件库存</div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn" onclick="openAddModal()">＋ 新增备件</button>
+          <button class="btn btn-blue" onclick="loadParts()">🔄 刷新</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="searchInput" placeholder="搜索备件名称/编码/供应商..." oninput="applyFilters()">
+        <select id="categoryFilter" onchange="applyFilters()">
+          <option value="">全部分类</option>
+          <option value="电气">电气</option>
+          <option value="机械">机械</option>
+          <option value="组件">组件</option>
+          <option value="耗材">耗材</option>
+          <option value="其他">其他</option>
+        </select>
+        <select id="stationFilter" onchange="applyFilters()">
+          <option value="">全部电站</option>
+        </select>
+        <select id="stockFilter" onchange="applyFilters()">
+          <option value="">库存状态</option>
+          <option value="low">低库存预警</option>
+          <option value="normal">正常</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>编码</th>
+              <th>名称</th>
+              <th>分类</th>
+              <th>规格</th>
+              <th>库存</th>
+              <th>最低库存</th>
+              <th>单价</th>
+              <th>电站</th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="partsTableBody">
+            <tr><td colspan="10" class="empty-state">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="partModal">
+    <div class="modal">
+      <h3 id="partModalTitle">新增备件</h3>
+      <input type="hidden" id="partId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>备件名称 *</label>
+          <input type="text" id="partName" placeholder="如：逆变器风扇">
+        </div>
+        <div class="form-group">
+          <label>备件编码 *</label>
+          <input type="text" id="partCode" placeholder="如：INV-FAN-001">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>分类 *</label>
+          <select id="partCategory">
+            <option value="电气">电气</option>
+            <option value="机械">机械</option>
+            <option value="组件">组件</option>
+            <option value="耗材">耗材</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>规格型号</label>
+          <input type="text" id="partSpec" placeholder="如：220V/50Hz">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>单位</label>
+          <input type="text" id="partUnit" placeholder="如：个、台、米">
+        </div>
+        <div class="form-group">
+          <label>所属电站</label>
+          <select id="partStation"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>初始库存</label>
+          <input type="number" id="partQuantity" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>最低库存</label>
+          <input type="number" id="partMinQuantity" value="5" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>单价 (元)</label>
+          <input type="number" id="partPrice" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>供应商</label>
+          <input type="text" id="partSupplier" placeholder="供应商名称">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>存放位置</label>
+        <input type="text" id="partLocation" placeholder="如：A区-3排-2层">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="partNotes" placeholder="补充说明..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closePartModal()">取消</button>
+        <button class="btn btn-green" onclick="savePart()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock In/Out Modal -->
+  <div class="modal-overlay" id="stockModal">
+    <div class="modal">
+      <h3 id="stockModalTitle">库存操作</h3>
+      <input type="hidden" id="stockPartId">
+      <div class="stock-btns">
+        <div class="stock-btn in" onclick="selectStockType('in')">
+          <span class="icon">📥</span>
+          <span>入库</span>
+        </div>
+        <div class="stock-btn out" onclick="selectStockType('out')">
+          <span class="icon">📤</span>
+          <span>出库</span>
+        </div>
+      </div>
+      <input type="hidden" id="stockType">
+      <div class="form-group">
+        <label>数量 *</label>
+        <input type="number" id="stockQuantity" min="1" value="1">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="stockNotes" placeholder="操作说明..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeStockModal()">取消</button>
+        <button class="btn btn-green" onclick="executeStock()">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction History Modal -->
+  <div class="modal-overlay" id="txModal">
+    <div class="modal">
+      <h3 id="txModalTitle">出入库记录</h3>
+      <div class="transaction-list" id="txList">
+        <div class="empty-state">暂无记录</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeTxModal()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = window.location.origin;
+    let allParts = [];
+    let stations = [];
+
+    // Auth check
+    function getToken() { return localStorage.getItem('pv_token'); }
+    async function apiFetch(url, opts = {}) {
+      const token = getToken();
+      if (!token) { window.location.href = 'login.html'; return; }
+      const res = await fetch(url, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...opts.headers },
+      });
+      if (res.status === 401) { window.location.href = 'login.html'; return; }
+      return res.json();
+    }
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast show ${type}`;
+      setTimeout(() => t.className = 'toast', 2500);
+    }
+
+    function toggleHamburger() {
+      document.getElementById('navbarTabs').classList.toggle('open');
+    }
+
+    // Load stations
+    async function loadStations() {
+      try {
+        const res = await apiFetch(`${API}/api/stations`);
+        if (res.success) {
+          stations = res.data || [];
+          const opts = '<option value="">全部电站</option>' + stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+          document.getElementById('stationFilter').innerHTML = opts;
+          document.getElementById('partStation').innerHTML = opts;
+        }
+      } catch(e) { console.error('Stations load failed:', e); }
+    }
+
+    // Load parts
+    async function loadParts() {
+      try {
+        const res = await apiFetch(`${API}/api/spare-parts`);
+        if (res.success) {
+          allParts = res.data || [];
+          renderParts(allParts);
+          loadStats();
+        }
+      } catch(e) { console.error('Parts load failed:', e); }
+    }
+
+    function loadStats() {
+      const total = allParts.length;
+      const totalValue = allParts.reduce((sum, p) => sum + (p.quantity || 0) * (p.unit_price || 0), 0);
+      const lowStock = allParts.filter(p => p.quantity <= p.min_quantity).length;
+      const categories = new Set(allParts.map(p => p.category)).size;
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statValue').textContent = `¥${totalValue.toLocaleString()}`;
+      document.getElementById('statLowStock').textContent = lowStock;
+      document.getElementById('statCategories').textContent = categories;
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const category = document.getElementById('categoryFilter').value;
+      const station = document.getElementById('stationFilter').value;
+      const stock = document.getElementById('stockFilter').value;
+
+      let filtered = allParts;
+      if (search) filtered = filtered.filter(p =>
+        (p.part_name || '').toLowerCase().includes(search) ||
+        (p.part_code || '').toLowerCase().includes(search) ||
+        (p.supplier || '').toLowerCase().includes(search)
+      );
+      if (category) filtered = filtered.filter(p => p.category === category);
+      if (station) filtered = filtered.filter(p => p.station_id == station);
+      if (stock === 'low') filtered = filtered.filter(p => p.quantity <= p.min_quantity);
+      if (stock === 'normal') filtered = filtered.filter(p => p.quantity > p.min_quantity);
+
+      renderParts(filtered);
+    }
+
+    function getCategoryBadge(cat) {
+      const map = { '电气': 'badge-electrical', '机械': 'badge-mechanical', '组件': 'badge-module', '耗材': 'badge-consumable' };
+      return `<span class="badge ${map[cat] || 'badge-other'}">${cat || '其他'}</span>`;
+    }
+
+    function getStockBadge(part) {
+      if (part.quantity <= 0) return '<span class="badge badge-out">缺货</span>';
+      if (part.quantity <= part.min_quantity) return '<span class="badge badge-low">低库存</span>';
+      return '<span class="badge badge-active">正常</span>';
+    }
+
+    function renderParts(parts) {
+      const tbody = document.getElementById('partsTableBody');
+      if (!parts.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><div class="icon">📦</div>暂无备件数据，点击"新增备件"添加</td></tr>';
+        return;
+      }
+      tbody.innerHTML = parts.map(p => `
+        <tr>
+          <td><code style="color:var(--text-secondary)">${p.part_code || '-'}</code></td>
+          <td style="font-weight:600">${p.part_name}</td>
+          <td>${getCategoryBadge(p.category)}</td>
+          <td style="color:var(--text-secondary)">${p.specification || '-'}</td>
+          <td style="font-family:var(--font-mono); font-weight:600; color:${p.quantity <= p.min_quantity ? 'var(--red)' : 'var(--green)'}">${p.quantity}</td>
+          <td>${p.min_quantity}</td>
+          <td style="font-family:var(--font-mono)">¥${(p.unit_price || 0).toFixed(2)}</td>
+          <td style="color:var(--text-secondary)">${p.station_name || '-'}</td>
+          <td>${getStockBadge(p)}</td>
+          <td class="actions-cell">
+            <button class="btn btn-sm btn-green" onclick="openStockModal(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">出入库</button>
+            <button class="btn btn-sm btn-blue" onclick="viewTransactions(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">记录</button>
+            <button class="btn btn-sm" onclick="openEditModal(${p.id})">编辑</button>
+            <button class="btn btn-sm btn-red" onclick="deletePart(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">删除</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Add/Edit
+    function openAddModal() {
+      document.getElementById('partModalTitle').textContent = '新增备件';
+      document.getElementById('partId').value = '';
+      ['partName','partCode','partSpec','partUnit','partQuantity','partMinQuantity','partPrice','partSupplier','partLocation','partNotes'].forEach(id => {
+        const el = document.getElementById(id);
+        el.value = id === 'partQuantity' ? '0' : id === 'partMinQuantity' ? '5' : '';
+      });
+      document.getElementById('partCategory').selectedIndex = 0;
+      document.getElementById('partStation').selectedIndex = 0;
+      document.getElementById('partModal').classList.add('show');
+    }
+
+    async function openEditModal(id) {
+      try {
+        const res = await apiFetch(`${API}/api/spare-parts/${id}`);
+        if (!res.success || !res.data) return;
+        const p = res.data;
+        document.getElementById('partModalTitle').textContent = '编辑备件';
+        document.getElementById('partId').value = p.id;
+        document.getElementById('partName').value = p.part_name || '';
+        document.getElementById('partCode').value = p.part_code || '';
+        document.getElementById('partCategory').value = p.category || '其他';
+        document.getElementById('partSpec').value = p.specification || '';
+        document.getElementById('partUnit').value = p.unit || '';
+        document.getElementById('partQuantity').value = p.quantity || 0;
+        document.getElementById('partMinQuantity').value = p.min_quantity || 5;
+        document.getElementById('partPrice').value = p.unit_price || '';
+        document.getElementById('partSupplier').value = p.supplier || '';
+        document.getElementById('partLocation').value = p.location || '';
+        document.getElementById('partNotes').value = p.notes || '';
+        if (p.station_id) document.getElementById('partStation').value = p.station_id;
+        document.getElementById('partModal').classList.add('show');
+      } catch(e) { showToast('加载失败: ' + e.message, 'error'); }
+    }
+
+    function closePartModal() { document.getElementById('partModal').classList.remove('show'); }
+
+    async function savePart() {
+      const name = document.getElementById('partName').value.trim();
+      const code = document.getElementById('partCode').value.trim();
+      if (!name || !code) { showToast('名称和编码为必填项', 'error'); return; }
+
+      const data = {
+        part_name: name, part_code: code, category: document.getElementById('partCategory').value,
+        specification: document.getElementById('partSpec').value, unit: document.getElementById('partUnit').value,
+        station_id: document.getElementById('partStation').value || null,
+        quantity: parseInt(document.getElementById('partQuantity').value) || 0,
+        min_quantity: parseInt(document.getElementById('partMinQuantity').value) || 0,
+        unit_price: parseFloat(document.getElementById('partPrice').value) || 0,
+        supplier: document.getElementById('partSupplier').value,
+        location: document.getElementById('partLocation').value,
+        notes: document.getElementById('partNotes').value,
+      };
+
+      const id = document.getElementById('partId').value;
+      try {
+        const res = id
+          ? await apiFetch(`${API}/api/spare-parts/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+          : await apiFetch(`${API}/api/spare-parts`, { method: 'POST', body: JSON.stringify(data) });
+        if (res.success) {
+          showToast(id ? '备件已更新' : '备件已创建');
+          closePartModal();
+          loadParts();
+        } else {
+          showToast('保存失败: ' + res.error, 'error');
+        }
+      } catch(e) { showToast('保存失败: ' + e.message, 'error'); }
+    }
+
+    async function deletePart(id, name) {
+      if (!confirm(`确定删除备件 "${name}"？此操作不可撤销。`)) return;
+      try {
+        const res = await apiFetch(`${API}/api/spare-parts/${id}`, { method: 'DELETE' });
+        if (res.success) { showToast('备件已删除'); loadParts(); }
+        else showToast('删除失败: ' + res.error, 'error');
+      } catch(e) { showToast('删除失败: ' + e.message, 'error'); }
+    }
+
+    // Stock operations
+    function openStockModal(id, name) {
+      document.getElementById('stockPartId').value = id;
+      document.getElementById('stockModalTitle').textContent = `库存操作 — ${name}`;
+      document.getElementById('stockType').value = '';
+      document.getElementById('stockQuantity').value = 1;
+      document.getElementById('stockNotes').value = '';
+      document.querySelectorAll('.stock-btn').forEach(b => b.style.borderColor = 'var(--border)');
+      document.getElementById('stockModal').classList.add('show');
+    }
+
+    function selectStockType(type) {
+      document.getElementById('stockType').value = type;
+      document.querySelectorAll('.stock-btn').forEach(b => b.style.borderColor = 'var(--border)');
+      document.querySelector(`.stock-btn.${type}`).style.borderColor = type === 'in' ? 'var(--green)' : 'var(--orange)';
+    }
+
+    function closeStockModal() { document.getElementById('stockModal').classList.remove('show'); }
+
+    async function executeStock() {
+      const id = document.getElementById('stockPartId').value;
+      const type = document.getElementById('stockType').value;
+      const qty = parseInt(document.getElementById('stockQuantity').value);
+      const notes = document.getElementById('stockNotes').value;
+      if (!type) { showToast('请选择入库或出库', 'error'); return; }
+      if (!qty || qty <= 0) { showToast('数量必须大于0', 'error'); return; }
+
+      try {
+        const res = await apiFetch(`${API}/api/spare-parts/${id}/transaction`, {
+          method: 'POST', body: JSON.stringify({ transaction_type: type, quantity: qty, notes }),
+        });
+        if (res.success) {
+          showToast(type === 'in' ? `入库 ${qty} 件成功` : `出库 ${qty} 件成功`);
+          closeStockModal();
+          loadParts();
+        } else {
+          showToast('操作失败: ' + res.error, 'error');
+        }
+      } catch(e) { showToast('操作失败: ' + e.message, 'error'); }
+    }
+
+    // Transaction history
+    async function viewTransactions(id, name) {
+      document.getElementById('txModalTitle').textContent = `出入库记录 — ${name}`;
+      try {
+        const res = await apiFetch(`${API}/api/spare-parts/${id}/transactions?limit=50`);
+        const list = document.getElementById('txList');
+        if (res.success && res.data && res.data.length) {
+          list.innerHTML = res.data.map(tx => `
+            <div class="transaction-item">
+              <div>
+                <span class="${tx.transaction_type === 'in' ? 'tx-in' : 'tx-out'}">
+                  ${tx.transaction_type === 'in' ? '📥 入库' : '📤 出库'} ${tx.quantity}
+                </span>
+                ${tx.notes ? `<span style="color:var(--text-secondary); margin-left:0.5rem">${tx.notes}</span>` : ''}
+                ${tx.performed_by ? `<span style="color:var(--text-muted); margin-left:0.5rem">by ${tx.performed_by}</span>` : ''}
+              </div>
+              <span class="tx-date">${new Date(tx.created_at).toLocaleString('zh-CN')}</span>
+            </div>
+          `).join('');
+        } else {
+          list.innerHTML = '<div class="empty-state">暂无出入库记录</div>';
+        }
+      } catch(e) {
+        list.innerHTML = '<div class="empty-state">加载失败</div>';
+      }
+      document.getElementById('txModal').classList.add('show');
+    }
+
+    function closeTxModal() { document.getElementById('txModal').classList.remove('show'); }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('show'); });
+    });
+
+    // Init
+    (async () => {
+      await loadStations();
+      await loadParts();
+    })();
+  </script>
+</body>
+</html>
