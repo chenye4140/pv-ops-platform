@@ -493,6 +493,7 @@
     @media (max-width: 1200px) {
       .two-col { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
+      #healthGaugeChart { max-width: 240px; }
     }
     @media (max-width: 900px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -569,6 +570,9 @@
       .upload-area { padding: 1.5rem; }
       /* Image grid */
       .img-grid { grid-template-columns: 1fr; }
+      /* Health score mobile layout */
+      .section > div[style*="grid-template-columns:280px"] { grid-template-columns: 1fr !important; }
+      #healthGaugeChart { max-width: 220px; margin: 0 auto; }
     }
     @media (max-width: 550px) {
       .stats-grid { grid-template-columns: 1fr !important; }
@@ -682,6 +686,28 @@
           <div class="stat-label">等效利用小时</div>
           <div class="stat-value" id="kpiUtilHours">--<span class="stat-unit">h</span></div>
           <div class="stat-sub" id="kpiUtilHoursSub">--</div>
+        </div>
+      </div>
+
+      <!-- ====== Station Health Score ====== -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">💚</span> 电站健康评分</div>
+          <span class="section-subtitle" id="healthScoreBadge">综合评估 0-100</span>
+        </div>
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:1.25rem;">
+          <div>
+            <div class="chart-container" id="healthGaugeChart" style="height:220px;"></div>
+            <div style="text-align:center;margin-top:0.5rem;">
+              <div id="healthGrade" style="font-size:2.2rem;font-weight:700;font-family:var(--font-mono);color:var(--green);">--</div>
+              <div style="font-size:0.78rem;color:var(--text-muted);">健康等级</div>
+            </div>
+          </div>
+          <div>
+            <div id="healthFactors" style="display:flex;flex-direction:column;gap:0.75rem;">
+              <div class="loading" style="width:100%;"><div class="spinner"></div>加载中...</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1376,6 +1402,7 @@
       loadForecastChart();
       loadStationComparisonChart();
       loadKPITrendChart();
+      loadHealthScore();
     }
 
     async function loadOverviewKPIs() {
@@ -1490,6 +1517,95 @@
           const chart = echarts.init(chartDom);
           chart.setOption({ title: { text: '趋势数据加载失败', left: 'center', textStyle: { color: 'var(--red)' } } });
         }
+      }
+    }
+
+    async function loadHealthScore() {
+      const sid = getEffectiveStationId();
+      try {
+        const res = await apiFetch(`${API}/health-score/${sid}`);
+        if (!res.success || !res.data) {
+          document.getElementById('healthFactors').innerHTML = '<div class="empty-msg">暂无健康评分数据</div>';
+          return;
+        }
+        const d = res.data;
+        const score = d.score;
+        const grade = d.grade;
+        const f = d.factors;
+
+        // Grade color mapping
+        const gradeColor = grade === 'A' ? 'var(--green)' : grade === 'B' ? 'var(--blue)' : grade === 'C' ? 'var(--orange)' : grade === 'D' ? 'var(--yellow)' : 'var(--red)';
+        const gaugeColor = score >= 80 ? '#00ff88' : score >= 60 ? '#ff9800' : '#ff3d71';
+
+        // Update grade display
+        const gradeEl = document.getElementById('healthGrade');
+        gradeEl.textContent = grade;
+        gradeEl.style.color = gradeColor;
+
+        // Update badge
+        document.getElementById('healthScoreBadge').textContent = `评分: ${score} / 100`;
+
+        // Render gauge chart
+        const chartDom = document.getElementById('healthGaugeChart');
+        if (chartDom) {
+          const chart = echarts.init(chartDom);
+          chart.setOption({
+            series: [{
+              type: 'gauge',
+              startAngle: 200,
+              endAngle: -20,
+              min: 0,
+              max: 100,
+              progress: { show: true, width: 18, itemStyle: { color: gaugeColor } },
+              axisLine: { lineStyle: { width: 18, color: [[1, 'var(--border)']] } },
+              axisTick: { show: false },
+              splitLine: { length: 12, lineStyle: { width: 2, color: 'var(--border-light)' } },
+              axisLabel: { distance: 22, color: 'var(--text-muted)', fontSize: 10 },
+              pointer: { show: false },
+              anchor: { show: false },
+              title: { show: false },
+              detail: {
+                valueAnimation: true,
+                fontSize: 32,
+                fontWeight: 700,
+                fontFamily: 'var(--font-mono)',
+                offsetCenter: [0, '0%'],
+                color: gaugeColor,
+                formatter: '{value}',
+              },
+              data: [{ value: score }],
+            }],
+          });
+          window.addEventListener('resize', () => chart.resize());
+        }
+
+        // Render factor bars
+        const factors = [
+          { label: '告警扣分', deduction: f.alertDeduction, icon: '🔔', detail: `严重 ${f.criticalAlerts} · 警告 ${f.warningAlerts}`, maxDed: 999, color: 'var(--red)' },
+          { label: '工单积压', deduction: f.workOrderDeduction, icon: '📋', detail: `待处理 ${f.workOrderBacklog} 单`, maxDed: 999, color: 'var(--orange)' },
+          { label: '逆变器在线率', deduction: f.inverterDeduction, icon: '🔌', detail: `${f.inverterOnline}/${f.inverterTotal} (${f.inverterOnlineRate}%)`, maxDed: 20, color: 'var(--blue)' },
+          { label: '组串健康率', deduction: f.stringDeduction, icon: '⚡', detail: `${f.healthyStrings}/${f.totalStrings} (${f.stringHealthRate}%)`, maxDed: 20, color: 'var(--purple)' },
+          { label: '性能指标 PR', deduction: f.performanceDeduction, icon: '📊', detail: f.performanceRatio !== null ? `PR ${f.performanceRatio}%` : '无数据', maxDed: 20, color: 'var(--green)' },
+        ];
+
+        document.getElementById('healthFactors').innerHTML = factors.map(f => {
+          const pct = f.maxDed > 100 ? Math.min(f.deduction / 100 * 100, 100) : Math.min(f.deduction / f.maxDed * 100, 100);
+          const statusColor = f.deduction === 0 ? 'var(--green)' : f.deduction > (f.maxDed > 20 ? 10 : f.maxDed * 0.5) ? 'var(--red)' : 'var(--orange)';
+          return `<div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.75rem 1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+              <span style="font-size:0.82rem;font-weight:600;">${f.icon} ${f.label}</span>
+              <span style="font-size:0.82rem;font-family:var(--font-mono);color:${statusColor};">-${f.deduction} 分</span>
+            </div>
+            <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${f.deduction === 0 ? 'var(--green)' : f.color};border-radius:3px;transition:width 0.5s;"></div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;">${f.detail}</div>
+          </div>`;
+        }).join('');
+
+      } catch (e) {
+        console.error('Health score load failed:', e);
+        document.getElementById('healthFactors').innerHTML = '<div class="empty-msg" style="color:var(--red);">健康评分加载失败</div>';
       }
     }
 
