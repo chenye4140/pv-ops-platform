@@ -76,6 +76,17 @@ function listUsers() {
   return users.map(stripPassword);
 }
 
+async function verifyPassword(id, password) {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  if (!user) {
+    throw new Error('User not found');
+  }
+  if (!user.is_active) {
+    throw new Error('Account is deactivated');
+  }
+  return await bcrypt.compare(password, user.password_hash);
+}
+
 async function updateUser(id, updates) {
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   if (!existing) {
@@ -146,6 +157,7 @@ module.exports = {
   generateToken,
   getUserById,
   listUsers,
+  verifyPassword,
   updateUser,
   deleteUser,
   seedDefaultAdmin,

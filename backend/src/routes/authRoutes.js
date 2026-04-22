@@ -78,6 +78,38 @@ router.get('/me', authenticate, (req, res) => {
   }
 });
 
+
+// PUT /api/auth/change-password - self-service password change
+router.put('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
+    }
+
+    const isValid = await authService.verifyPassword(req.user.userId, currentPassword);
+    if (!isValid) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    await authService.updateUser(req.user.userId, { password: newPassword });
+
+    auditService.logAction(req.user.userId, 'change_password', 'auth', req.user.userId, { changed_by_self: true }, req.ip);
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    if (error.message === 'User not found' || error.message === 'Account is deactivated') {
+      return res.status(401).json({ success: false, error: error.message });
+    }
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/auth/users - list users (admin only)
 router.get('/users', authenticate, requireRole('admin'), (req, res) => {
   try {
