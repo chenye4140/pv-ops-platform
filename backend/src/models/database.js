@@ -190,6 +190,24 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_alert_rules_type ON alert_rules(type);
     CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);
     CREATE INDEX IF NOT EXISTS idx_alert_rules_station_id ON alert_rules(station_id);
+
+    -- Alert Rule Evaluations table (evaluation history)
+    CREATE TABLE IF NOT EXISTS alert_rule_evaluations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      rule_id INTEGER NOT NULL,
+      station_id INTEGER,
+      triggered INTEGER NOT NULL DEFAULT 0,
+      current_value REAL,
+      threshold_value REAL,
+      alert_created INTEGER NOT NULL DEFAULT 0,
+      evaluated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (rule_id) REFERENCES alert_rules(id),
+      FOREIGN KEY (station_id) REFERENCES stations(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_eval_rule_id ON alert_rule_evaluations(rule_id);
+    CREATE INDEX IF NOT EXISTS idx_eval_station ON alert_rule_evaluations(station_id);
+    CREATE INDEX IF NOT EXISTS idx_eval_at ON alert_rule_evaluations(evaluated_at);
+
     CREATE INDEX IF NOT EXISTS idx_inspections_station_id ON inspections(station_id);
     CREATE INDEX IF NOT EXISTS idx_inspections_status ON inspections(status);
     CREATE INDEX IF NOT EXISTS idx_inspection_tasks_inspection_id ON inspection_tasks(inspection_id);

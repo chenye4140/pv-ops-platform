@@ -13,6 +13,19 @@ const workorderService = require('./workorderService');
 const stationService = require('./stationService');
 const wsService = require('./websocketService');
 
+// Lazy prepared statement for recording evaluation history
+// (must be created after initDatabase() runs, which creates the table)
+let _insertEvaluationStmt = null;
+function getInsertEvaluationStmt() {
+  if (!_insertEvaluationStmt) {
+    _insertEvaluationStmt = db.prepare(`
+      INSERT INTO alert_rule_evaluations (rule_id, station_id, triggered, current_value, threshold_value, alert_created)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+  }
+  return _insertEvaluationStmt;
+}
+
 // ---------------------------------------------------------------------------
 // Evaluation status tracker
 // ---------------------------------------------------------------------------
@@ -413,6 +426,11 @@ function evaluateStation(stationId, ruleFilter = {}) {
 
     const evalResults = evaluator(rule, stationId);
 
+    if (evalResults.length === 0) {
+      // Rule evaluated but no conditions were triggered
+      getInsertEvaluationStmt().run(rule.id, stationId, 0, null, parseFloat(rule.threshold), 0);
+    }
+
     for (const er of evalResults) {
       // Check cooldown
       if (isInCooldown(rule, stationId)) {
@@ -424,6 +442,7 @@ function evaluateStation(stationId, ruleFilter = {}) {
           triggered: false,
           reason: 'In cooldown period',
         });
+        getInsertEvaluationStmt().run(rule.id, stationId, 0, er.currentValue, parseFloat(rule.threshold), 0);
         continue;
       }
 
@@ -471,6 +490,9 @@ function evaluateStation(stationId, ruleFilter = {}) {
           severity: rule.severity,
         });
 
+        // Record evaluation history
+        getInsertEvaluationStmt().run(rule.id, stationId, 1, er.currentValue, parseFloat(rule.threshold), 1);
+
         console.log(`[AlertEval] ⚠ Alert created: ${message}`);
         if (workOrder) {
           console.log(`[AlertEval]   ↳ Work order #${workOrder.id} created`);
@@ -485,6 +507,7 @@ function evaluateStation(stationId, ruleFilter = {}) {
           triggered: false,
           error: alertErr.message,
         });
+        getInsertEvaluationStmt().run(rule.id, stationId, 0, er.currentValue, parseFloat(rule.threshold), 0);
       }
     }
   }

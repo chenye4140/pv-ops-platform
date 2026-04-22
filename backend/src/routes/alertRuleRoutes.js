@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const alertRuleService = require('../services/alertRuleService');
 const auditService = require('../services/auditService');
+const { db } = require('../models/database');
 const { authenticate, requireRole, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
@@ -37,12 +38,62 @@ router.get('/stats', (req, res) => {
   }
 });
 
+// GET /api/alert-rules/evaluations/recent?station_id=&limit=100
+router.get('/evaluations/recent', (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const stationId = req.query.station_id ? parseInt(req.query.station_id) : null;
+
+    let query = `
+      SELECT e.*, ar.name as rule_name, ar.type as rule_type, ar.threshold as rule_threshold,
+             s.name as station_name
+      FROM alert_rule_evaluations e
+      LEFT JOIN alert_rules ar ON e.rule_id = ar.id
+      LEFT JOIN stations s ON e.station_id = s.id
+    `;
+    const params = [];
+    if (stationId) {
+      query += ' WHERE e.station_id = ?';
+      params.push(stationId);
+    }
+    query += ' ORDER BY e.evaluated_at DESC LIMIT ?';
+    params.push(limit);
+
+    const evaluations = db.prepare(query).all(...params);
+    res.json({ success: true, data: evaluations });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/alert-rules/:id
 router.get('/:id', (req, res) => {
   try {
     const rule = alertRuleService.getById(req.params.id);
     if (!rule) return res.status(404).json({ success: false, error: '规则不存在' });
     res.json({ success: true, data: rule });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/alert-rules/:id/evaluations?limit=50
+router.get('/:id/evaluations', (req, res) => {
+  try {
+    const rule = alertRuleService.getById(req.params.id);
+    if (!rule) return res.status(404).json({ success: false, error: '规则不存在' });
+
+    const limit = Math.min(parseInt(req.query.limit) || 50, 500);
+    const evaluations = db.prepare(`
+      SELECT e.*, s.name as station_name
+      FROM alert_rule_evaluations e
+      LEFT JOIN stations s ON e.station_id = s.id
+      WHERE e.rule_id = ?
+      ORDER BY e.evaluated_at DESC
+      LIMIT ?
+    `).all(req.params.id, limit);
+
+    res.json({ success: true, data: evaluations });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
