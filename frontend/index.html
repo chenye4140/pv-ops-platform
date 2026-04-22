@@ -1439,12 +1439,32 @@
       });
     })();
 
-    const MOCK_DEFECTS = [
-      { id: 1, image: '红外图像 #1', type: '热斑效应', position: 'A区-第3排-组串05', level: '严重', confidence: 0.94 },
-      { id: 2, image: '红外图像 #2', type: '二极管短路', position: 'B区-第1排-组串02', level: '中等', confidence: 0.87 },
-      { id: 3, image: '红外图像 #3', type: '接线盒过热', position: 'C区-第5排-组串08', level: '轻微', confidence: 0.76 },
-      { id: 4, image: '红外图像 #1', type: '组件隐裂', position: 'A区-第7排-组串03', level: '中等', confidence: 0.82 },
-    ];
+    /* ============ Defect Analysis Data (loaded from API) ============ */
+    let defectRecords = [];
+
+    async function loadDefectHistory() {
+      try {
+        const res = await fetch(`${API}/analysis/history`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          defectRecords = json.data.map((r, i) => {
+            let defects = [];
+            try { defects = JSON.parse(r.defects); } catch(e) {}
+            return {
+              id: r.id,
+              image: r.image_label || '分析 #' + r.id,
+              type: defects.length > 0 ? (defects[0].type_cn || defects[0].type || '视觉异常') : '待分析',
+              position: defects.length > 0 ? (defects[0].position || '') : '',
+              level: r.overall_health === 'critical' ? '严重' : r.overall_health === 'warning' ? '中等' : '轻微',
+              confidence: defects.length > 0 ? (defects[0].confidence || 0) : 0,
+            };
+          });
+        }
+      } catch(e) {
+        console.warn('Failed to load defect history:', e);
+      }
+      renderDefectTable();
+    }
 
     /* ============ Clock ============ */
     function updateClock() {
@@ -2655,8 +2675,8 @@
         drawThermalImage('thermalCanvas3', 'crack');
       }, 200);
 
-      // Defect table
-      renderDefectTable();
+      // Defect table — load from API
+      loadDefectHistory();
     }
 
     function drawThermalImage(canvasId, defectType) {
@@ -2709,10 +2729,15 @@
     }
 
     function renderDefectTable() {
+      if (defectRecords.length === 0) {
+        document.getElementById('defectTableContainer').innerHTML =
+          '<div style="text-align:center;padding:2rem;color:var(--text-dim);">暂无缺陷分析记录，请上传红外图像进行 AI 分析</div>';
+        return;
+      }
       document.getElementById('defectTableContainer').innerHTML = `
         <table class="data-table">
           <thead><tr><th>图像</th><th>缺陷类型</th><th>位置</th><th>等级</th><th>置信度</th></tr></thead>
-          <tbody>${MOCK_DEFECTS.map(d => {
+          <tbody>${defectRecords.map(d => {
             const levelClass = d.level === '严重' ? 'badge-error' : d.level === '中等' ? 'badge-warning' : 'badge-info';
             return `<tr>
               <td>${d.image}</td>
@@ -2753,9 +2778,9 @@
           const defectTypes = { hot_spot: '热斑效应', crack: '隐裂', shadow: '遮挡', dirt: '污秽', unknown: '未知缺陷', visual_analysis: '视觉异常' };
           const levelMap = { high: '严重', medium: '中等', low: '轻微' };
           json.data.defects.forEach(d => {
-            MOCK_DEFECTS.push({
-              id: MOCK_DEFECTS.length + 1,
-              image: 'AI 分析 #' + MOCK_DEFECTS.length,
+            defectRecords.push({
+              id: defectRecords.length + 1,
+              image: 'AI 分析 #' + defectRecords.length,
               type: defectTypes[d.type] || d.type,
               position: '新上传区域',
               level: levelMap[d.severity] || '中等',

@@ -145,6 +145,7 @@ router.post('/:id/evaluate', requireRole('admin', 'manager'), (req, res) => {
     if (!stationId) return res.status(400).json({ success: false, error: 'station_id required' });
 
     const result = alertRuleService.evaluateRule(rule, stationId);
+    auditService.logAction(getUserId(req), 'evaluate', 'alert_rule', req.params.id, { rule_name: rule.name, station_id: stationId, triggered: result.triggered }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -156,6 +157,7 @@ router.post('/evaluate-all/:stationId', requireRole('admin', 'manager'), (req, r
   try {
     const stationId = parseInt(req.params.stationId);
     const result = alertRuleService.runEvaluation(stationId);
+    auditService.logAction(getUserId(req), 'evaluate_all', 'alert_rule', null, { station_id: stationId, rules_evaluated: result.length }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
