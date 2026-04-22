@@ -504,6 +504,20 @@
   <script>
     /* ============ Configuration ============ */
     const API = 'http://localhost:3000/api';
+
+    /* ============ Auth Helper ============ */
+    function getToken() { return localStorage.getItem('authToken'); }
+    async function apiFetch(url, opts = {}) {
+      const token = getToken();
+      if (!token) { window.location.href = 'login.html'; return; }
+      const res = await fetch(url, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...opts.headers },
+      });
+      if (res.status === 401) { window.location.href = 'login.html'; return; }
+      return res.json();
+    }
+
     const PAGE_SIZE = 50;
     let currentPage = 1;
     let totalRecords = 0;
@@ -592,9 +606,8 @@
     /* ============ Load Stats ============ */
     async function loadStats() {
       try {
-        const res = await fetch(`${API}/audit/stats`);
-        const json = await res.json();
-        if (!json.success) {
+        const json = await apiFetch(`${API}/audit/stats`);
+        if (!json || !json.success) {
           // If auth failed or no data, show placeholder
           renderStatsPlaceholder();
           return;
@@ -771,10 +784,9 @@
         if (userId) params.set('userId', userId);
         if (resource) params.set('resource', resource);
 
-        const res = await fetch(`${API}/audit/logs?${params.toString()}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/audit/logs?${params.toString()}`);
 
-        if (!json.success) {
+        if (!json || !json.success) {
           container.innerHTML = '<div class="error-msg">日志加载失败 — 请确认已以管理员身份登录</div>';
           return;
         }

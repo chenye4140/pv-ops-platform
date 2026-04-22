@@ -161,7 +161,7 @@
     let notifications = [];
 
     // Auth token management
-    function getToken() { return localStorage.getItem('pv_token'); }
+    function getToken() { return localStorage.getItem('authToken'); }
     function authHeaders() { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
 
     async function apiCall(path, options = {}) {

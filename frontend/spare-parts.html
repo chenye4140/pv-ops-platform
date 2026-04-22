@@ -382,7 +382,7 @@
     let stations = [];
 
     // Auth check
-    function getToken() { return localStorage.getItem('pv_token'); }
+    function getToken() { return localStorage.getItem('authToken'); }
     async function apiFetch(url, opts = {}) {
       const token = getToken();
       if (!token) { window.location.href = 'login.html'; return; }

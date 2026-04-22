@@ -522,6 +522,19 @@
     let allRules = [];
     let stations = [];
 
+    /* ============ Auth Helper ============ */
+    function getToken() { return localStorage.getItem('authToken'); }
+    async function apiFetch(url, opts = {}) {
+      const token = getToken();
+      if (!token) { window.location.href = 'login.html'; return; }
+      const res = await fetch(url, {
+        ...opts,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...opts.headers },
+      });
+      if (res.status === 401) { window.location.href = 'login.html'; return; }
+      return res.json();
+    }
+
     /* ============ Clock ============ */
     function updateClock() {
       const now = new Date();
@@ -543,8 +556,7 @@
     /* ============ Load Stations ============ */
     async function loadStations() {
       try {
-        const res = await fetch(`${API}/stations`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/stations`);
         if (json.success) {
           stations = json.data || [];
           const stationSelect = document.getElementById('stationSelect');
@@ -567,8 +579,7 @@
       try {
         const stationId = document.getElementById('stationSelect').value;
         const url = stationId === 'all' ? `${API}/alert-rules` : `${API}/alert-rules?station_id=${stationId}`;
-        const res = await fetch(url);
-        const json = await res.json();
+        const json = await apiFetch(url);
 
         if (json.success) {
           allRules = json.data || [];
@@ -585,8 +596,7 @@
     /* ============ Load Stats ============ */
     async function loadStats() {
       try {
-        const res = await fetch(`${API}/alert-rules/stats`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/alert-rules/stats`);
         if (json.success) {
           document.getElementById('alertRuleStats').innerHTML = `
             <div class="stat-card"><div class="stat-label">规则总数</div><div class="stat-value" style="color:var(--accent)">${json.data.total}</div></div>
@@ -682,9 +692,8 @@
     async function createAlertRule(e) {
       e.preventDefault();
       try {
-        const res = await fetch(`${API}/alert-rules`, {
+        const res = await apiFetch(`${API}/alert-rules`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: document.getElementById('ruleName').value,
             type: document.getElementById('ruleType').value,
@@ -714,12 +723,11 @@
     /* ============ Toggle Rule ============ */
     async function toggleRule(id, enable) {
       try {
-        const res = await fetch(`${API}/alert-rules/${id}`, {
+        const res = await apiFetch(`${API}/alert-rules/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: enable }),
         });
-        const json = await res.json();
+        const json = res;
         if (json.success) {
           showToast(enable ? '规则已启用' : '规则已禁用', 'success');
           await loadAlertRules();
@@ -735,8 +743,7 @@
     async function deleteRule(id) {
       if (!confirm('确定删除此规则？此操作不可撤销。')) return;
       try {
-        const res = await fetch(`${API}/alert-rules/${id}`, { method: 'DELETE' });
-        const json = await res.json();
+        const json = await apiFetch(`${API}/alert-rules/${id}`, { method: 'DELETE' });
         if (json.success) {
           showToast('规则已删除', 'success');
           await loadAlertRules();
@@ -756,8 +763,7 @@
         return;
       }
       try {
-        const res = await fetch(`${API}/alert-rules/seed/${stationId}`, { method: 'POST' });
-        const json = await res.json();
+        const json = await apiFetch(`${API}/alert-rules/seed/${stationId}`, { method: 'POST' });
         if (json.success) {
           showToast(`已初始化 ${json.count} 条默认规则`, 'success');
           await loadAlertRules();
@@ -831,9 +837,7 @@
         var stationId = document.getElementById('evalHistoryStation').value;
         var url = API + '/alert-rules/evaluations/recent?limit=200';
         if (stationId !== 'all') url += '&station_id=' + stationId;
-        var res = await fetch(url);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        var json = await res.json();
+        var json = await apiFetch(url);
         if (!json.success) throw new Error(json.error);
         renderEvalHistory(json.data);
       } catch (e) {
