@@ -70,4 +70,17 @@ router.get('/dod/:stationId/:metric', (req, res) => {
   }
 });
 
+// GET /api/kpi/trend/:stationId — 7-day KPI trend (PR, energy, revenue, availability)
+router.get('/trend/:stationId', (req, res) => {
+  try {
+    const trend = kpiService.get7DayTrend(req.params.stationId);
+    if (!trend) {
+      return res.status(404).json({ success: false, error: 'Station not found' });
+    }
+    res.json({ success: true, data: trend });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

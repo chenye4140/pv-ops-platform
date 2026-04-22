@@ -391,6 +391,39 @@ const kpiService = {
 
     return result;
   },
+
+  /**
+   * Get 7-day trend data for a station (PR, energy, revenue, availability).
+   * @param {number} stationId
+   * @returns {Array} Array of daily data points
+   */
+  get7DayTrend(stationId) {
+    const station = db.prepare('SELECT * FROM stations WHERE id = ?').get(stationId);
+    if (!station) return null;
+
+    const trend = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const dateStr = date.toISOString();
+      const dateLabel = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+
+      const pr = this.calculatePR(stationId, dateStr);
+      const availability = this.calculateAvailability(stationId, dateStr);
+      const revenue = this.calculateRevenue(stationId, dateStr);
+
+      trend.push({
+        date: dateLabel,
+        pr: pr ? pr.pr : 0,
+        actual_energy: pr ? pr.actualEnergy : 0,
+        availability_rate: availability ? availability.availabilityRate : 0,
+        revenue: revenue ? revenue.revenue : 0,
+      });
+    }
+
+    return trend;
+  },
 };
 
 module.exports = kpiService;

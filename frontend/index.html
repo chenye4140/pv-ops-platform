@@ -685,6 +685,15 @@
         </div>
       </div>
 
+      <!-- ====== 7-Day KPI Trend ====== -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">📊</span> 7日关键指标趋势</div>
+          <span class="section-subtitle" id="trendDateRange"></span>
+        </div>
+        <div class="chart-container" id="kpiTrendChart" style="height:320px;"></div>
+      </div>
+
       <div class="section">
         <div class="section-header">
           <div class="section-title"><span class="icon">📈</span> 发电曲线（24h）</div>
@@ -1366,6 +1375,7 @@
       loadPowerChart();
       loadForecastChart();
       loadStationComparisonChart();
+      loadKPITrendChart();
     }
 
     async function loadOverviewKPIs() {
@@ -1433,6 +1443,53 @@
       } catch (e) {
         console.error('KPI load failed:', e);
         document.getElementById('kpiEnergy').innerHTML = '<span style="color:var(--red)">--</span>';
+      }
+    }
+
+    async function loadKPITrendChart() {
+      const sid = getEffectiveStationId();
+      const chartDom = document.getElementById('kpiTrendChart');
+      if (!chartDom) return;
+
+      try {
+        const chart = echarts.init(chartDom);
+        chart.showLoading({ color: 'var(--accent)', textColor: 'var(--text-primary)', maskColor: 'transparent' });
+
+        const res = await apiFetch(`${API}/kpi/trend/${sid}`);
+        chart.hideLoading();
+
+        if (!res.success || !res.data || res.data.length === 0) {
+          chart.setOption({ title: { text: '暂无趋势数据', left: 'center', textStyle: { color: 'var(--text-muted)' } } });
+          return;
+        }
+
+        const dates = res.data.map(d => d.date);
+        document.getElementById('trendDateRange').textContent = `${dates[0]} ~ ${dates[dates.length - 1]}`;
+
+        chart.setOption({
+          tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', textStyle: { color: 'var(--text-primary)' } },
+          legend: { data: ['PR (%)', '发电量 (kWh)', '收益 (元)', '可用率 (%)'], textStyle: { color: 'var(--text-secondary)', fontSize: 11 }, top: 0 },
+          grid: { left: 60, right: 60, bottom: 30, top: 35 },
+          xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: 'var(--border)' } }, axisLabel: { color: 'var(--text-secondary)' } },
+          yAxis: [
+            { type: 'value', name: 'PR/可用率(%)', min: 0, max: 100, axisLine: { lineStyle: { color: 'var(--border)' } }, axisLabel: { color: 'var(--text-secondary)', formatter: '{value}%' }, splitLine: { lineStyle: { color: 'var(--border)', opacity: 0.3 } } },
+            { type: 'value', name: '发电量/收益', position: 'right', axisLine: { lineStyle: { color: 'var(--border)' } }, axisLabel: { color: 'var(--text-secondary)' }, splitLine: { show: false } },
+          ],
+          series: [
+            { name: 'PR (%)', type: 'line', data: res.data.map(d => d.pr), smooth: true, lineStyle: { width: 2 }, itemStyle: { color: '#00e5ff' }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(0,229,255,0.3)' }, { offset: 1, color: 'rgba(0,229,255,0)' }] } } },
+            { name: '可用率 (%)', type: 'line', data: res.data.map(d => d.availability_rate), smooth: true, lineStyle: { width: 2, type: 'dashed' }, itemStyle: { color: '#00ff88' } },
+            { name: '发电量 (kWh)', type: 'bar', yAxisIndex: 1, data: res.data.map(d => Math.round(d.actual_energy)), itemStyle: { color: '#448aff', borderRadius: [4, 4, 0, 0] }, barWidth: '40%' },
+            { name: '收益 (元)', type: 'bar', yAxisIndex: 1, data: res.data.map(d => Math.round(d.revenue)), itemStyle: { color: '#ffd740', borderRadius: [4, 4, 0, 0] }, barWidth: '40%' },
+          ],
+        });
+
+        window.addEventListener('resize', () => chart.resize());
+      } catch (e) {
+        console.error('KPI trend chart failed:', e);
+        if (chartDom) {
+          const chart = echarts.init(chartDom);
+          chart.setOption({ title: { text: '趋势数据加载失败', left: 'center', textStyle: { color: 'var(--red)' } } });
+        }
       }
     }
 
