@@ -3,6 +3,7 @@ const router = express.Router();
 const stationService = require('../services/stationService');
 const inverterService = require('../services/inverterService');
 const alertService = require('../services/alertService');
+const auditService = require('../services/auditService');
 const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
@@ -79,6 +80,8 @@ router.get('/:id/alerts', (req, res) => {
 router.post('/:id/alerts/:aid/ack', (req, res) => {
   try {
     const result = alertService.acknowledge(req.params.aid);
+    const userId = req.user ? req.user.id : null;
+    auditService.logAction(userId, 'acknowledge', 'alert', req.params.aid, { station_id: req.params.id }, req.ip);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
