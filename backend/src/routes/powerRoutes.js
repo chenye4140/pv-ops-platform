@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const powerDataService = require('../services/powerDataService');
 const wsService = require('../services/websocketService');
+const auditService = require('../services/auditService');
 const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 router.use(authenticate);
 router.use(requireStationAccess);
@@ -29,6 +34,8 @@ router.post('/', (req, res) => {
     const record = powerDataService.create(req.body);
     // Broadcast to "power-data" topic with optional room
     wsService.broadcast('new', record, 'power-data', record.station_id ? `station_${record.station_id}` : null);
+    // Audit log
+    auditService.logAction(getUserId(req), 'create', 'power_data', record.id, { string_id: record.string_id, power_w: record.power_w }, req.ip);
     res.status(201).json({ success: true, data: record });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

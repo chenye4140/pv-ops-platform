@@ -102,6 +102,13 @@ function seedData() {
 
   console.log('\n🧹 Clearing existing data...');
   // Delete in correct order (respecting foreign keys)
+  // Temporarily disable FK checks for clean truncate
+  db.exec('PRAGMA foreign_keys = OFF');
+  db.exec('DELETE FROM spare_parts_transactions');
+  db.exec('DELETE FROM spare_parts');
+  db.exec('DELETE FROM defect_analyses');
+  db.exec('DELETE FROM notifications');
+  db.exec('DELETE FROM audit_logs');
   db.exec('DELETE FROM power_forecasts');
   db.exec('DELETE FROM inspection_tasks');
   db.exec('DELETE FROM inspections');
@@ -114,9 +121,9 @@ function seedData() {
   db.exec('DELETE FROM strings');
   db.exec('DELETE FROM inverters');
   db.exec('DELETE FROM stations');
-
-  // Reset autoincrement
+  db.exec("DELETE FROM users WHERE username != 'admin'");
   db.exec("DELETE FROM sqlite_sequence");
+  db.exec('PRAGMA foreign_keys = ON');
 
   const now = new Date();
   const startDate = new Date(now);
@@ -410,6 +417,135 @@ function seedData() {
   console.log(`   Total inspection plans: ${inspToCreate.length}`);
 
   // ============================================================
+  // 7. Create spare parts inventory
+  // ============================================================
+  console.log('\n📦 Creating spare parts inventory...');
+  const SPARE_PARTS = [
+    { name: '单晶硅光伏组件 550W', code: 'PV-MOD-550', category: 'module', spec: '182mm, 144片, 半片双玻', unit: '块', qty: 120, minQty: 20, price: 1200, supplier: '隆基绿能', location: 'A区仓库-01排', status: 'active' },
+    { name: '华为 SUN2000 逆变器风扇', code: 'INV-FAN-HW', category: 'inverter', spec: '适用 SUN2000-100KTL', unit: '个', qty: 8, minQty: 5, price: 850, supplier: '华为数字能源', location: 'B区仓库-02排', status: 'active' },
+    { name: 'MC4 光伏连接器', code: 'CONN-MC4', category: 'connector', spec: 'IP67, 4mm²/6mm² 通用', unit: '对', qty: 500, minQty: 100, price: 12, supplier: '史陶比尔', location: 'A区仓库-03排', status: 'active' },
+    { name: 'PV1-F 4mm² 光伏电缆', code: 'CABLE-PV4', category: 'cable', spec: 'DC 1500V, 阻燃, 耐紫外线', unit: '米', qty: 2000, minQty: 500, price: 3.5, supplier: '远东电缆', location: 'C区仓库', status: 'active' },
+    { name: '辐照度传感器', code: 'SEN-IRR-01', category: 'sensor', spec: '0-2000 W/m², 4-20mA输出', unit: '个', qty: 3, minQty: 2, price: 2800, supplier: '华创仪表', location: 'B区仓库-01排', status: 'active' },
+    { name: '温度传感器 PT100', code: 'SEN-TEMP-PT', category: 'sensor', spec: '-50~200°C, 三线制', unit: '个', qty: 6, minQty: 3, price: 180, supplier: '华创仪表', location: 'B区仓库-01排', status: 'active' },
+    { name: '组串式逆变器保险丝', code: 'INV-FUSE-32A', category: 'inverter', spec: '32A DC, gPV 1500V', unit: '个', qty: 0, minQty: 10, price: 45, supplier: '施耐德电气', location: 'B区仓库-02排', status: 'out_of_stock' },
+    { name: '汇流箱防雷模块', code: 'SPD-BOX-01', category: 'other', spec: 'DC 1000V, 40kA', unit: '个', qty: 4, minQty: 2, price: 680, supplier: '正泰电器', location: 'A区仓库-02排', status: 'active' },
+  ];
+  const stmtInsertPart = db.prepare(`
+    INSERT INTO spare_parts (part_name, part_code, category, specification, unit, quantity, min_quantity, unit_price, supplier, station_id, location, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
+  `);
+  const stmtInsertTrans = db.prepare(`
+    INSERT INTO spare_parts_transactions (part_id, transaction_type, quantity, reference_type, performed_by, notes)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  for (const p of SPARE_PARTS) {
+    const r = stmtInsertPart.run(p.name, p.code, p.category, p.spec, p.unit, p.qty, p.minQty, p.price, p.supplier, p.location, p.status);
+    // Add transaction history
+    if (p.qty > 0) {
+      stmtInsertTrans.run(r.lastInsertRowid, 'in', p.qty, 'purchase', '库管员', '初始入库');
+    }
+    if (p.status === 'out_of_stock') {
+      stmtInsertTrans.run(r.lastInsertRowid, 'out', 5, 'workorder', '张工', 'WO-003 逆变器维修领用');
+    }
+    console.log(`   ✅ ${p.name} (${p.code}) — 库存: ${p.qty} ${p.unit}`);
+  }
+  console.log(`   Total spare parts: ${SPARE_PARTS.length}`);
+
+  // ============================================================
+  // 8. Create notifications
+  // ============================================================
+  console.log('\n🔔 Creating notifications...');
+  const NOTIFICATIONS = [
+    { title: '系统升级通知', message: '光伏运维平台已完成 v2.0 升级，新增健康评分、备品备件管理模块。', type: 'system', severity: 'info', user_id: null },
+    { title: '严重告警：逆变器离线', message: '海宁电站 INV-02 通讯中断超过30分钟，请立即检查。', type: 'alert', severity: 'critical', user_id: null },
+    { title: '工单已分配', message: '您有新的工单「组串#3功率异常检查」，请及时处理。', type: 'workorder', severity: 'warning', user_id: null },
+    { title: '巡检任务提醒', message: '「日常巡检 - 海宁电站」将于明天到期，请安排执行。', type: 'inspection', severity: 'info', user_id: null },
+    { title: '备件库存预警', message: '组串式逆变器保险丝 (INV-FUSE-32A) 库存为0，请及时采购。', type: 'system', severity: 'warning', user_id: null },
+    { title: '月度发电报告', message: '3月发电报告已生成，总发电量 185,230 kWh，环比增长 5.2%。', type: 'info', severity: 'info', user_id: null },
+  ];
+  const stmtInsertNotif = db.prepare(`
+    INSERT INTO notifications (user_id, title, message, type, severity, is_read)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  for (const n of NOTIFICATIONS) {
+    stmtInsertNotif.run(n.user_id, n.title, n.message, n.type, n.severity, n.type === 'system' ? 1 : 0);
+    console.log(`   🔔 ${n.title} [${n.severity}]`);
+  }
+  console.log(`   Total notifications: ${NOTIFICATIONS.length}`);
+
+  // ============================================================
+  // 9. Create defect analysis records
+  // ============================================================
+  console.log('\n🖼️ Creating defect analysis records...');
+  const DEFECT_ANALYSES = [
+    { station_idx: 0, label: '海宁-A区-组串03', defects: '[{"type":"热斑","severity":"high","position":"组件#47行#3列","confidence":0.92},{"type":"遮挡","severity":"medium","position":"组件#52行#1列","confidence":0.78}]', health: 'degraded', recommendation: '建议安排现场检查热斑组件，可能存在电池片损坏。遮挡物为树枝，需清理。' },
+    { station_idx: 1, label: '昆山-B区-组串01', defects: '[{"type":"隐裂","severity":"critical","position":"组件#12行#5列","confidence":0.88}]', health: 'critical', recommendation: '检测到严重隐裂，建议立即更换该组件，避免热斑进一步扩大。' },
+    { station_idx: 2, label: '合肥-A区-组串05', defects: '[{"type":"污秽","severity":"low","position":"大面积","confidence":0.95}]', health: 'degraded', recommendation: '组件表面积灰严重，建议安排清洗作业，预计可提升发电效率8-12%。' },
+  ];
+  const stmtInsertDefect = db.prepare(`
+    INSERT INTO defect_analyses (station_id, image_label, image_path, defects, overall_health, recommendation, model_used, analyzed_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const d of DEFECT_ANALYSES) {
+    stmtInsertDefect.run(
+      stationIds[d.station_idx],
+      d.label,
+      `/uploads/defect_sample_${d.station_idx}.jpg`,
+      d.defects,
+      d.health,
+      d.recommendation,
+      'qwen-vl-max',
+      'admin'
+    );
+    console.log(`   🖼️ ${d.label} — ${d.health} (${d.defects.length > 20 ? 'AI detected' : 'manual'})`);
+  }
+  console.log(`   Total defect analyses: ${DEFECT_ANALYSES.length}`);
+
+  // ============================================================
+  // 10. Generate alerts based on abnormal strings
+  // ============================================================
+  console.log('\n🚨 Generating alerts from abnormal strings...');
+  const stmtInsertAlert = db.prepare(`
+    INSERT INTO alerts (station_id, type, severity, message, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  let alertCount = 0;
+  // Create alerts matching the abnormal strings
+  const alertStatuses = ['active', 'active', 'acknowledged', 'resolved', 'active', 'acknowledged', 'resolved', 'active', 'active', 'acknowledged'];
+  const alertSeverities = ['critical', 'warning', 'warning', 'critical', 'warning', 'info', 'critical', 'warning', 'warning', 'info'];
+  const alertTypes = ['string_low_power', 'string_zero_output', 'temperature_high', 'inverter_offline', 'string_mismatch', 'irradiance_low', 'power_drop_sudden', 'voltage_abnormal', 'string_low_power', 'irradiance_low'];
+
+  for (let i = 0; i < 10; i++) {
+    const stationIdx = i % STATIONS.length;
+    const alertTime = new Date(now);
+    alertTime.setHours(8 + Math.floor(i * 1.2), Math.floor(Math.random() * 60), 0, 0);
+
+    const messages = [
+      `组串 INV-01-STR-03 功率偏低约25%，可能存在遮挡或组件故障`,
+      `组串 INV-02-STR-02 检测到零输出（白天），请检查接线`,
+      `环境温度达到42°C，超过安全阈值，注意设备散热`,
+      `逆变器 INV-02 通讯中断超过30分钟`,
+      `组串间功率差异达35%，超过正常范围`,
+      `辐照度低于50 W/m²，可能为阴雨天气`,
+      `组串 INV-01-STR-05 功率突降50%`,
+      `组串电压异常，偏离额定值15%`,
+      `组串 INV-03-STR-01 功率持续偏低`,
+      `辐照度低于100 W/m²，发电效率受限`,
+    ];
+
+    stmtInsertAlert.run(
+      stationIds[stationIdx],
+      alertTypes[i],
+      alertSeverities[i],
+      messages[i],
+      alertStatuses[i],
+      alertTime.toISOString()
+    );
+    alertCount++;
+  }
+  console.log(`   Total alerts: ${alertCount}`);
+
+  // ============================================================
   // Summary
   // ============================================================
   console.log('\n✅ Seed data generation complete!');
@@ -425,6 +561,10 @@ function seedData() {
   const workOrderCount = db.prepare('SELECT COUNT(*) as count FROM work_orders').get().count;
   const inspectionCount = db.prepare('SELECT COUNT(*) as count FROM inspections').get().count;
   const taskCount = db.prepare('SELECT COUNT(*) as count FROM inspection_tasks').get().count;
+  const sparePartsCount = db.prepare('SELECT COUNT(*) as count FROM spare_parts').get().count;
+  const notificationsCount = db.prepare('SELECT COUNT(*) as count FROM notifications').get().count;
+  const defectCount = db.prepare('SELECT COUNT(*) as count FROM defect_analyses').get().count;
+  const alertsCount = db.prepare('SELECT COUNT(*) as count FROM alerts').get().count;
 
   console.log(`📊 Stations:        ${stationCount}`);
   console.log(`🔌 Inverters:      ${inverterCount}`);
@@ -434,6 +574,10 @@ function seedData() {
   console.log(`⚙️ Alert rules:    ${alertRuleCount}`);
   console.log(`📋 Work orders:    ${workOrderCount}`);
   console.log(`🔍 Inspections:    ${inspectionCount} plans, ${taskCount} tasks`);
+  console.log(`📦 Spare parts:    ${sparePartsCount}`);
+  console.log(`🔔 Notifications:  ${notificationsCount}`);
+  console.log(`🖼️ Defect analyses: ${defectCount}`);
+  console.log(`🚨 Alerts:         ${alertsCount}`);
 }
 
 // ============================================================
