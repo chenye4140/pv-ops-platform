@@ -316,6 +316,22 @@
 
   <script>
     const API = 'http://localhost:3000/api';
+
+    function getAuthHeaders(extraHeaders = {}) {
+      const token = localStorage.getItem('authToken');
+      const headers = { ...extraHeaders };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      return headers;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const headers = getAuthHeaders(options.headers || {});
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401) { window.location.href = 'login.html'; return; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
     let currentStationId = localStorage.getItem('selectedStation') || null;
     let currentTaskId = null;
     let forecastChart = null;
@@ -364,8 +380,7 @@
     /* ============ Station Selection ============ */
     async function loadStations() {
       try {
-        const res = await fetch(`${API}/stations`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/stations`);
         const select = document.getElementById('stationSelect');
         if (json.success && json.data.length > 0) {
           select.innerHTML = json.data.map(s =>
@@ -402,8 +417,7 @@
 
     async function loadStats() {
       try {
-        const res = await fetch(`${API}/inspections/stats?station_id=${currentStationId}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/inspections/stats?station_id=${currentStationId}`);
         if (json.success) {
           document.getElementById('statTotalInspections').textContent = json.data.totalInspections;
           document.getElementById('statActiveInspections').textContent = json.data.activeInspections;
@@ -416,8 +430,7 @@
 
     async function loadInspections() {
       try {
-        const res = await fetch(`${API}/inspections?station_id=${currentStationId}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/inspections?station_id=${currentStationId}`);
         const container = document.getElementById('inspectionsTable');
         if (!json.success || !json.data.length) {
           container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>暂无巡检计划</p></div>';
@@ -450,8 +463,7 @@
 
     async function loadTasks() {
       try {
-        const res = await fetch(`${API}/inspection-tasks?station_id=${currentStationId}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/inspection-tasks?station_id=${currentStationId}`);
         const container = document.getElementById('tasksTable');
         if (!json.success || !json.data.length) {
           container.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>暂无巡检任务</p></div>';
@@ -486,7 +498,7 @@
     async function createInspection(e) {
       e.preventDefault();
       try {
-        const res = await fetch(`${API}/inspections`, {
+        const json = await apiFetch(`${API}/inspections`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -498,7 +510,6 @@
             description: document.getElementById('inspDescription').value || null,
           }),
         });
-        const json = await res.json();
         if (json.success) {
           closeModal('createInspectionModal');
           document.getElementById('createInspectionForm').reset();
@@ -513,7 +524,7 @@
     async function deleteInspection(id) {
       if (!confirm('确定删除此巡检计划？所有关联任务也将被删除。')) return;
       try {
-        await fetch(`${API}/inspections/${id}`, { method: 'DELETE' });
+        await apiFetch(`${API}/inspections/${id}`, { method: 'DELETE' });
         await Promise.all([loadStats(), loadInspections(), loadTasks()]);
       } catch (e) { alert('删除失败'); }
     }
@@ -526,8 +537,7 @@
       document.getElementById('tab-tasks').classList.add('active');
 
       try {
-        const res = await fetch(`${API}/inspections/${inspId}/tasks`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/inspections/${inspId}/tasks`);
         const container = document.getElementById('tasksTable');
         if (!json.success || !json.data.length) {
           container.innerHTML = '<div class="empty-state"><p>该计划暂无任务</p></div>';
@@ -556,8 +566,7 @@
     async function showTaskDetail(taskId) {
       currentTaskId = taskId;
       try {
-        const res = await fetch(`${API}/inspections/tasks/${taskId}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/inspections/tasks/${taskId}`);
         if (!json.success) return;
         const task = json.data;
         const statusMap = { pending: '待执行', in_progress: '进行中', completed: '已完成', skipped: '已跳过' };
@@ -579,12 +588,11 @@
       const status = document.getElementById('taskStatusSelect').value;
       const findings = document.getElementById('taskFindings').value;
       try {
-        const res = await fetch(`${API}/inspections/tasks/${currentTaskId}/status`, {
+        const json = await apiFetch(`${API}/inspections/tasks/${currentTaskId}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status, findings }),
         });
-        const json = await res.json();
         if (json.success) {
           closeModal('taskDetailModal');
           await Promise.all([loadStats(), loadTasks()]);
@@ -596,8 +604,7 @@
 
     async function processDueInspections() {
       try {
-        const res = await fetch(`${API}/inspections/process-due`, { method: 'POST' });
-        const json = await res.json();
+        const json = await apiFetch(`${API}/inspections/process-due`, { method: 'POST' });
         if (json.success) {
           alert(`处理了 ${json.data.length} 个到期巡检，已生成新任务`);
           await Promise.all([loadStats(), loadInspections(), loadTasks()]);
@@ -608,8 +615,7 @@
     async function generateForecast() {
       try {
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-        const res = await fetch(`${API}/forecast/generate/${currentStationId}?date=${tomorrow}`, { method: 'POST' });
-        const json = await res.json();
+        const json = await apiFetch(`${API}/forecast/generate/${currentStationId}?date=${tomorrow}`, { method: 'POST' });
         if (!json.success) { alert('生成预测失败: ' + json.error); return; }
         renderForecastChart(json.data);
       } catch (e) { alert('生成预测失败: ' + e.message); }
@@ -618,8 +624,7 @@
     async function loadForecast() {
       try {
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-        const res = await fetch(`${API}/forecast/${currentStationId}?date=${tomorrow}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/forecast/${currentStationId}?date=${tomorrow}`);
         if (json.success) renderForecastChart(json.data);
       } catch (e) { /* no forecast yet */ }
     }
