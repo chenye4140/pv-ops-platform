@@ -647,6 +647,8 @@
   <!-- Toast Container -->
   <div id="toastContainer"></div>
 
+<script src="assets/ws-client.js"></script>
+
   <script>
     // ============ Constants ============
     const API = window.API_URL || (location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api');
@@ -700,6 +702,42 @@
       updateClock();
       setInterval(updateClock, 1000);
       await Promise.all([loadStations(), loadWorkOrders()]);
+
+      // ========== WebSocket Real-Time Notifications ==========
+      let wsReconnectNotified = false;
+
+      function initWebSocket() {
+        if (typeof pvWS === 'undefined') {
+          console.warn('[WorkOrder] WebSocket client not available');
+          return;
+        }
+
+        // Subscribe to workorders topic
+        pvWS.subscribe('workorders', function(data, event, msg) {
+          if (event === 'workorder_created' || event === 'workorder_updated') {
+            showToast('📋 工单已更新', 'success');
+            loadWorkOrders();
+          }
+        });
+
+        // Handle connection status changes
+        pvWS.onStatus(function(status) {
+          if (status === 'connected') {
+            if (wsReconnectNotified) {
+              showToast('🔌 实时通知已连接', 'success');
+              wsReconnectNotified = false;
+            }
+            // Re-subscribe on reconnect (handled by ws-client auto-resubscribe)
+          } else if (status === 'disconnected') {
+            wsReconnectNotified = true;
+          }
+        });
+
+        // Connect
+        pvWS.connect();
+      }
+
+      initWebSocket();
     });
 
     function updateClock() {
