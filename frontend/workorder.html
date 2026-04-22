@@ -497,10 +497,19 @@
       </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-bar">
+    <!-- Filter Toolbar -->
+    <div class="filter-bar" id="filterToolbar">
       <label>搜索：</label>
-      <input type="text" id="filterSearch" placeholder="搜索工单标题...">
+      <input type="text" id="filterSearch" placeholder="搜索工单标题/描述...">
+      <label>状态：</label>
+      <select id="filterStatus">
+        <option value="all">全部</option>
+        <option value="pending">待处理</option>
+        <option value="assigned">已分配</option>
+        <option value="in_progress">进行中</option>
+        <option value="completed">已完成</option>
+        <option value="closed">已关闭</option>
+      </select>
       <label>优先级：</label>
       <select id="filterPriority">
         <option value="all">全部</option>
@@ -509,20 +518,19 @@
         <option value="medium">中</option>
         <option value="low">低</option>
       </select>
-      <label>类型：</label>
-      <select id="filterType">
-        <option value="all">全部</option>
-        <option value="defect_repair">缺陷修复</option>
-        <option value="routine_maintenance">定期维护</option>
-        <option value="inspection">巡检</option>
-        <option value="cleaning">清洗</option>
-        <option value="other">其他</option>
+      <label>排序：</label>
+      <select id="filterSort">
+        <option value="created_at_desc">按创建时间↓</option>
+        <option value="created_at_asc">按创建时间↑</option>
+        <option value="priority_desc">按优先级↓</option>
+        <option value="priority_asc">按优先级↑</option>
+        <option value="status">按状态排序</option>
       </select>
       <label>电站：</label>
       <select id="filterStation">
         <option value="all">全部</option>
       </select>
-      <button class="btn btn-sm btn-outline" onclick="applyFilters()">筛选</button>
+      <button class="btn btn-sm btn-outline" onclick="clearFilters()">清除筛选</button>
       <button class="btn create-btn" onclick="openCreateModal()">➕ 创建工单</button>
     </div>
 
@@ -824,12 +832,17 @@
     // ============ Render ============
     function getFilteredOrders() {
       const search = document.getElementById('filterSearch').value.trim().toLowerCase();
+      const status = document.getElementById('filterStatus').value;
       const priority = document.getElementById('filterPriority').value;
       const type = document.getElementById('filterType').value;
       const station = document.getElementById('filterStation').value;
 
       let filtered = [...allWorkOrders];
-      if (search) filtered = filtered.filter(w => w.title.toLowerCase().includes(search));
+      if (search) filtered = filtered.filter(w =>
+        (w.title || '').toLowerCase().includes(search) ||
+        (w.description || '').toLowerCase().includes(search)
+      );
+      if (status !== 'all') filtered = filtered.filter(w => w.status === status);
       if (priority !== 'all') filtered = filtered.filter(w => w.priority === priority);
       if (type !== 'all') filtered = filtered.filter(w => w.type === type);
       if (station !== 'all') filtered = filtered.filter(w => String(w.station_id) === station);
@@ -840,11 +853,42 @@
       renderBoard();
     }
 
+    function clearFilters() {
+      document.getElementById('filterSearch').value = '';
+      document.getElementById('filterStatus').value = 'all';
+      document.getElementById('filterPriority').value = 'all';
+      document.getElementById('filterType').value = 'all';
+      document.getElementById('filterStation').value = 'all';
+      document.getElementById('filterSort').value = 'created_at_desc';
+      renderBoard();
+    }
+
     function renderBoard() {
       const filtered = getFilteredOrders();
-      const columns = { pending: [], assigned: [], in_progress: [], completed: [], closed: [] };
+      const sortValue = document.getElementById('filterSort').value;
 
-      filtered.forEach(wo => {
+      // Apply sorting to the full filtered set first
+      const priOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      const statusOrder = { pending: 0, assigned: 1, in_progress: 2, completed: 3, closed: 4 };
+      const sorted = [...filtered].sort((a, b) => {
+        switch (sortValue) {
+          case 'created_at_desc':
+            return new Date(b.created_at) - new Date(a.created_at);
+          case 'created_at_asc':
+            return new Date(a.created_at) - new Date(b.created_at);
+          case 'priority_desc':
+            return (priOrder[a.priority] ?? 4) - (priOrder[b.priority] ?? 4);
+          case 'priority_asc':
+            return (priOrder[b.priority] ?? 4) - (priOrder[a.priority] ?? 4);
+          case 'status':
+            return (statusOrder[a.status] ?? 5) - (statusOrder[b.status] ?? 5);
+          default:
+            return new Date(b.created_at) - new Date(a.created_at);
+        }
+      });
+
+      const columns = { pending: [], assigned: [], in_progress: [], completed: [], closed: [] };
+      sorted.forEach(wo => {
         if (columns[wo.status]) columns[wo.status].push(wo);
       });
 
@@ -852,14 +896,7 @@
       statuses.forEach(status => {
         const container = document.getElementById(`col-${status}`);
         const countEl = document.getElementById(`count-${status}`);
-        const orders = columns[status].sort((a, b) => {
-          // Sort by priority urgency first, then by date
-          const priOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-          if ((priOrder[a.priority] ?? 4) !== (priOrder[b.priority] ?? 4)) {
-            return (priOrder[a.priority] ?? 4) - (priOrder[b.priority] ?? 4);
-          }
-          return new Date(b.created_at) - new Date(a.created_at);
-        });
+        const orders = columns[status];
 
         countEl.textContent = orders.length;
         container.innerHTML = orders.map(wo => renderCard(wo)).join('');
@@ -1209,6 +1246,21 @@
         setTimeout(() => toast.remove(), 300);
       }, 3000);
     }
+
+    // ============ Filter Event Listeners ============
+    // Attach real-time filtering to all filter controls
+    const filterControls = [
+      { id: 'filterSearch', event: 'input' },
+      { id: 'filterStatus', event: 'change' },
+      { id: 'filterPriority', event: 'change' },
+      { id: 'filterType', event: 'change' },
+      { id: 'filterStation', event: 'change' },
+      { id: 'filterSort', event: 'change' }
+    ];
+    filterControls.forEach(ctrl => {
+      const el = document.getElementById(ctrl.id);
+      if (el) el.addEventListener(ctrl.event, () => applyFilters());
+    });
 
     // Close modals on overlay click
     document.getElementById('createModal').addEventListener('click', function(e) {
