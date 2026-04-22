@@ -359,9 +359,10 @@ function evaluateVoltageAbnormal(rule, stationId) {
     const pd = getLatestPowerDataForString(s.id);
     if (!pd || pd.voltage_v <= 0 || pd.power_w <= 0) continue;
 
-    // Check if voltage is abnormally high or low relative to nominal ~600V
+    // Check if voltage is abnormally high or low relative to nominal ~850V
+    // This matches the vmpString constant in utils/solarCalc.js
     // threshold acts as deviation multiplier
-    const nominalVoltage = 600;
+    const nominalVoltage = 850;
     const expectedMin = nominalVoltage / rule.threshold;
     const expectedMax = nominalVoltage * rule.threshold;
 
