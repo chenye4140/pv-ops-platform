@@ -107,7 +107,9 @@ app.use('/api/kpi', kpiRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/notifications', notificationRoutes);
 const healthScoreRoutes = require('./src/routes/healthScoreRoutes');
+const alertAnalysisRoutes = require('./src/routes/alertAnalysisRoutes');
 app.use('/api/health-score', healthScoreRoutes);
+app.use('/api/alert-analysis', alertAnalysisRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
