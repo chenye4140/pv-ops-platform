@@ -424,6 +424,48 @@ const kpiService = {
 
     return trend;
   },
+
+  /**
+   * Get 7-day trend data aggregated across ALL stations.
+   * @returns {Array} Array of daily aggregated data points
+   */
+  getAll7DayTrend() {
+    const stations = db.prepare('SELECT * FROM stations ORDER BY id').all();
+
+    const trend = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const dateStr = date.toISOString();
+      const dateLabel = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+
+      let totalPR = 0, totalEnergy = 0, totalRevenue = 0;
+      let totalAvailability = 0;
+      let stationCount = stations.length;
+
+      for (const station of stations) {
+        const pr = this.calculatePR(station.id, dateStr);
+        const availability = this.calculateAvailability(station.id, dateStr);
+        const revenue = this.calculateRevenue(station.id, dateStr);
+
+        totalPR += pr ? pr.pr : 0;
+        totalEnergy += pr ? pr.actualEnergy : 0;
+        totalRevenue += revenue ? revenue.revenue : 0;
+        totalAvailability += availability ? availability.availabilityRate : 0;
+      }
+
+      trend.push({
+        date: dateLabel,
+        pr: stationCount > 0 ? Math.round((totalPR / stationCount) * 10) / 10 : 0,
+        actual_energy: Math.round(totalEnergy * 100) / 100,
+        availability_rate: stationCount > 0 ? Math.round((totalAvailability / stationCount) * 10) / 10 : 0,
+        revenue: Math.round(totalRevenue * 100) / 100,
+      });
+    }
+
+    return trend;
+  },
 };
 
 module.exports = kpiService;

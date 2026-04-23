@@ -71,6 +71,16 @@ router.get('/dod/:stationId/:metric', (req, res) => {
   }
 });
 
+// GET /api/kpi/trend/all — 7-day KPI trend aggregated across ALL stations
+router.get('/trend/all', (req, res) => {
+  try {
+    const trend = kpiService.getAll7DayTrend();
+    res.json({ success: true, data: trend });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/kpi/trend/:stationId — 7-day KPI trend (PR, energy, revenue, availability)
 router.get('/trend/:stationId', (req, res) => {
   try {

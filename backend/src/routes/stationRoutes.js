@@ -19,6 +19,16 @@ router.get('/', (req, res) => {
   }
 });
 
+// GET /api/stations/all/overview  (MUST be before /:id/overview)
+router.get('/all/overview', (req, res) => {
+  try {
+    const overview = stationService.getAllOverview();
+    res.json({ success: true, data: overview });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/stations/:id/overview  (MUST be before /:id)
 router.get('/:id/overview', (req, res) => {
   try {

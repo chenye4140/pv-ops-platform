@@ -41,6 +41,22 @@ router.get('/stats', (req, res) => {
   }
 });
 
+// GET /api/inspections/tasks?station_id=&status=&assignee=
+// MUST be before /:id to avoid being captured by the :id param
+router.get('/tasks', (req, res) => {
+  try {
+    const filters = {};
+    if (req.query.station_id) filters.station_id = parseInt(req.query.station_id);
+    if (req.query.status) filters.status = req.query.status;
+    if (req.query.assignee) filters.assignee = req.query.assignee;
+
+    const tasks = inspectionService.getTasks(filters);
+    res.json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/inspections/:id
 router.get('/:id', (req, res) => {
   try {
@@ -161,21 +177,6 @@ router.delete('/tasks/:taskId', (req, res) => {
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(404).json({ success: false, error: error.message });
-  }
-});
-
-// GET /api/inspection-tasks?station_id=&status=&assignee=
-router.get('/tasks', (req, res) => {
-  try {
-    const filters = {};
-    if (req.query.station_id) filters.station_id = parseInt(req.query.station_id);
-    if (req.query.status) filters.status = req.query.status;
-    if (req.query.assignee) filters.assignee = req.query.assignee;
-
-    const tasks = inspectionService.getTasks(filters);
-    res.json({ success: true, data: tasks });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
   }
 });
 
