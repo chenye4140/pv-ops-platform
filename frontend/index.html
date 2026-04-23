@@ -1605,6 +1605,11 @@
           const select = document.getElementById('stationSelect');
           select.innerHTML = '<option value="all">暂无电站数据</option>';
           console.warn('[Stations] No stations found. Run: cd backend && node scripts/seed_data.js');
+          // Show visible empty-state banner in overview area
+          const overview = document.getElementById('overviewContent');
+          if (overview) {
+            overview.innerHTML = '<div class="empty-state" style="text-align:center;padding:60px 20px;color:var(--text-secondary)"><div style="font-size:48px;margin-bottom:16px">🏭</div><h3 style="color:var(--text-primary);margin-bottom:8px">暂无电站数据</h3><p>请运行 <code style="background:rgba(255,255,255,0.1);padding:4px 8px;border-radius:4px">cd backend && node scripts/seed_data.js</code> 初始化示例数据</p></div>';
+          }
         }
       } catch (e) {
         console.warn('Stations load failed:', e);
