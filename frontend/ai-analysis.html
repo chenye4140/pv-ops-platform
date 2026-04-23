@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI智能分析 - 光伏运维AI智能分析平台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    /* ============ CSS Variables & Reset ============ */
+    :root {
+      --bg-primary: #0b1120;
+      --bg-secondary: #111b2f;
+      --bg-card: #152035;
+      --bg-card-hover: #1a2a44;
+      --bg-input: #0d1525;
+      --border: #1e3050;
+      --border-light: #2a4060;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-muted: #475569;
+      --accent: #00e5ff;
+      --accent-dim: rgba(0, 229, 255, 0.15);
+      --accent-glow: rgba(0, 229, 255, 0.3);
+      --green: #00ff88;
+      --green-dim: rgba(0, 255, 136, 0.15);
+      --orange: #ff9800;
+      --orange-dim: rgba(255, 152, 0, 0.15);
+      --red: #ff3d71;
+      --red-dim: rgba(255, 61, 113, 0.15);
+      --blue: #448aff;
+      --purple: #b388ff;
+      --yellow: #ffd740;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+    /* ============ Navbar ============ */
+    .navbar {
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      height: 60px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.15rem; font-weight: 700; color: var(--accent); letter-spacing: 0.5px;
+    }
+    .navbar-brand .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--blue));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .navbar-links {
+      display: flex; gap: 4px; margin-left: 2.5rem;
+    }
+    .navbar-links a {
+      color: var(--text-secondary); text-decoration: none;
+      padding: 0.5rem 1.1rem; border-radius: 6px;
+      font-size: 0.88rem; transition: all 0.25s; white-space: nowrap;
+    }
+    .navbar-links a:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .navbar-links a.active { color: var(--accent); background: var(--accent-dim); }
+    .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
+    .clock { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-secondary); letter-spacing: 0.5px; }
+    .clock-date { color: var(--text-muted); margin-right: 8px; font-size: 0.82rem; }
+    .hamburger {
+      display: none; background: none; border: none; color: var(--text-secondary);
+      font-size: 1.5rem; cursor: pointer; padding: 0.4rem; margin-left: 0.5rem;
+      min-width: 44px; min-height: 44px; align-items: center; justify-content: center;
+      border-radius: 6px; transition: all 0.2s;
+    }
+    .hamburger:hover { color: var(--accent); background: var(--accent-dim); }
+    .hamburger.active { color: var(--accent); }
+
+    /* ============ Main ============ */
+    .main { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+    /* ============ Tabs ============ */
+    .tabs-container {
+      display: flex; gap: 4px; margin-bottom: 1.25rem;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 4px; width: fit-content;
+    }
+    .tab-btn {
+      background: none; border: none; color: var(--text-secondary);
+      padding: 0.6rem 1.4rem; border-radius: var(--radius-sm);
+      font-size: 0.88rem; font-weight: 500; cursor: pointer;
+      transition: all 0.25s; font-family: var(--font-sans); white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text-primary); background: var(--accent-dim); }
+    .tab-btn.active {
+      color: var(--accent); background: var(--accent-dim); font-weight: 600;
+    }
+    .tab-content { display: none; animation: fadeIn 0.3s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* ============ Section ============ */
+    .section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-title .icon { color: var(--accent); font-size: 1.1rem; }
+    .section-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ Alerts List ============ */
+    .alert-list { display: flex; flex-direction: column; gap: 0.6rem; max-height: 500px; overflow-y: auto; }
+    .alert-item {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.85rem 1rem; border-radius: var(--radius-sm);
+      border-left: 3px solid; background: var(--bg-secondary);
+      transition: background 0.2s; cursor: pointer;
+    }
+    .alert-item:hover { background: var(--bg-card-hover); }
+    .alert-item.selected { border-color: var(--accent) !important; background: var(--accent-dim); }
+    .alert-critical { border-left-color: var(--red); }
+    .alert-warning { border-left-color: var(--orange); }
+    .alert-info { border-left-color: var(--blue); }
+    .alert-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+    .alert-content { flex: 1; min-width: 0; }
+    .alert-title { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; }
+    .alert-meta { font-size: 0.75rem; color: var(--text-muted); }
+    .alert-checkbox {
+      flex-shrink: 0; margin-top: 4px; accent-color: var(--accent);
+    }
+
+    /* ============ Analysis Result ============ */
+    .analysis-result {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem; margin-top: 1rem;
+    }
+    .analysis-result h4 {
+      font-size: 0.92rem; color: var(--accent); margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .result-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 0.75rem;
+    }
+    .result-card .card-label {
+      font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 0.3rem;
+    }
+    .result-card .card-value { font-size: 0.9rem; line-height: 1.7; }
+    .result-card .card-value code {
+      background: var(--bg-input); padding: 0.1rem 0.4rem; border-radius: 4px;
+      font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent);
+    }
+    .cluster-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 0.25rem 0.65rem; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600; margin-right: 0.4rem; margin-bottom: 0.4rem;
+    }
+    .cluster-tag.critical { background: var(--red-dim); color: var(--red); }
+    .cluster-tag.warning { background: var(--orange-dim); color: var(--orange); }
+    .cluster-tag.info { background: rgba(68,138,255,0.15); color: var(--blue); }
+
+    /* ============ Root Cause ============ */
+    .root-cause-panel {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.25rem;
+    }
+    .cause-chain {
+      position: relative; padding-left: 1.5rem; margin-top: 0.75rem;
+    }
+    .cause-chain::before {
+      content: ''; position: absolute; left: 6px; top: 0; bottom: 0;
+      width: 2px; background: var(--border);
+    }
+    .cause-node {
+      position: relative; padding: 0.6rem 0.85rem; margin-bottom: 0.5rem;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .cause-node::before {
+      content: ''; position: absolute; left: -1.5rem; top: 0.85rem;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--bg-secondary);
+    }
+    .cause-node.root::before { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .cause-node .node-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .cause-node .node-text { font-size: 0.88rem; margin-top: 0.2rem; }
+    .suggestion-box {
+      background: var(--green-dim); border: 1px solid rgba(0,255,136,0.2);
+      border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin-top: 1rem;
+    }
+    .suggestion-box .suggestion-title {
+      font-size: 0.82rem; font-weight: 600; color: var(--green); margin-bottom: 0.4rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .suggestion-box .suggestion-text { font-size: 0.85rem; line-height: 1.7; color: var(--text-secondary); }
+
+    /* ============ Chart ============ */
+    .chart-container { width: 100%; height: 380px; border-radius: 8px; }
+    .trend-summary {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;
+    }
+    .trend-stat {
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 1rem; text-align: center;
+    }
+    .trend-stat .stat-num { font-size: 1.6rem; font-weight: 700; font-family: var(--font-mono); }
+    .trend-stat .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+    .llm-insight {
+      background: var(--bg-secondary); border-left: 3px solid var(--purple);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 1rem; margin-top: 1rem; line-height: 1.7;
+    }
+    .llm-insight .insight-title {
+      font-size: 0.88rem; font-weight: 600; color: var(--purple); margin-bottom: 0.5rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .llm-insight .insight-text { font-size: 0.85rem; color: var(--text-secondary); white-space: pre-wrap; }
+
+    /* ============ Buttons ============ */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), #0091ea);
+      color: #000; border: none; padding: 0.55rem 1.2rem;
+      border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: var(--font-sans); white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn:active { transform: translateY(0); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+    .btn-purple { background: rgba(179,136,255,0.15); color: var(--purple); border: 1px solid rgba(179,136,255,0.3); }
+
+    /* ============ Select ============ */
+    select {
+      background: var(--bg-input); color: var(--text-primary);
+      border: 1px solid var(--border); padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm); font-size: 0.85rem; outline: none;
+      font-family: var(--font-sans);
+    }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+
+    /* ============ Loading / Empty / Error ============ */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); gap: 0.75rem; }
+    .spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg { text-align: center; padding: 2rem; color: var(--red); font-size: 0.88rem; }
+    .empty-msg { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.88rem; }
+    .hidden { display: none !important; }
+
+    /* ============ Toast ============ */
+    .toast-container { position: fixed; top: 80px; right: 1.5rem; z-index: 200; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast {
+      padding: 0.85rem 1.2rem; border-radius: var(--radius-sm); font-size: 0.85rem;
+      animation: slideIn 0.3s ease; max-width: 350px; box-shadow: var(--shadow);
+    }
+    .toast-success { background: var(--green-dim); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+    .toast-error { background: var(--red-dim); border: 1px solid rgba(255,61,113,0.3); color: var(--red); }
+    .toast-info { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 900px) {
+      .navbar { padding: 0 1rem; }
+      .navbar-links { margin-left: 1rem; }
+      .main { padding: 1rem; }
+      .tabs-container { width: 100%; overflow-x: auto; }
+      .trend-summary { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .navbar-links {
+        position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
+        background: var(--bg-secondary); flex-direction: column; padding: 1rem;
+        gap: 0; margin-left: 0; overflow-y: auto; transform: translateX(-100%);
+        transition: transform 0.3s ease; z-index: 99; border-top: 1px solid var(--border);
+      }
+      .navbar-links.open { transform: translateX(0); }
+      .navbar-links a {
+        padding: 0.85rem 1rem; font-size: 0.95rem; border-radius: 8px;
+        margin-bottom: 0.25rem; min-height: 44px; display: flex; align-items: center;
+      }
+      .chart-container { height: 300px; }
+      .btn { min-height: 44px; }
+    }
+    @media (max-width: 550px) {
+      .navbar-brand span { display: none; }
+      .main { padding: 0.75rem; }
+      .section { padding: 0.85rem; border-radius: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand" style="text-decoration:none;">
+      <div class="logo-icon">☀</div>
+      <span>光伏运维AI智能分析平台</span>
+    </a>
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
+    <div class="navbar-links" id="navLinks">
+      <a href="index.html">Dashboard</a>
+      <a href="analysis.html">图像分析</a>
+      <a href="workorder.html">工单管理</a>
+      <a href="ai-analysis.html" class="active">🤖 AI智能分析</a>
+      <a href="chat.html">💬 运维对话</a>
+    </div>
+    <div class="navbar-right">
+      <select id="stationSelect" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
+        <option value="all">全部电站</option>
+      </select>
+      <div class="clock">
+        <span class="clock-date" id="clockDate"></span>
+        <span id="clockTime"></span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Tab Buttons -->
+    <div class="tabs-container" id="mainTabs">
+      <button class="tab-btn active" data-tab="alert-analysis">📊 告警分析</button>
+      <button class="tab-btn" data-tab="root-cause">🔍 根因分析</button>
+      <button class="tab-btn" data-tab="trend-analysis">📈 趋势分析</button>
+    </div>
+
+    <!-- ========== TAB 1: 告警分析 ========== -->
+    <div class="tab-content active" id="tab-alert-analysis">
+      <div class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title"><span class="icon">🚨</span> 活跃告警</div>
+            <div class="section-subtitle">当前电站的活跃告警列表，支持智能聚合分析</div>
+          </div>
+          <button class="btn btn-sm" id="analyzeAlertsBtn" onclick="analyzeAlerts()" disabled>🧠 智能分析</button>
+        </div>
+        <div id="alertListContainer">
+          <div class="loading"><div class="spinner"></div>正在加载告警数据...</div>
+        </div>
+      </div>
+
+      <!-- Analysis Result Area -->
+      <div class="section hidden" id="analysisResultSection">
+        <div class="section-header">
+          <div class="section-title"><span class="icon">🧠</span> AI 分析结果</div>
+          <button class="btn btn-sm btn-outline" onclick="hideAnalysisResult()">收起</button>
+        </div>
+        <div id="analysisResultContent"></div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 2: 根因分析 ========== -->
+    <div class="tab-content" id="tab-root-cause">
+      <div class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title"><span class="icon">🔍</span> 根因分析</div>
+            <div class="section-subtitle">选择单个告警，获取详细根因链路与处置建议</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="font-size:0.82rem;color:var(--text-muted);">选择告警：</label>
+          <select id="rootCauseAlertSelect" style="flex:1;min-width:200px;">
+            <option value="">-- 请先加载告警列表 --</option>
+          </select>
+          <button class="btn btn-sm" id="rootCauseBtn" onclick="analyzeRootCause()" disabled>🔍 开始分析</button>
+        </div>
+        <div id="rootCauseContainer"></div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 3: 趋势分析 ========== -->
+    <div class="tab-content" id="tab-trend-analysis">
+      <div class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title"><span class="icon">📈</span> 告警趋势分析</div>
+            <div class="section-subtitle">查看历史告警趋势与 LLM 分析结论</div>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <label style="font-size:0.82rem;color:var(--text-muted);">天数：</label>
+            <select id="trendDays" style="font-size:0.8rem;padding:0.3rem 0.5rem;">
+              <option value="7">7 天</option>
+              <option value="14">14 天</option>
+              <option value="30" selected>30 天</option>
+            </select>
+            <button class="btn btn-sm" id="trendBtn" onclick="loadTrendAnalysis()">📈 加载趋势</button>
+          </div>
+        </div>
+        <div id="trendStatsContainer"></div>
+        <div id="trendChartContainer" style="margin-top:1rem;">
+          <div class="chart-container" id="trendChart"></div>
+        </div>
+        <div id="trendInsightContainer" style="margin-top:1rem;"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const API = 'http://localhost:3000/api';
+    let stationId = localStorage.getItem('selectedStation') || null;
+
+    /* ============ API Helper ============ */
+    function getAuthHeaders(extraHeaders = {}) {
+      const token = localStorage.getItem('authToken');
+      const headers = { ...extraHeaders };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      return headers;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const headers = getAuthHeaders(options.headers || {});
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401) { window.location.href = 'login.html'; throw new Error('未登录'); }
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      return res.json();
+    }
+
+    /* ============ Toast ============ */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+
+    /* ============ Clock ============ */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clockTime').textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+      document.getElementById('clockDate').textContent = now.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', weekday: 'short' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* ============ Hamburger ============ */
+    function toggleHamburger() {
+      const btn = document.getElementById('hamburgerBtn');
+      const nav = document.getElementById('navLinks');
+      btn.classList.toggle('active');
+      nav.classList.toggle('open');
+    }
+
+    /* ============ Tabs ============ */
+    document.getElementById('mainTabs').addEventListener('click', e => {
+      const btn = e.target.closest('.tab-btn');
+      if (!btn) return;
+      document.querySelectorAll('#mainTabs .tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+
+    /* ============ Station Selector ============ */
+    async function loadStations() {
+      try {
+        const json = await apiFetch(`${API}/stations`);
+        if (json.success && json.data && json.data.length > 0) {
+          const select = document.getElementById('stationSelect');
+          select.innerHTML = '<option value="all">全部电站</option>' +
+            json.data.map(s => `<option value="${s.id}">电站 #${s.id} - ${s.name}</option>`).join('');
+          // Restore previously selected station, or default to first active
+          if (stationId && stationId !== 'all') {
+            select.value = stationId;
+          } else {
+            stationId = json.data[0].id;
+            select.value = stationId;
+            localStorage.setItem('selectedStation', stationId);
+          }
+        } else {
+          // No stations — show friendly message
+          const container = document.getElementById('alertListContainer');
+          if (container) container.innerHTML = '<div class="empty-msg">暂无电站数据，请先运行 seed_data.js 初始化数据</div>';
+          console.warn('[Stations] No stations found. Run: cd backend && node scripts/seed_data.js');
+        }
+      } catch (e) { console.warn('Stations load failed:', e); }
+    }
+
+    document.getElementById('stationSelect').addEventListener('change', e => {
+      stationId = e.target.value;
+      localStorage.setItem('selectedStation', stationId);
+      loadAlerts();
+    });
+
+    /* ============ Load Alerts (from existing alerts API) ============ */
+    async function loadAlerts() {
+      const container = document.getElementById('alertListContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>正在加载告警数据...</div>';
+
+      try {
+        const sid = stationId !== 'all' ? stationId : '';
+        const url = `${API}/alerts${sid ? '?stationId=' + sid : ''}`;
+        const data = await apiFetch(url);
+        const alerts = (data.success ? data.data : data) || [];
+
+        if (!alerts || alerts.length === 0) {
+          container.innerHTML = '<div class="empty-msg">暂无活跃告警</div>';
+          document.getElementById('analyzeAlertsBtn').disabled = true;
+          return;
+        }
+
+        // Filter active alerts
+        const activeAlerts = alerts.filter(a => !a.acknowledged && !a.resolved);
+        if (activeAlerts.length === 0) {
+          container.innerHTML = '<div class="empty-msg">暂无未处理告警</div>';
+          document.getElementById('analyzeAlertsBtn').disabled = true;
+          return;
+        }
+
+        let html = '<div class="alert-list">';
+        activeAlerts.forEach(a => {
+          const level = a.severity || a.level || 'warning';
+          const levelClass = level === 'critical' ? 'alert-critical' : level === 'info' ? 'alert-info' : 'alert-warning';
+          const icon = level === 'critical' ? '🔴' : level === 'info' ? '🔵' : '🟡';
+          const time = a.timestamp ? new Date(a.timestamp).toLocaleString('zh-CN') : '--';
+          html += `
+            <div class="alert-item ${levelClass}" data-id="${a.id}" onclick="toggleAlertSelection(this, ${a.id})">
+              <span class="alert-checkbox"><input type="checkbox" data-alert-id="${a.id}"></span>
+              <span class="alert-icon">${icon}</span>
+              <div class="alert-content">
+                <div class="alert-title">${a.message || a.description || '未知告警'}</div>
+                <div class="alert-meta">
+                  ID: ${a.id} | 时间: ${time}
+                  ${a.component ? ' | 组件: ' + a.component : ''}
+                  ${a.deviceId ? ' | 设备: ' + a.deviceId : ''}
+                </div>
+              </div>
+            </div>`;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+
+        // Populate root cause select
+        const rcSelect = document.getElementById('rootCauseAlertSelect');
+        rcSelect.innerHTML = '<option value="">-- 选择告警进行根因分析 --</option>' +
+          activeAlerts.map(a => `<option value="${a.id}">#${a.id} - ${a.message || a.description || '未知'}</option>`).join('');
+
+        document.getElementById('analyzeAlertsBtn').disabled = false;
+      } catch (e) {
+        container.innerHTML = `<div class="error-msg">加载告警失败: ${e.message}</div>`;
+        showToast('加载告警失败: ' + e.message, 'error');
+      }
+    }
+
+    /* ============ Alert Selection ============ */
+    function toggleAlertSelection(el, alertId) {
+      const cb = el.querySelector('input[type="checkbox"]');
+      if (event.target !== cb) cb.checked = !cb.checked;
+      el.classList.toggle('selected', cb.checked);
+    }
+
+    /* ============ TAB 1: 智能告警分析 ============ */
+    function getEffectiveStationId() {
+      if (stationId !== 'all') return stationId;
+      const select = document.getElementById('stationSelect');
+      const first = select.querySelector('option:not([value="all"])');
+      return first ? first.value : null;
+    }
+
+    async function analyzeAlerts() {
+      const sid = getEffectiveStationId();
+      if (!sid) { showToast('请先选择电站', 'warning'); return; }
+      const btn = document.getElementById('analyzeAlertsBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 分析中...';
+
+      const resultSection = document.getElementById('analysisResultSection');
+      const resultContent = document.getElementById('analysisResultContent');
+      resultSection.classList.remove('hidden');
+      resultContent.innerHTML = '<div class="loading"><div class="spinner"></div>AI 正在分析告警...</div>';
+
+      try {
+        const data = await apiFetch(`${API}/alert-analysis/${sid}`);
+        const analysis = data.success ? data.data : data;
+
+        let html = '';
+
+        // Event Aggregation
+        if (analysis.clusters && analysis.clusters.length > 0) {
+          html += `<div class="analysis-result">
+            <h4>🔗 事件聚合 <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">共 ${analysis.clusters.length} 个告警簇</span></h4>`;
+          analysis.clusters.forEach(cluster => {
+            const tagClass = cluster.severity === 'critical' ? 'critical' : cluster.severity === 'warning' ? 'warning' : 'info';
+            html += `<div class="result-card">
+              <div class="card-label">告警簇</div>
+              <div class="card-value">
+                <span class="cluster-tag ${tagClass}">${cluster.severity || 'info'} (${cluster.count || 1})</span>
+                <span>${cluster.summary || cluster.description || '聚合告警'}</span>
+              </div>
+            </div>`;
+          });
+          html += '</div>';
+        }
+
+        // Root Cause Summary
+        if (analysis.rootCause) {
+          html += `<div class="analysis-result">
+            <h4>🎯 根因推断</h4>
+            <div class="result-card">
+              <div class="card-label">可能根因</div>
+              <div class="card-value">${analysis.rootCause}</div>
+            </div>
+          </div>`;
+        }
+
+        // Recommendations
+        if (analysis.recommendations && analysis.recommendations.length > 0) {
+          html += `<div class="analysis-result">
+            <h4>💡 处置建议</h4>`;
+          analysis.recommendations.forEach((rec, i) => {
+            html += `<div class="result-card">
+              <div class="card-label">建议 ${i + 1}</div>
+              <div class="card-value">${rec}</div>
+            </div>`;
+          });
+          html += '</div>';
+        }
+
+        // Raw LLM output if available
+        if (analysis.llmAnalysis) {
+          html += `<div class="llm-insight">
+            <div class="insight-title">🤖 AI 分析详情</div>
+            <div class="insight-text">${analysis.llmAnalysis}</div>
+          </div>`;
+        }
+
+        resultContent.innerHTML = html || '<div class="empty-msg">暂无分析结果</div>';
+        showToast('告警分析完成', 'success');
+      } catch (e) {
+        resultContent.innerHTML = `<div class="error-msg">分析失败: ${e.message}</div>`;
+        showToast('分析失败: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🧠 智能分析';
+      }
+    }
+
+    function hideAnalysisResult() {
+      document.getElementById('analysisResultSection').classList.add('hidden');
+    }
+
+    /* ============ TAB 2: 根因分析 ============ */
+    async function analyzeRootCause() {
+      const alertId = document.getElementById('rootCauseAlertSelect').value;
+      if (!alertId) { showToast('请先选择告警', 'error'); return; }
+
+      const sid = getEffectiveStationId();
+      if (!sid) { showToast('请先选择电站', 'warning'); return; }
+      const btn = document.getElementById('rootCauseBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 分析中...';
+
+      const container = document.getElementById('rootCauseContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div>正在进行根因分析...</div>';
+
+      try {
+        const data = await apiFetch(`${API}/alert-analysis/${sid}/root-cause/${alertId}`);
+        const result = data.success ? data.data : data;
+
+        let html = '<div class="root-cause-panel">';
+
+        // Cause Chain
+        if (result.causeChain && result.causeChain.length > 0) {
+          html += '<h4 style="font-size:0.92rem;color:var(--accent);margin-bottom:0.5rem;">🔗 因果链路</h4><div class="cause-chain">';
+          result.causeChain.forEach((node, i) => {
+            const isRoot = i === result.causeChain.length - 1;
+            html += `<div class="cause-node ${isRoot ? 'root' : ''}">
+              <div class="node-label">${isRoot ? '🎯 根因' : '现象 ' + (i + 1)}</div>
+              <div class="node-text">${node.description || node.text || node}</div>
+              ${node.confidence ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:0.3rem;">置信度: ${(node.confidence * 100).toFixed(0)}%</div>` : ''}
+            </div>`;
+          });
+          html += '</div>';
+        }
+
+        // Summary
+        if (result.summary) {
+          html += `<div class="result-card" style="margin-top:1rem;">
+            <div class="card-label">分析摘要</div>
+            <div class="card-value">${result.summary}</div>
+          </div>`;
+        }
+
+        // Suggestions
+        if (result.suggestions && result.suggestions.length > 0) {
+          result.suggestions.forEach((s, i) => {
+            html += `<div class="suggestion-box">
+              <div class="suggestion-title">✅ 处置建议 ${i + 1}</div>
+              <div class="suggestion-text">${s}</div>
+            </div>`;
+          });
+        }
+
+        // Raw analysis
+        if (result.analysis) {
+          html += `<div class="llm-insight">
+            <div class="insight-title">🤖 详细分析</div>
+            <div class="insight-text">${result.analysis}</div>
+          </div>`;
+        }
+
+        html += '</div>';
+        container.innerHTML = html || '<div class="empty-msg">暂无分析结果</div>';
+        showToast('根因分析完成', 'success');
+      } catch (e) {
+        container.innerHTML = `<div class="error-msg">分析失败: ${e.message}</div>`;
+        showToast('根因分析失败: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 开始分析';
+      }
+    }
+
+    document.getElementById('rootCauseAlertSelect').addEventListener('change', e => {
+      document.getElementById('rootCauseBtn').disabled = !e.target.value;
+    });
+
+    /* ============ TAB 3: 趋势分析 ============ */
+    let trendChartInstance = null;
+
+    async function loadTrendAnalysis() {
+      const days = document.getElementById('trendDays').value;
+      const sid = getEffectiveStationId();
+      if (!sid) { showToast('请先选择电站', 'warning'); return; }
+      const btn = document.getElementById('trendBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ 加载中...';
+
+      const statsContainer = document.getElementById('trendStatsContainer');
+      const insightContainer = document.getElementById('trendInsightContainer');
+      statsContainer.innerHTML = '';
+      insightContainer.innerHTML = '';
+
+      try {
+        const data = await apiFetch(`${API}/alert-analysis/${sid}/trend?days=${days}`);
+        const result = data.success ? data.data : data;
+
+        // Stats
+        if (result.statistics) {
+          const stats = result.statistics;
+          statsContainer.innerHTML = `<div class="trend-summary">
+            <div class="trend-stat">
+              <div class="stat-num" style="color:var(--red)">${stats.total || 0}</div>
+              <div class="stat-label">总告警数</div>
+            </div>
+            <div class="trend-stat">
+              <div class="stat-num" style="color:var(--orange)">${stats.critical || 0}</div>
+              <div class="stat-label">严重告警</div>
+            </div>
+            <div class="trend-stat">
+              <div class="stat-num" style="color:var(--green)">${stats.resolved || 0}</div>
+              <div class="stat-label">已解决</div>
+            </div>
+          </div>`;
+        }
+
+        // Chart
+        if (result.timeline && result.timeline.length > 0) {
+          renderTrendChart(result.timeline);
+        } else if (result.timeseries && result.timeseries.length > 0) {
+          renderTrendChart(result.timeseries);
+        } else {
+          document.getElementById('trendChartContainer').innerHTML = '<div class="empty-msg">暂无趋势数据</div>';
+        }
+
+        // LLM Insight
+        if (result.insight || result.llmInsight || result.analysis) {
+          const insightText = result.insight || result.llmInsight || result.analysis;
+          insightContainer.innerHTML = `<div class="llm-insight">
+            <div class="insight-title">🤖 LLM 趋势分析结论</div>
+            <div class="insight-text">${insightText}</div>
+          </div>`;
+        }
+
+        showToast('趋势分析加载完成', 'success');
+      } catch (e) {
+        statsContainer.innerHTML = `<div class="error-msg">加载失败: ${e.message}</div>`;
+        showToast('趋势分析失败: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📈 加载趋势';
+      }
+    }
+
+    function renderTrendChart(timeline) {
+      const chartDom = document.getElementById('trendChart');
+      if (trendChartInstance) trendChartInstance.dispose();
+      trendChartInstance = echarts.init(chartDom);
+
+      const dates = timeline.map(t => t.date || t.time || t.label);
+      const critical = timeline.map(t => t.critical || t.severe || 0);
+      const warning = timeline.map(t => t.warning || t.warn || 0);
+      const info = timeline.map(t => t.info || t.normal || 0);
+      const total = timeline.map(t => t.total || (t.critical || 0) + (t.warning || 0) + (t.info || 0));
+
+      const option = {
+        tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+        legend: { data: ['严重', '警告', '信息', '总计'], textStyle: { color: '#94a3b8' }, top: 5 },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+        xAxis: {
+          type: 'category', data: dates,
+          axisLine: { lineStyle: { color: '#1e3050' } },
+          axisLabel: { color: '#94a3b8', fontSize: 11, rotate: dates.length > 15 ? 45 : 0 }
+        },
+        yAxis: {
+          type: 'value',
+          axisLine: { lineStyle: { color: '#1e3050' } },
+          axisLabel: { color: '#94a3b8' },
+          splitLine: { lineStyle: { color: '#1e3050', type: 'dashed' } }
+        },
+        series: [
+          { name: '严重', type: 'line', data: critical, smooth: true, itemStyle: { color: '#ff3d71' }, areaStyle: { color: 'rgba(255,61,113,0.15)' } },
+          { name: '警告', type: 'line', data: warning, smooth: true, itemStyle: { color: '#ff9800' }, areaStyle: { color: 'rgba(255,152,0,0.1)' } },
+          { name: '信息', type: 'line', data: info, smooth: true, itemStyle: { color: '#448aff' }, areaStyle: { color: 'rgba(68,138,255,0.08)' } },
+          { name: '总计', type: 'line', data: total, smooth: true, itemStyle: { color: '#00e5ff' }, lineStyle: { width: 3 } }
+        ],
+        backgroundColor: 'transparent'
+      };
+
+      trendChartInstance.setOption(option);
+      window.addEventListener('resize', () => trendChartInstance.resize());
+    }
+
+    /* ============ Init ============ */
+    (async function init() {
+      await loadStations();
+      loadAlerts();
+    })();
+  </script>
+</body>
+</html>
