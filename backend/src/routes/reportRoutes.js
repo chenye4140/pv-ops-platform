@@ -3,7 +3,7 @@ const router = express.Router();
 const { db } = require('../models/database');
 const { generateDailyReportSummary, isConfigured } = require('../services/aiService');
 const reportGenerationService = require('../services/reportGenerationService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireRole } = require('../middleware/authMiddleware');
 const auditService = require('../services/auditService');
 
 function getUserId(req) {
@@ -141,7 +141,7 @@ router.get('/enhanced/special/:stationId', async (req, res) => {
 
 // POST /api/reports/generate/daily
 // Body: { stationId, date? }
-router.post('/generate/daily', async (req, res) => {
+router.post('/generate/daily', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { stationId, date } = req.body;
     if (!stationId) {
@@ -163,7 +163,7 @@ router.post('/generate/daily', async (req, res) => {
 
 // POST /api/reports/generate/weekly
 // Body: { stationId, endDate? }
-router.post('/generate/weekly', async (req, res) => {
+router.post('/generate/weekly', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { stationId, endDate } = req.body;
     if (!stationId) {
@@ -185,7 +185,7 @@ router.post('/generate/weekly', async (req, res) => {
 
 // POST /api/reports/generate/monthly
 // Body: { stationId, year?, month? }
-router.post('/generate/monthly', async (req, res) => {
+router.post('/generate/monthly', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { stationId, year, month } = req.body;
     if (!stationId) {
@@ -207,7 +207,7 @@ router.post('/generate/monthly', async (req, res) => {
 
 // POST /api/reports/generate/special
 // Body: { stationId, reportType, params? }
-router.post('/generate/special', async (req, res) => {
+router.post('/generate/special', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { stationId, reportType, params } = req.body;
     if (!stationId) {

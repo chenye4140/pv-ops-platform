@@ -3,7 +3,7 @@ const router = express.Router();
 const workorderService = require('../services/workorderService');
 const wsService = require('../services/websocketService');
 const auditService = require('../services/auditService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 router.use(requireStationAccess);
@@ -53,8 +53,8 @@ router.get('/:id', (req, res) => {
   }
 });
 
-// POST /api/workorders
-router.post('/', (req, res) => {
+// POST /api/workorders — admin/manager/operator only (not viewer)
+router.post('/', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const wo = workorderService.create(req.body);
     auditService.logAction(getUserId(req), 'create', 'work_order', wo.id, { title: wo.title, type: wo.type, priority: wo.priority }, req.ip);
@@ -66,8 +66,8 @@ router.post('/', (req, res) => {
   }
 });
 
-// PUT /api/workorders/:id
-router.put('/:id', (req, res) => {
+// PUT /api/workorders/:id — admin/manager/operator only (not viewer)
+router.put('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const { status, assignee, ...otherData } = req.body;
 
@@ -98,8 +98,8 @@ router.put('/:id', (req, res) => {
   }
 });
 
-// DELETE /api/workorders/:id
-router.delete('/:id', (req, res) => {
+// DELETE /api/workorders/:id — admin/manager/operator only (not viewer)
+router.delete('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const result = workorderService.delete(req.params.id);
     auditService.logAction(getUserId(req), 'delete', 'work_order', req.params.id, { title: result.title }, req.ip);
@@ -113,8 +113,8 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-// POST /api/workorders/:id/notes
-router.post('/:id/notes', (req, res) => {
+// POST /api/workorders/:id/notes — admin/manager/operator only (not viewer)
+router.post('/:id/notes', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const { content, created_by } = req.body;
     const note = workorderService.addNote(req.params.id, content, created_by);

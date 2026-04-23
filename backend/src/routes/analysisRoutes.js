@@ -6,7 +6,7 @@ const fs = require('fs');
 const { db } = require('../models/database');
 const { analyzeDefectImage, isConfigured } = require('../services/aiService');
 const auditService = require('../services/auditService');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireRole } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 
@@ -43,7 +43,7 @@ const upload = multer({
 // POST /api/analysis/upload — Upload image file for AI defect analysis
 // ---------------------------------------------------------------------------
 
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', requireRole('admin', 'manager', 'operator'), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: '缺少图像文件 (支持 JPG/PNG/WebP)' });

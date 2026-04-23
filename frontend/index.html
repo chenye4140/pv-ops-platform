@@ -1367,6 +1367,14 @@
       if (!hasPermission('manager')) hideElement('alertRuleActions');
       // Seed button - only admin
       if (!hasPermission('admin')) hideElement('btn-seed-rules');
+
+      // === Write operation controls (hide from viewer role) ===
+      if (!hasPermission('operator')) {
+        // Report generation
+        hideElement('btnGenerateReport');
+        // Work order creation
+        hideElement('createWorkOrderSection');
+      }
     }
   </script>
 

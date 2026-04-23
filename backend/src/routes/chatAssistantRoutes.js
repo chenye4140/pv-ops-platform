@@ -45,7 +45,7 @@ function getUserId(req) {
  * @body {string} [userRole] - User role (default: '运维工程师')
  * @returns {Object} { success: true, data: { sessionId, stationId } }
  */
-router.post('/sessions', async (req, res) => {
+router.post('/sessions', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { stationId, userRole } = req.body;
 
@@ -150,7 +150,7 @@ router.get('/sessions/:sessionId', async (req, res) => {
  * @body {string} message - User message text
  * @returns {Object} { success: true, data: { reply, intent, contextUsed } }
  */
-router.post('/sessions/:sessionId/messages', async (req, res) => {
+router.post('/sessions/:sessionId/messages', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { message } = req.body;
@@ -245,7 +245,7 @@ router.get('/sessions/:sessionId/history', async (req, res) => {
  * @param {string} sessionId - Session ID
  * @returns {Object} { success: true, data: { deleted, sessionId } }
  */
-router.delete('/sessions/:sessionId', async (req, res) => {
+router.delete('/sessions/:sessionId', requireRole('admin', 'manager', 'operator'), async (req, res) => {
   try {
     const { sessionId } = req.params;
 

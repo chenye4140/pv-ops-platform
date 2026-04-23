@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const inspectionService = require('../services/inspectionService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 const wsService = require('../services/websocketService');
 const auditService = require('../services/auditService');
 
@@ -69,7 +69,8 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/inspections
-router.post('/', (req, res) => {
+// POST /api/inspections — admin/manager/operator only (not viewer)
+router.post('/', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const inspection = inspectionService.create(req.body);
     auditService.logAction(getUserId(req), 'create', 'inspection', inspection.id, { title: inspection.title, type: inspection.type, station_id: inspection.station_id }, req.ip);
@@ -81,7 +82,8 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/inspections/:id
-router.put('/:id', (req, res) => {
+// PUT /api/inspections/:id — admin/manager/operator only (not viewer)
+router.put('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const inspection = inspectionService.update(req.params.id, req.body);
     auditService.logAction(getUserId(req), 'update', 'inspection', req.params.id, { fields: Object.keys(req.body) }, req.ip);
@@ -96,7 +98,8 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/inspections/:id
-router.delete('/:id', (req, res) => {
+// DELETE /api/inspections/:id — admin/manager/operator only (not viewer)
+router.delete('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const result = inspectionService.delete(req.params.id);
     auditService.logAction(getUserId(req), 'delete', 'inspection', req.params.id, { title: result.title }, req.ip);
@@ -107,7 +110,8 @@ router.delete('/:id', (req, res) => {
 });
 
 // POST /api/inspections/process-due
-router.post('/process-due', (req, res) => {
+// POST /api/inspections/process-due — admin/manager/operator only (not viewer)
+router.post('/process-due', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const results = inspectionService.processDueInspections();
     auditService.logAction(getUserId(req), 'process_due', 'inspection', null, { processed_count: results.length }, req.ip);
@@ -134,7 +138,8 @@ router.get('/:id/tasks', (req, res) => {
 });
 
 // POST /api/inspections/:id/tasks
-router.post('/:id/tasks', (req, res) => {
+// POST /api/inspections/:id/tasks — admin/manager/operator only (not viewer)
+router.post('/:id/tasks', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const task = inspectionService.addTask(parseInt(req.params.id), req.body);
     auditService.logAction(getUserId(req), 'create', 'inspection_task', task.id, { inspection_id: req.params.id, title: task.title }, req.ip);
@@ -156,7 +161,8 @@ router.get('/tasks/:taskId', (req, res) => {
 });
 
 // PUT /api/inspections/tasks/:taskId/status
-router.put('/tasks/:taskId/status', (req, res) => {
+// PUT /api/inspections/tasks/:taskId/status — admin/manager/operator only (not viewer)
+router.put('/tasks/:taskId/status', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const { status, findings } = req.body;
     if (!status) return res.status(400).json({ success: false, error: 'status is required' });
@@ -170,7 +176,8 @@ router.put('/tasks/:taskId/status', (req, res) => {
 });
 
 // DELETE /api/inspections/tasks/:taskId
-router.delete('/tasks/:taskId', (req, res) => {
+// DELETE /api/inspections/tasks/:taskId — admin/manager/operator only (not viewer)
+router.delete('/tasks/:taskId', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const result = inspectionService.deleteTask(req.params.taskId);
     auditService.logAction(getUserId(req), 'delete', 'inspection_task', req.params.taskId, { title: result.title }, req.ip);

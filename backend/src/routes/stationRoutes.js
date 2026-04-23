@@ -4,7 +4,7 @@ const stationService = require('../services/stationService');
 const inverterService = require('../services/inverterService');
 const alertService = require('../services/alertService');
 const auditService = require('../services/auditService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 router.use(requireStationAccess);
@@ -87,7 +87,7 @@ router.get('/:id/alerts', (req, res) => {
 });
 
 // POST /api/stations/:id/alerts/:aid/ack  (MUST be before /:id)
-router.post('/:id/alerts/:aid/ack', (req, res) => {
+router.post('/:id/alerts/:aid/ack', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const result = alertService.acknowledge(req.params.aid);
     const userId = req.user ? req.user.id : null;

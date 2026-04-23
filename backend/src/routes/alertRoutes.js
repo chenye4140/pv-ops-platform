@@ -3,7 +3,7 @@ const router = express.Router();
 const alertService = require('../services/alertService');
 const wsService = require('../services/websocketService');
 const auditService = require('../services/auditService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 router.use(requireStationAccess);
@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/alerts
-router.post('/', (req, res) => {
+router.post('/', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const alert = alertService.create(req.body);
     auditService.logAction(getUserId(req), 'create', 'alert', alert.id, { severity: alert.severity, type: alert.type, station_id: alert.station_id }, req.ip);

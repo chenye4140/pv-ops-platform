@@ -3,7 +3,7 @@ const router = express.Router();
 const powerDataService = require('../services/powerDataService');
 const wsService = require('../services/websocketService');
 const auditService = require('../services/auditService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 
 function getUserId(req) {
   return req.user ? req.user.id : null;
@@ -29,7 +29,7 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/power-data - ingest new power reading
-router.post('/', (req, res) => {
+router.post('/', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const record = powerDataService.create(req.body);
     // Broadcast to "power-data" topic with optional room
