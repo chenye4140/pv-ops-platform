@@ -4,6 +4,11 @@ const { db } = require('../models/database');
 const { generateDailyReportSummary, isConfigured } = require('../services/aiService');
 const reportGenerationService = require('../services/reportGenerationService');
 const { authenticate } = require('../middleware/authMiddleware');
+const auditService = require('../services/auditService');
+
+function getUserId(req) {
+  return req.user ? req.user.id : null;
+}
 
 router.use(authenticate);
 
@@ -149,6 +154,7 @@ router.post('/generate/daily', async (req, res) => {
       return res.status(404).json({ success: false, error: report.error || 'Report generation failed' });
     }
 
+    auditService.logAction(getUserId(req), 'generate', 'report', null, { type: 'daily', station_id: stationId, date }, req.ip);
     res.json({ success: true, data: report });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -170,6 +176,7 @@ router.post('/generate/weekly', async (req, res) => {
       return res.status(404).json({ success: false, error: report.error || 'Report generation failed' });
     }
 
+    auditService.logAction(getUserId(req), 'generate', 'report', null, { type: 'weekly', station_id: stationId, end_date: endDate }, req.ip);
     res.json({ success: true, data: report });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -191,6 +198,7 @@ router.post('/generate/monthly', async (req, res) => {
       return res.status(404).json({ success: false, error: report.error || 'Report generation failed' });
     }
 
+    auditService.logAction(getUserId(req), 'generate', 'report', null, { type: 'monthly', station_id: stationId, year, month }, req.ip);
     res.json({ success: true, data: report });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -218,6 +226,7 @@ router.post('/generate/special', async (req, res) => {
       return res.status(404).json({ success: false, error: report.error || 'Report generation failed' });
     }
 
+    auditService.logAction(getUserId(req), 'generate', 'report', null, { type: reportType, station_id: stationId, params }, req.ip);
     res.json({ success: true, data: report });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
