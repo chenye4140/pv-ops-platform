@@ -344,6 +344,21 @@
     const API = 'http://localhost:3000/api';
     let stationId = localStorage.getItem('selectedStation') || null;
 
+    /* ============ API Helper ============ */
+    function getAuthHeaders(extraHeaders = {}) {
+      const token = localStorage.getItem('authToken');
+      const headers = { ...extraHeaders };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      return headers;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const headers = getAuthHeaders(options.headers || {});
+      const res = await fetch(url, { ...options, headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
     /* ============ Hamburger Menu ============ */
     function toggleHamburger() {
       var links = document.querySelector('.navbar-links');
@@ -374,7 +389,7 @@
 
     async function loadStations() {
       try {
-        const res = await fetch(`${API}/stations`);
+        const res = await apiFetch(`${API}/stations`);
         const json = await res.json();
         if (json.success && json.data.length > 0) {
           const select = document.getElementById('stationSelect');
@@ -410,7 +425,7 @@
       container.innerHTML = '<div class="loading"><div class="spinner"></div>正在加载日报数据...</div>';
 
       try {
-        const res = await fetch(`${API}/reports/daily/${stationId}`);
+        const res = await apiFetch(`${API}/reports/daily/${stationId}`);
         const json = await res.json();
 
         if (!json.success) {

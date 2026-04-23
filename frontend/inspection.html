@@ -463,7 +463,7 @@
 
     async function loadTasks() {
       try {
-        const json = await apiFetch(`${API}/inspection-tasks?station_id=${currentStationId}`);
+        const json = await apiFetch(`${API}/inspections/tasks?station_id=${currentStationId}`);
         const container = document.getElementById('tasksTable');
         if (!json.success || !json.data.length) {
           container.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>暂无巡检任务</p></div>';
