@@ -2882,30 +2882,35 @@
       displayUserInfo();
       applyRoleControls();
       await loadStations();  // Wait for stations to load first
-      loadOverview();
-      loadInverterDropdown();
-      loadAlerts();
+      await Promise.allSettled([
+        loadOverview(),
+        loadInverterDropdown(),
+        loadAlerts(),
+        loadWorkOrders(),
+        loadSystemStatus(),
+      ]);
       updateAlertBadge();
       initDiagnosis();
-      loadWorkOrders();
-      loadSystemStatus();
+      // Set initial refresh timestamp after all data loaded
+      lastRefreshTime = new Date();
 
       // Auto-refresh every 30 seconds
-      refreshTimer = setInterval(() => {
-        lastRefreshTime = new Date();
+      refreshTimer = setInterval(async () => {
         const activeTab = document.querySelector('.nav-tab.active');
         if (!activeTab) return;
         const tab = activeTab.dataset.tab;
         if (tab === 'overview') {
-          loadOverviewKPIs();
-          loadInverterGrid();
-          loadAlertsOverview();
+          await loadOverviewKPIs();
+          await loadInverterGrid();
+          await loadAlertsOverview();
         } else if (tab === 'alerts') {
-          loadAlerts();
+          await loadAlerts();
           updateAlertBadge();
         } else if (tab === 'workorder') {
-          loadWorkOrders();
+          await loadWorkOrders();
         }
+        // Set refresh time AFTER data loads
+        lastRefreshTime = new Date();
       }, 30000);
 
       // ============ WebSocket Integration ============
