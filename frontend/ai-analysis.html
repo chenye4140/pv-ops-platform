@@ -495,7 +495,8 @@
           if (stationId && stationId !== 'all') {
             select.value = stationId;
           } else {
-            stationId = json.data[0].id;
+            const firstActive = json.data.find(s => s.status === 'active') || json.data[0];
+            stationId = firstActive.id;
             select.value = stationId;
             localStorage.setItem('selectedStation', stationId);
           }

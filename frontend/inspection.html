@@ -387,7 +387,8 @@
             `<option value="${s.id}">${s.name}</option>`
           ).join('');
           if (!currentStationId) {
-            currentStationId = json.data[0].id;
+            const firstActive = json.data.find(s => s.status === 'active') || json.data[0];
+            currentStationId = firstActive.id;
             localStorage.setItem('selectedStation', currentStationId);
           }
           select.value = currentStationId;
