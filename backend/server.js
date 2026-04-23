@@ -108,8 +108,12 @@ app.use('/api/backup', backupRoutes);
 app.use('/api/notifications', notificationRoutes);
 const healthScoreRoutes = require('./src/routes/healthScoreRoutes');
 const alertAnalysisRoutes = require('./src/routes/alertAnalysisRoutes');
+const chatAssistantRoutes = require('./src/routes/chatAssistantRoutes');
+const workorderIntelligenceRoutes = require('./src/routes/workorderIntelligenceRoutes');
 app.use('/api/health-score', healthScoreRoutes);
 app.use('/api/alert-analysis', alertAnalysisRoutes);
+app.use('/api/chat', chatAssistantRoutes);
+app.use('/api/workorder-intelligence', workorderIntelligenceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

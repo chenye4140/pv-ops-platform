@@ -437,7 +437,7 @@ async function sendMessage(sessionId, userMessage, options = {}) {
   }
 
   // 7. Load and render prompt template
-  const systemPrompt = llmService.loadPrompt('chat-assistant', {
+  const systemPrompt = llmService.loadPrompt('chat-assistant.md', {
     userRole: session.userRole,
     currentStation: stationName,
     chatHistory: chatHistoryText,
