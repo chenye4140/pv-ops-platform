@@ -836,7 +836,7 @@
       try {
         const json = await apiFetch(`${API}/workorders/${id}/notes`, {
           method: 'POST',
-          body: JSON.stringify({ content, created_by: '操作员' })
+          body: JSON.stringify({ content, created_by: getCurrentUserName() })
         });
         if (json.success) {
           showToast('备注添加成功', 'success');
@@ -1323,6 +1323,11 @@
       var userStr = localStorage.getItem("currentUser");
       if (!userStr) { window.location.href = "login.html"; return "viewer"; }
       try { return JSON.parse(userStr).role || "viewer"; } catch(e) { return "viewer"; }
+    }
+    function getCurrentUserName() {
+      var userStr = localStorage.getItem("currentUser");
+      if (!userStr) return "系统";
+      try { var u = JSON.parse(userStr); return u.display_name || u.displayName || u.username || "系统"; } catch(e) { return "系统"; }
     }
     function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
     function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = "none"; }

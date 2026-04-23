@@ -3360,7 +3360,7 @@
         const res = await fetch(`${API}/workorders/${id}/notes`, {
           method: 'POST',
           headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ content, created_by: '操作员' })
+          body: JSON.stringify({ content, created_by: currentUser ? (currentUser.displayName || currentUser.username) : '系统' })
         });
         const json = await res.json();
         if (json.success) {
