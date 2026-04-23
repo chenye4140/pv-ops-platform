@@ -561,10 +561,19 @@
           stations = json.data || [];
           const stationSelect = document.getElementById('stationSelect');
           const filterStation = document.getElementById('filterStation');
-          stations.forEach(s => {
-            stationSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-            filterStation.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-          });
+          if (stations.length > 0) {
+            stations.forEach(s => {
+              stationSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+              filterStation.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+            });
+          } else {
+            stationSelect.innerHTML = '<option value="all">暂无电站数据</option>';
+            filterStation.innerHTML = '<option value="all">暂无电站</option>';
+            const container = document.getElementById('alertRulesTable');
+            if (container) {
+              container.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-secondary);">暂无电站数据，请先运行 seed_data.js 初始化数据</div>';
+            }
+          }
         }
       } catch (e) {
         console.error('Failed to load stations:', e);
