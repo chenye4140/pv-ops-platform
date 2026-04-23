@@ -493,7 +493,7 @@
           return first.id;
         }
       } catch (e) { /* ignore */ }
-      return 1;
+      return null;
     }
 
     let selectedImage = null;
@@ -751,6 +751,11 @@
 
       try {
         const stationId = await getSelectedStationId();
+        if (!stationId) {
+          content.innerHTML = '<div class="error-msg" style="color:var(--red)">请先选择电站</div>';
+          status.textContent = '未选择电站';
+          return;
+        }
         const json = await apiFetch(`${API}/analysis/station/${stationId}/anomaly`);
 
         if (!json.success) {
