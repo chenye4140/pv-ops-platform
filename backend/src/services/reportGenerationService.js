@@ -14,6 +14,7 @@
 
 const { db } = require('../models/database');
 const llmService = require('./llmService');
+const healthScoreService = require('./healthScoreService');
 
 // ---------------------------------------------------------------------------
 // Helpers — data queries
@@ -531,8 +532,7 @@ async function generateWeeklyReport(stationId, endDate) {
     d.setDate(d.getDate() - 6 + i);
     // Health score is based on current state, so use a snapshot approach
     const ds = _fmt(d);
-    const healthService = require('./healthScoreService');
-    const score = healthService.getStationHealthScore(stationId);
+    const score = healthScoreService.getStationHealthScore(stationId);
     if (score) {
       healthScores.push({ date: ds, score: score.score, grade: score.grade });
     }
@@ -540,7 +540,7 @@ async function generateWeeklyReport(stationId, endDate) {
   // Deduplicate (health score is same each call since it's current state)
   const uniqueHealth = healthScores.filter((v, i, a) => a.findIndex(t => t.date === v.date) === i);
   // Use only current score with week label
-  const currentHealth = healthService.getStationHealthScore(stationId);
+  const currentHealth = healthScoreService.getStationHealthScore(stationId);
 
   // Day-over-day comparison (first vs last 3 days)
   const first3 = trendData.slice(0, 3).reduce((s, d) => s + d.total_energy_kwh, 0);
