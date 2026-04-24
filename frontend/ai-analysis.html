@@ -430,6 +430,28 @@
     const API = 'http://localhost:3000/api';
     let stationId = localStorage.getItem('selectedStation') || null;
 
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem('currentUser');
+      if (!userStr) { window.location.href = 'login.html'; return 'viewer'; }
+      try { return JSON.parse(userStr).role || 'viewer'; } catch(e) { return 'viewer'; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+    function applyRoleControls() {
+      // Alert analysis buttons — operator+ only
+      if (!hasPermission('operator')) {
+        hideElement('analyzeAlertsBtn');
+        hideElement('rootCauseBtn');
+      }
+      // Trend analysis — operator+ only
+      if (!hasPermission('operator')) {
+        hideElement('trendBtn');
+      }
+    }
+
     /* ============ API Helper ============ */
     function getAuthHeaders(extraHeaders = {}) {
       const token = localStorage.getItem('authToken');
@@ -857,6 +879,7 @@
     /* ============ Init ============ */
     (async function init() {
       await loadStations();
+      applyRoleControls();
       loadAlerts();
     })();
   </script>

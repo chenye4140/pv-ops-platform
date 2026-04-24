@@ -490,6 +490,27 @@
     let sessions = [];
     let isSending = false;
 
+    /* ============ Role-Based Access Control ============ */
+    var ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      var userStr = localStorage.getItem('currentUser');
+      if (!userStr) { window.location.href = 'login.html'; return 'viewer'; }
+      try { return JSON.parse(userStr).role || 'viewer'; } catch(e) { return 'viewer'; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function hideElement(id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; }
+
+    function applyRoleControls() {
+      // Chat: send message + new session + delete session — operator+ only
+      if (!hasPermission('operator')) {
+        hideElement('messageInput');
+        hideElement('sendBtn');
+        hideElement('btn-new-session');
+        // Hide delete buttons on sessions
+        document.querySelectorAll('.delete-session').forEach(function(btn) { btn.style.display = 'none'; });
+      }
+    }
+
     /* ============ API Helper ============ */
     function getAuthHeaders(extraHeaders = {}) {
       const token = localStorage.getItem('authToken');
@@ -909,6 +930,7 @@
     (async function init() {
       await loadStations();
       await loadSessions();
+      applyRoleControls();
     })();
   </script>
 </body>

@@ -234,8 +234,14 @@ function evaluateIrradianceLow(rule, stationId) {
 
 /**
  * inverter_offline: Check if inverter power ratio < threshold.
+ * Skips evaluation during nighttime (irradiance < 50 W/m²) to avoid false alerts.
  */
 function evaluateInverterOffline(rule, stationId) {
+  const weather = getLatestWeather(stationId);
+  if (!weather || weather.irradiance_wm2 < 50) {
+    return []; // Nighttime or very low irradiance — skip to avoid false "offline" alerts
+  }
+
   const inverters = getInvertersForStation(stationId);
   const triggered = [];
 
