@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const workorderIntelligenceService = require('../services/workorderIntelligenceService');
 const auditService = require('../services/auditService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 
 // Helper to extract user ID from authenticated request
 function getUserId(req) {
@@ -12,6 +12,9 @@ function getUserId(req) {
 router.use(authenticate);
 router.use(requireStationAccess);
 
+// Intelligence write operations — only admin/manager/operator
+const INTEL_ROLES = ['admin', 'manager', 'operator'];
+
 /**
  * POST /api/workorder-intelligence/:workorderId/classify
  * 智能工单分类
@@ -19,7 +22,7 @@ router.use(requireStationAccess);
  * @param {number} workorderId - 工单 ID（必须为正整数）
  * @returns {Object} { success: true, data: { workOrderId, currentType, suggestedType, confidence, reasoning, needCorrection, model, fallback } }
  */
-router.post('/:workorderId/classify', async (req, res) => {
+router.post('/:workorderId/classify', requireRole(...INTEL_ROLES), async (req, res) => {
   try {
     const workorderId = Number(req.params.workorderId);
     if (!Number.isInteger(workorderId) || workorderId <= 0) {
@@ -44,7 +47,7 @@ router.post('/:workorderId/classify', async (req, res) => {
  * @param {number} workorderId - 工单 ID（必须为正整数）
  * @returns {Object} { success: true, data: { recommendedPerson, reason, availableParts, estimatedTime, requiredSkills, alternativePerson, model, fallback } }
  */
-router.post('/:workorderId/recommend-assignee', async (req, res) => {
+router.post('/:workorderId/recommend-assignee', requireRole(...INTEL_ROLES), async (req, res) => {
   try {
     const workorderId = Number(req.params.workorderId);
     if (!Number.isInteger(workorderId) || workorderId <= 0) {
@@ -69,7 +72,7 @@ router.post('/:workorderId/recommend-assignee', async (req, res) => {
  * @param {number} workorderId - 工单 ID（必须为正整数）
  * @returns {Object} { success: true, data: { steps, requiredParts, estimatedDuration, precautions, similarCases, rootCause, tools, model, fallback } }
  */
-router.post('/:workorderId/recommend-solution', async (req, res) => {
+router.post('/:workorderId/recommend-solution', requireRole(...INTEL_ROLES), async (req, res) => {
   try {
     const workorderId = Number(req.params.workorderId);
     if (!Number.isInteger(workorderId) || workorderId <= 0) {
@@ -94,7 +97,7 @@ router.post('/:workorderId/recommend-solution', async (req, res) => {
  * @param {number} workorderId - 工单 ID（必须为正整数）
  * @returns {Object} { success: true, data: { summary, actionsTaken, partsUsed, recommendations, followUpNeeded, followUpActions, lessonsLearned, model, fallback } }
  */
-router.post('/:workorderId/completion-report', async (req, res) => {
+router.post('/:workorderId/completion-report', requireRole(...INTEL_ROLES), async (req, res) => {
   try {
     const workorderId = Number(req.params.workorderId);
     if (!Number.isInteger(workorderId) || workorderId <= 0) {

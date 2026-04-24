@@ -10,6 +10,9 @@ const { authenticate, requireRole } = require('../middleware/authMiddleware');
 
 router.use(authenticate);
 
+// Only allow non-viewer roles to write analysis data
+const ANALYSIS_ROLES = ['admin', 'manager', 'operator'];
+
 function getUserId(req) {
   return req.user ? req.user.id : null;
 }
@@ -156,7 +159,7 @@ router.get('/station/:id/anomaly', (req, res) => {
 
 // POST /api/analysis/defect-image
 // Analyzes uploaded PV defect images using qwen-vl-max (or mock if no API key)
-router.post('/defect-image', async (req, res) => {
+router.post('/defect-image', requireRole(...ANALYSIS_ROLES), async (req, res) => {
   try {
     const { image, label } = req.body;
 
