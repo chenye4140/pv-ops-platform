@@ -357,7 +357,7 @@ const inspectionService = {
       SELECT ins.type, COUNT(*) as count
       FROM inspection_tasks t
       JOIN inspections ins ON t.inspection_id = ins.id
-      ${baseSql} GROUP BY ins.type
+      ${stationId ? 'WHERE t.station_id = ?' : baseSql} GROUP BY ins.type
     `).all(...params);
 
     return {

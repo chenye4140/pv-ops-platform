@@ -76,10 +76,12 @@ router.get('/:id', (req, res) => {
 });
 
 // GET /api/stations/:id/alerts  (MUST be before /:id)
+// Also handles /api/stations/all/alerts — returns alerts across all stations
 router.get('/:id/alerts', (req, res) => {
   try {
     const { status } = req.query;
-    const alerts = alertService.getAll(req.params.id, status);
+    const stationId = req.params.id === 'all' ? null : req.params.id;
+    const alerts = alertService.getAll(stationId, status);
     res.json({ success: true, data: alerts });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

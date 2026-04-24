@@ -14,9 +14,9 @@
       --bg-input: #0d1525;
       --border: #1e3050;
       --border-light: #2a4060;
-      --text-primary: #e2e8f0;
-      --text-secondary: #94a3b8;
-      --text-muted: #475569;
+      --text-primary: #f0f4f8;
+      --text-secondary: #b0bec5;
+      --text-muted: #78909c;
       --accent: #00e5ff;
       --accent-dim: rgba(0, 229, 255, 0.15);
       --accent-glow: rgba(0, 229, 255, 0.3);
@@ -517,6 +517,15 @@
         <option value="high">高</option>
         <option value="medium">中</option>
         <option value="low">低</option>
+      </select>
+      <label>类型：</label>
+      <select id="filterType">
+        <option value="all">全部</option>
+        <option value="defect_repair">缺陷修复</option>
+        <option value="routine_maintenance">定期维护</option>
+        <option value="inspection">巡检</option>
+        <option value="cleaning">清洗</option>
+        <option value="other">其他</option>
       </select>
       <label>排序：</label>
       <select id="filterSort">

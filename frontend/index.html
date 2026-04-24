@@ -55,7 +55,7 @@
     .navbar {
       background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(17,27,47,0.95) 100%);
       border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
+      padding: 0 1.5rem;
       display: flex;
       align-items: center;
       height: 60px;
@@ -64,36 +64,47 @@
       z-index: 100;
       backdrop-filter: blur(12px);
       box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+      gap: 1rem;
     }
     .navbar-brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       font-weight: 700;
       color: var(--accent);
       letter-spacing: 0.5px;
       white-space: nowrap;
+      flex-shrink: 0;
     }
     .navbar-brand .logo-icon {
-      width: 32px; height: 32px;
+      width: 30px; height: 30px;
       background: linear-gradient(135deg, var(--accent), var(--blue));
-      border-radius: 8px;
+      border-radius: 7px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      font-size: 16px;
     }
     .navbar-tabs {
       display: flex;
-      gap: 4px;
-      margin-left: 2.5rem;
+      align-items: center;
+      gap: 2px;
+      margin-left: 1rem;
+    }
+    /* Tab group divider */
+    .tab-divider {
+      width: 1px;
+      height: 20px;
+      background: linear-gradient(180deg, transparent 0%, var(--border-light) 50%, transparent 100%);
+      margin: 0 8px;
+      flex-shrink: 0;
     }
     .nav-tab {
       background: none;
       border: none;
       color: var(--text-secondary);
-      padding: 0.5rem 1.1rem;
+      padding: 0.45rem 0.85rem;
       border-radius: 6px;
-      font-size: 0.88rem;
+      font-size: 0.84rem;
       cursor: pointer;
       transition: all 0.25s;
       font-family: var(--font-sans);
@@ -114,6 +125,95 @@
       height: 2px;
       background: var(--accent);
       border-radius: 1px;
+    }
+
+    /* ============ Dropdown Menu ============ */
+    .nav-dropdown {
+      position: relative;
+      display: inline-flex;
+      flex-shrink: 0;
+    }
+    .nav-dropdown .dropdown-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-dropdown .dropdown-toggle::after {
+      content: '';
+      display: inline-block;
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid currentColor;
+      margin-left: 3px;
+      transition: transform 0.2s;
+    }
+    .nav-dropdown:hover .dropdown-toggle::after {
+      transform: rotate(180deg);
+    }
+    .nav-dropdown .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px;
+      min-width: 150px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      z-index: 200;
+    }
+    .nav-dropdown:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+    .dropdown-menu .dropdown-item {
+      display: block;
+      width: 100%;
+      padding: 0.5rem 0.85rem;
+      color: var(--text-secondary);
+      font-size: 0.84rem;
+      text-align: left;
+      background: none;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-sans);
+      white-space: nowrap;
+    }
+    .dropdown-menu .dropdown-item:hover {
+      color: var(--text-primary);
+      background: var(--accent-dim);
+    }
+    .dropdown-menu .dropdown-item.active {
+      color: var(--accent);
+      background: rgba(0,198,255,0.12);
+    }
+
+    /* ============ High-Resolution Layout ============ */
+    @media (min-width: 1920px) {
+      .navbar { padding: 0 3rem; height: 64px; }
+      .navbar-brand { font-size: 1.2rem; }
+      .navbar-brand .logo-icon { width: 34px; height: 34px; font-size: 17px; }
+      .navbar-tabs { margin-left: 2rem; gap: 4px; }
+      .nav-tab { padding: 0.5rem 1rem; font-size: 0.9rem; }
+      .main { max-width: 1800px; }
+    }
+    @media (min-width: 2560px) {
+      .navbar { padding: 0 4rem; height: 68px; }
+      .navbar-brand { font-size: 1.3rem; }
+      .navbar-brand .logo-icon { width: 36px; height: 36px; font-size: 18px; }
+      .navbar-tabs { margin-left: 3rem; gap: 6px; }
+      .nav-tab { padding: 0.55rem 1.15rem; font-size: 0.95rem; }
+      .main { max-width: 2400px; padding: 1.5rem 3rem; }
     }
     .navbar-right {
       margin-left: auto;
@@ -694,19 +794,30 @@
     </div>
     <button class="hamburger" id="hamburgerBtn" onclick="toggleHamburger()" aria-label="菜单">☰</button>
     <div class="navbar-tabs" id="tabBar">
+      <!-- Core Monitoring -->
       <button class="nav-tab active" data-tab="overview">电站总览</button>
       <button class="nav-tab" data-tab="inverter">逆变器监控</button>
       <button class="nav-tab" data-tab="alerts">告警中心</button>
       <button class="nav-tab" data-tab="diagnosis">图像诊断</button>
       <button class="nav-tab" data-tab="report">智能日报</button>
+      <span class="tab-divider"></span>
+      <!-- Operations -->
       <a class="nav-tab" href="workorder.html" style="text-decoration:none;">工单管理</a>
       <button class="nav-tab" id="nav-alertrules" data-tab="alertrules">告警规则</button>
       <a class="nav-tab" href="inspection.html" style="text-decoration:none;">巡检管理</a>
-      <a class="nav-tab" href="spare-parts.html" style="text-decoration:none;">📦 备品备件</a>
-      <a class="nav-tab" href="notification.html" style="text-decoration:none;">🔔 通知中心</a>
-      <a class="nav-tab" id="nav-audit" href="audit.html" style="text-decoration:none;">🛡️ 审计日志</a>
-      <a class="nav-tab" id="nav-users" href="users.html" style="text-decoration:none;">👥 账号管理</a>
-      <button class="nav-tab" id="nav-system" data-tab="system">🖥️ 系统状态</button>
+      <span class="tab-divider"></span>
+      <!-- System Management (dropdown) -->
+      <div class="nav-dropdown">
+        <button class="nav-tab dropdown-toggle">系统管理</button>
+        <div class="dropdown-menu">
+          <a class="dropdown-item" href="spare-parts.html">📦 备品备件</a>
+          <a class="dropdown-item" href="notification.html">🔔 通知中心</a>
+          <a class="dropdown-item" href="audit.html" id="nav-audit">🛡️ 审计日志</a>
+          <a class="dropdown-item" href="users.html" id="nav-users">👥 账号管理</a>
+          <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+          <button class="dropdown-item" data-tab="system">🖥️ 系统状态</button>
+        </div>
+      </div>
     </div>
     <div class="navbar-right">
       <select id="stationSelect" class="station-select" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);padding:0.35rem 0.6rem;border-radius:6px;font-size:0.82rem;outline:none;">
@@ -1536,13 +1647,23 @@
 
     /* ============ Tab Switching ============ */
     document.getElementById('tabBar').addEventListener('click', e => {
-      if (!e.target.classList.contains('nav-tab')) return;
-      const tab = e.target.dataset.tab;
-      switchTab(tab);
+      // Handle regular tab clicks
+      if (e.target.classList.contains('nav-tab')) {
+        const tab = e.target.dataset.tab;
+        switchTab(tab);
+        return;
+      }
+      // Handle dropdown item tab clicks
+      if (e.target.classList.contains('dropdown-item') && e.target.dataset.tab) {
+        const tab = e.target.dataset.tab;
+        switchTab(tab);
+      }
     });
 
     function switchTab(tab) {
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      // Also highlight dropdown items
+      document.querySelectorAll('.dropdown-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
       // Load tab-specific data
       if (tab === 'workorder') loadWorkOrders();
@@ -1651,6 +1772,7 @@
 
     async function loadOverviewKPIs() {
       const sid = getEffectiveStationId();
+      let pr = 0; // Declare at function level for use in enhanced KPI section
       try {
         // Fetch original overview data
         const json = await apiFetch(`${API}/stations/${sid}/overview`);
@@ -1658,7 +1780,7 @@
           const d = json.data;
           const energy = d.todayEnergyKwh ?? d.today_energy_kwh ?? 0;
           const power = d.currentPowerKw ?? d.current_power_kw ?? 0;
-          const pr = d.performanceRatio ?? d.performance_ratio ?? 0;
+          pr = d.performanceRatio ?? d.performance_ratio ?? 0;
           const abnormal = d.abnormalCount ?? d.abnormal_string_count ?? 0;
 
           document.getElementById('kpiEnergy').innerHTML = `${energy.toFixed(1)}<span class="stat-unit">kWh</span>`;
