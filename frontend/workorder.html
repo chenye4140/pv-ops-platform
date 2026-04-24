@@ -777,7 +777,16 @@
         const json = await apiFetch(`${API}/stations`);
         if (json.success) {
           stations = json.data || [];
-          populateStationDropdowns();
+          if (stations.length > 0) {
+            populateStationDropdowns();
+          } else {
+            // No stations — show friendly message in dropdowns
+            const filterSelect = document.getElementById('filterStation');
+            const newStationSelect = document.getElementById('newStation');
+            if (filterSelect) filterSelect.innerHTML = '<option value="all">暂无电站</option>';
+            if (newStationSelect) newStationSelect.innerHTML = '<option value="">暂无电站</option>';
+            console.warn('[WorkOrders] No stations found. Run: cd backend && node scripts/seed_data.js');
+          }
         }
       } catch (e) { /* stations optional */ }
     }

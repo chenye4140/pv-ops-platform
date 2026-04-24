@@ -429,9 +429,19 @@
         const res = await apiFetch(`${API}/api/stations`);
         if (res.success) {
           stations = res.data || [];
-          const opts = '<option value="">全部电站</option>' + stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-          document.getElementById('stationFilter').innerHTML = opts;
-          document.getElementById('partStation').innerHTML = opts;
+          if (stations.length > 0) {
+            const opts = '<option value="">全部电站</option>' + stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            document.getElementById('stationFilter').innerHTML = opts;
+            document.getElementById('partStation').innerHTML = opts;
+          } else {
+            // No stations — show friendly message
+            document.getElementById('stationFilter').innerHTML = '<option value="">暂无电站数据</option>';
+            document.getElementById('partStation').innerHTML = '<option value="">暂无电站</option>';
+            const container = document.getElementById('partsTableBody');
+            if (container) {
+              container.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-secondary)">暂无电站数据，请先运行 <code>cd backend && node scripts/seed_data.js</code> 初始化示例数据</td></tr>';
+            }
+          }
         }
       } catch(e) { console.error('Stations load failed:', e); }
     }
