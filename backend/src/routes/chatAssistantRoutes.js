@@ -17,7 +17,7 @@ const express = require('express');
 const router = express.Router();
 const chatAssistantService = require('../services/chatAssistantService');
 const auditService = require('../services/auditService');
-const { authenticate, requireStationAccess } = require('../middleware/authMiddleware');
+const { authenticate, requireStationAccess, requireRole } = require('../middleware/authMiddleware');
 
 // All routes require authentication and station access
 router.use(authenticate);

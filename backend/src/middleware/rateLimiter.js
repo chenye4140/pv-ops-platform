@@ -11,7 +11,7 @@ const rateLimit = require('express-rate-limit');
 // Default API rate limit
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
