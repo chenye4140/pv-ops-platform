@@ -204,7 +204,7 @@
       <div class="section-header">
         <div class="section-title">📦 备件库存</div>
         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-          <button class="btn" onclick="openAddModal()">＋ 新增备件</button>
+          <button class="btn" id="btn-add-part" onclick="openAddModal()">＋ 新增备件</button>
           <button class="btn btn-blue" onclick="loadParts()">🔄 刷新</button>
         </div>
       </div>
@@ -324,7 +324,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn" onclick="closePartModal()">取消</button>
-        <button class="btn btn-green" onclick="savePart()">保存</button>
+        <button class="btn btn-green" id="btn-save-part" onclick="savePart()">保存</button>
       </div>
     </div>
   </div>
@@ -392,6 +392,24 @@
       });
       if (res.status === 401) { window.location.href = 'login.html'; return; }
       return res.json();
+    }
+
+    // Role-Based Access Control
+    const ROLES = { admin: 4, manager: 3, operator: 2, viewer: 1 };
+    function getUserRole() {
+      const userStr = localStorage.getItem('currentUser');
+      if (!userStr) return 'viewer';
+      try { return JSON.parse(userStr).role || 'viewer'; } catch(e) { return 'viewer'; }
+    }
+    function hasPermission(minRole) { return (ROLES[getUserRole()] || 0) >= (ROLES[minRole] || 1); }
+    function applyRoleControls() {
+      // viewer cannot create, edit, or delete spare parts
+      if (!hasPermission('operator')) {
+        const addBtn = document.getElementById('btn-add-part');
+        if (addBtn) addBtn.style.display = 'none';
+        const saveBtn = document.getElementById('btn-save-part');
+        if (saveBtn) saveBtn.style.display = 'none';
+      }
     }
 
     function showToast(msg, type = 'success') {
@@ -491,10 +509,10 @@
           <td style="color:var(--text-secondary)">${p.station_name || '-'}</td>
           <td>${getStockBadge(p)}</td>
           <td class="actions-cell">
-            <button class="btn btn-sm btn-green" onclick="openStockModal(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">出入库</button>
+            ${hasPermission('operator') ? `<button class="btn btn-sm btn-green" onclick="openStockModal(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">出入库</button>` : ''}
             <button class="btn btn-sm btn-blue" onclick="viewTransactions(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">记录</button>
-            <button class="btn btn-sm" onclick="openEditModal(${p.id})">编辑</button>
-            <button class="btn btn-sm btn-red" onclick="deletePart(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">删除</button>
+            ${hasPermission('operator') ? `<button class="btn btn-sm" onclick="openEditModal(${p.id})">编辑</button>` : ''}
+            ${hasPermission('operator') ? `<button class="btn btn-sm btn-red" onclick="deletePart(${p.id}, '${p.part_name.replace(/'/g, "\\'")}')">删除</button>` : ''}
           </td>
         </tr>
       `).join('');
@@ -659,6 +677,7 @@
     (async () => {
       await loadStations();
       await loadParts();
+      applyRoleControls();
     })();
   </script>
 </body>
