@@ -1452,8 +1452,7 @@
 
     async function loadDefectHistory() {
       try {
-        const res = await apiFetch(`${API}/analysis/history`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/analysis/history`);
         if (json.success && json.data) {
           defectRecords = json.data.map((r, i) => {
             let defects = [];
@@ -1669,9 +1668,10 @@
           document.getElementById('kpiPower').innerHTML = `${power.toFixed(1)}<span class="stat-unit">kW</span>`;
           document.getElementById('kpiPowerSub').textContent = power > 0 ? '☀️ 发电中' : '🌙 夜间停机';
 
-          document.getElementById('kpiPR').innerHTML = `${pr.toFixed(1)}<span class="stat-unit">%</span>`;
+          const kpiPREl = document.getElementById('kpiPR');
+          kpiPREl.innerHTML = `${pr.toFixed(1)}<span class="stat-unit">%</span>`;
           const prColor = pr >= 80 ? 'var(--green)' : pr >= 60 ? 'var(--orange)' : 'var(--red)';
-          document.getElementById('kpiPR').querySelector('.stat-value').style.color = prColor;
+          kpiPREl.style.color = prColor;
           document.getElementById('kpiPRSub').innerHTML = `<span style="color:${prColor}">${pr >= 80 ? '● 良好' : pr >= 60 ? '● 偏低' : '● 异常'}</span>`;
 
           document.getElementById('kpiAbnormal').innerHTML = `<span style="color:${abnormal > 0 ? 'var(--orange)' : 'var(--green)'}">${abnormal}</span>`;
@@ -1911,8 +1911,7 @@
         const url = stationId === 'all'
           ? `${API}/alerts?status=active`
           : `${API}/stations/${stationId}/alerts`;
-        const res = await fetch(url);
-        const json = await res.json();
+        const json = await apiFetch(url);
         const alerts = json.success ? (json.data || []).slice(0, 5) : [];
         document.getElementById('alertBadge').textContent = `共 ${alerts.filter(a => a.status === 'active').length} 条活跃`;
 
@@ -2118,12 +2117,10 @@
         let start, end;
         try {
           // Query first string's power data to find the latest available date
-          const strRes0 = await apiFetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
-          const strJson0 = await strRes0.json();
+          const strJson0 = await apiFetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
           if (strJson0.success && strJson0.data.length > 0) {
             // Get just the first and last records to determine date range
-            const pwRes0 = await apiFetch(`${API}/strings/${strJson0.data[0].id}/power`);
-            const pwJson0 = await pwRes0.json();
+            const pwJson0 = await apiFetch(`${API}/strings/${strJson0.data[0].id}/power`);
             if (pwJson0.success && pwJson0.data && pwJson0.data.length > 0) {
               const lastRecord = pwJson0.data[pwJson0.data.length - 1];
               const latestDate = new Date(lastRecord.timestamp);
@@ -2138,8 +2135,7 @@
         }
 
         // Get strings
-        const strRes = await apiFetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
-        const strJson = await strRes.json();
+        const strJson = await apiFetch(`${API}/stations/${stationId}/inverters/${firstInv.id}/strings`);
 
         let powerData = [], irradianceData = [], timeAxis = [];
 
@@ -2147,8 +2143,7 @@
           const firstStr = strJson.data[0];
           // Try power data
           try {
-            const pwRes = await apiFetch(`${API}/strings/${firstStr.id}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
-            const pwJson = await pwRes.json();
+            const pwJson = await apiFetch(`${API}/strings/${firstStr.id}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
             if (pwJson.success && pwJson.data && pwJson.data.length > 0) {
               const pMap = {};
               pwJson.data.forEach(p => {
@@ -2166,8 +2161,7 @@
 
         // Try weather/irradiance
         try {
-          const wRes = await apiFetch(`${API}/stations/${stationId}/weather?start=${start.toISOString()}&end=${end.toISOString()}`);
-          const wJson = await wRes.json();
+          const wJson = await apiFetch(`${API}/stations/${stationId}/weather?start=${start.toISOString()}&end=${end.toISOString()}`);
           if (wJson.success && wJson.data && wJson.data.length > 0) {
             const wMap = {};
             wJson.data.forEach(w => {
@@ -2258,8 +2252,7 @@
 
         for (const date of dates) {
           // Fetch enhanced forecast
-          const res = await apiFetch(`${API}/forecast/enhanced/${sid}?date=${date}&model=${model}`);
-          const json = await res.json();
+          const json = await apiFetch(`${API}/forecast/enhanced/${sid}?date=${date}&model=${model}`);
 
           if (json.success && json.data) {
             const preds = json.data.hourly_predictions || [];
@@ -2277,8 +2270,7 @@
               // Try to get actual data for today
               if (date === today.toISOString().split('T')[0] || date === new Date(today.getTime() - 86400000).toISOString().split('T')[0]) {
                 try {
-                  const actualRes = await apiFetch(`${API}/forecast/${sid}/compare?date=${date}`);
-                  const actualJson = await actualRes.json();
+                  const actualJson = await apiFetch(`${API}/forecast/${sid}/compare?date=${date}`);
                   if (actualJson.success && actualJson.data && actualJson.data.hourly_comparison) {
                     const actualEntry = actualJson.data.hourly_comparison.find(a => a.hour === p.forecast_hour);
                     allActual.push(actualEntry && actualEntry.actual_kw > 0 ? actualEntry.actual_kw : null);
@@ -2305,8 +2297,7 @@
 
         // Fetch accuracy metrics
         try {
-          const trendRes = await apiFetch(`${API}/forecast/trend/${sid}`);
-          const trendJson = await trendRes.json();
+          const trendJson = await apiFetch(`${API}/forecast/trend/${sid}`);
           if (trendJson.success && trendJson.data && trendJson.data.overall) {
             const mape = trendJson.data.overall.avg_mape;
             const rmse = trendJson.data.overall.avg_mape !== null ? '--' : '--';
@@ -2480,8 +2471,7 @@
       document.getElementById('inverterMonitorContent').style.display = 'block';
 
       try {
-        const strRes = await apiFetch(`${API}/stations/${stationId}/inverters/${invId}/strings`);
-        const strJson = await strRes.json();
+        const strJson = await apiFetch(`${API}/stations/${stationId}/inverters/${invId}/strings`);
 
         if (!strJson.success || !strJson.data || strJson.data.length === 0) {
           document.getElementById('inverterMonitorContent').innerHTML = '<div class="error-msg">暂无组串数据</div>';
@@ -2564,8 +2554,7 @@
       const end = new Date(now); end.setHours(23, 59, 59, 999);
 
       try {
-        const pwRes = await apiFetch(`${API}/strings/${strId}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
-        const pwJson = await pwRes.json();
+        const pwJson = await apiFetch(`${API}/strings/${strId}/power?start=${start.toISOString()}&end=${end.toISOString()}`);
 
         if (pwJson.success && pwJson.data && pwJson.data.length > 0) {
           const sorted = pwJson.data.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -2592,8 +2581,7 @@
       const container = document.getElementById('alertsTableContainer');
       container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
       try {
-        const res = await apiFetch(`${API}/stations/${stationId}/alerts`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/stations/${stationId}/alerts`);
         if (json.success) {
           cachedAlerts = json.data || [];
           renderAlertsTable();
@@ -2828,8 +2816,8 @@
       container.innerHTML = '<div class="loading"><div class="spinner"></div>AI 正在生成智能日报...</div>';
 
       try {
-        const res = await apiFetch(`${API}/reports/daily/${stationId}`);
-        const json = await res.json();
+        const sid = stationId === 'all' ? getEffectiveStationId() : stationId;
+        const json = await apiFetch(`${API}/reports/daily/${sid}`);
 
         if (!json.success) {
           container.innerHTML = `<div class="error-msg">日报生成失败: ${json.error || '未知错误'}</div>`;
@@ -2839,8 +2827,14 @@
         }
 
         const r = json.data;
+        const d = r.data; // nested data object
         const dateObj = new Date(r.date + 'T00:00:00');
         const dateStr = dateObj.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+        const pr = d.generation.performance_ratio || 0;
+        const alerts = d.alerts || {};
+        const sev = alerts.by_severity || {};
+        const activeCount = (alerts.active_list || []).length;
+        const aiText = r.ai_report ? (typeof r.ai_report === 'string' ? r.ai_report : JSON.stringify(r.ai_report, null, 2)) : '暂无AI分析数据';
 
         container.innerHTML = `
           <div class="report-preview">
@@ -2851,23 +2845,23 @@
 
             <div class="report-section">
               <h3>📊 发电概况</h3>
-              <p>今日总发电量 <span class="report-stat">${r.generation.total_energy_kwh.toFixed(1)} kWh</span>，峰值功率 <span class="report-stat">${r.generation.peak_power_kw.toFixed(1)} kW</span>，平均功率 <span class="report-stat">${r.generation.avg_power_kw.toFixed(1)} kW</span>。</p>
-              <p>电站装机容量 <span class="report-stat">${r.station.capacity_mw} MW</span> · 有效读数 <span class="report-stat">${r.generation.reading_count} 条</span>。</p>
+              <p>今日总发电量 <span class="report-stat">${d.generation.total_energy_kwh.toFixed(1)} kWh</span>，峰值功率 <span class="report-stat">${d.generation.peak_power_kw.toFixed(1)} kW</span>，平均功率 <span class="report-stat">${d.generation.avg_power_kw.toFixed(1)} kW</span>。</p>
+              <p>电站装机容量 <span class="report-stat">${r.station.capacity_mw} MW</span> · 性能比 PR <span class="report-stat">${pr.toFixed(1)}%</span>。</p>
             </div>
 
             <div class="report-section">
               <h3>🌤 气象数据</h3>
-              <p>平均辐照度 <span class="report-stat">${r.weather.avg_irradiance_wm2} W/m²</span>，峰值辐照度 <span class="report-stat">${r.weather.peak_irradiance_wm2} W/m²</span>，平均温度 <span class="report-stat">${r.weather.avg_temperature_c}°C</span>。</p>
+              <p>平均辐照度 <span class="report-stat">${d.weather.avg_irradiance_wm2} W/m²</span>，峰值辐照度 <span class="report-stat">${d.weather.peak_irradiance_wm2} W/m²</span>，平均温度 <span class="report-stat">${d.weather.avg_temperature_c}°C</span>。</p>
             </div>
 
             <div class="report-section">
-              <h3>📈 性能指标</h3>
-              <p>性能比 PR = <span class="report-stat" style="color: ${r.performance.performance_ratio >= 80 ? 'var(--green)' : r.performance.performance_ratio >= 60 ? 'var(--orange)' : 'var(--red)'}">${r.performance.performance_ratio.toFixed(1)}%</span>，活跃告警 <span class="report-stat">${r.performance.alerts_count} 条</span>（严重 ${r.performance.alerts_by_severity.critical} · 警告 ${r.performance.alerts_by_severity.warning} · 提示 ${r.performance.alerts_by_severity.info}）。</p>
+              <h3>📈 告警统计</h3>
+              <p>活跃告警 <span class="report-stat">${activeCount} 条</span>（严重 <span style="color:var(--red)">${sev.critical || 0}</span> · 警告 <span style="color:var(--orange)">${sev.warning || 0}</span> · 提示 <span style="color:var(--text-muted)">${sev.info || 0}</span>）。</p>
             </div>
 
             <div class="report-section" style="border-left: 3px solid var(--purple);">
               <h3>🤖 AI 智能分析 <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">(by ${r.ai_model === 'qwen-plus' ? '通义千问-plus' : '规则引擎'})</span></h3>
-              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.9;white-space:pre-line;">${r.ai_summary || '暂无AI分析数据'}</p>
+              <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.9;white-space:pre-line;">${aiText}</p>
             </div>
 
             <div style="text-align:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.78rem;">
@@ -3042,8 +3036,7 @@
         const url = stationId === 'all'
           ? `${API}/alerts`
           : `${API}/stations/${stationId}/alerts`;
-        const res = await fetch(url);
-        const json = await res.json();
+        const json = await apiFetch(url);
         if (json.success) {
           const alerts = json.data || [];
           const activeCount = alerts.filter(a => a.status === 'active').length;
@@ -3105,8 +3098,7 @@
       const container = document.getElementById('workorderTableContainer');
       container.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
       try {
-        const res = await apiFetch(`${API}/workorders`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/workorders`);
         if (json.success) {
           cachedWorkOrders = json.data || [];
           loadWorkOrderStats();
@@ -3228,8 +3220,7 @@
 
     async function viewWorkOrder(id) {
       try {
-        const res = await apiFetch(`${API}/workorders/${id}`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/workorders/${id}`);
         if (!json.success) {
           showToast('工单不存在', 'error');
           return;
@@ -3413,12 +3404,10 @@
     /* ============ Alert Rules ============ */
     async function loadAlertRules() {
       try {
-        const [rulesRes, statsRes] = await Promise.all([
+        const [rulesJson, statsJson] = await Promise.all([
           apiFetch(`${API}/alert-rules?station_id=${stationId}`),
           apiFetch(`${API}/alert-rules/stats`),
         ]);
-        const rulesJson = await rulesRes.json();
-        const statsJson = await statsRes.json();
 
         // Stats
         if (statsJson.success) {
@@ -3566,8 +3555,7 @@
     /* ============ System Status & Backup ============ */
     async function loadSystemStatus() {
       try {
-        const res = await apiFetch(`${API}/backup/stats`);
-        const json = await res.json();
+        const json = await apiFetch(`${API}/backup/stats`);
         if (json.success) {
           const d = json.data;
           document.getElementById('dbSize').textContent = d.fileSizeHuman;
@@ -3587,8 +3575,7 @@
         }
 
         // Populate backup list
-        const listRes = await apiFetch(`${API}/backup/list`);
-        const listJson = await listRes.json();
+        const listJson = await apiFetch(`${API}/backup/list`);
         if (listJson.success) {
           const bt = document.getElementById('backupTableBody');
           if (listJson.data.length === 0) {
