@@ -97,8 +97,8 @@ router.delete('/:id', requireRole('admin', 'manager', 'operator'), (req, res) =>
   }
 });
 
-// POST /api/spare-parts/:id/transaction — Record stock movement
-router.post('/:id/transaction', (req, res) => {
+// POST /api/spare-parts/:id/transaction — Record stock movement (admin/manager/operator only)
+router.post('/:id/transaction', requireRole('admin', 'manager', 'operator'), (req, res) => {
   try {
     const { transaction_type, quantity, reference_type, reference_id, notes } = req.body;
     if (!transaction_type || quantity === undefined) {
