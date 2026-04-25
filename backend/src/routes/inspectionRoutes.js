@@ -167,8 +167,9 @@ router.put('/tasks/:taskId/status', requireRole('admin', 'manager', 'operator'),
     const { status, findings } = req.body;
     if (!status) return res.status(400).json({ success: false, error: 'status is required' });
 
+    const oldTask = inspectionService.getTaskById(req.params.taskId);
     const task = inspectionService.updateTaskStatus(req.params.taskId, status, findings);
-    auditService.logAction(getUserId(req), 'status_change', 'inspection_task', req.params.taskId, { status, findings }, req.ip);
+    auditService.logAction(getUserId(req), 'status_change', 'inspection_task', req.params.taskId, { from: oldTask ? oldTask.status : null, to: status, findings }, req.ip);
     res.json({ success: true, data: task });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

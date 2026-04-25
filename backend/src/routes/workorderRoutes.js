@@ -73,12 +73,16 @@ router.put('/:id', requireRole('admin', 'manager', 'operator'), (req, res) => {
 
     let wo;
     if (status) {
+      // Capture old status BEFORE update for accurate audit trail
+      const oldWo = workorderService.getById(req.params.id);
+      if (!oldWo) return res.status(404).json({ success: false, error: 'Work order not found' });
       // If status is provided, use updateStatus for validation
       wo = workorderService.updateStatus(req.params.id, status, assignee);
-      auditService.logAction(getUserId(req), 'status_change', 'work_order', wo.id, { from: wo.status, to: status, assignee }, req.ip);
+      auditService.logAction(getUserId(req), 'status_change', 'work_order', wo.id, { from: oldWo.status, to: status, assignee }, req.ip);
       // If there are other fields to update
       if (Object.keys(otherData).length > 0) {
         wo = workorderService.update(req.params.id, otherData);
+        auditService.logAction(getUserId(req), 'update', 'work_order', wo.id, { fields: Object.keys(otherData) }, req.ip);
       }
       // Broadcast status change
       wsService.broadcast('updated', wo, 'workorders', wo.station_id ? `station_${wo.station_id}` : null);
