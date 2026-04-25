@@ -490,6 +490,7 @@
         const data = await apiFetch(`${API}/stations`);
         if (data && data.success && data.data && data.data.length > 0) {
           const first = data.data.find(s => s.status === 'active') || data.data[0];
+          localStorage.setItem('selectedStation', first.id);
           return first.id;
         }
       } catch (e) { /* ignore */ }
@@ -752,8 +753,8 @@
       try {
         const stationId = await getSelectedStationId();
         if (!stationId) {
-          content.innerHTML = '<div class="error-msg" style="color:var(--red)">请先选择电站</div>';
-          status.textContent = '未选择电站';
+          content.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text-secondary)"><div style="font-size:48px;margin-bottom:16px">🔍</div><h3>暂无电站数据</h3><p>请运行 <code>cd backend && node scripts/seed_data.js</code> 初始化示例数据</p></div>';
+          status.textContent = '暂无数据';
           return;
         }
         const json = await apiFetch(`${API}/analysis/station/${stationId}/anomaly`);
